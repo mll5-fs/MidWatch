@@ -1,7 +1,25 @@
 const{app,BrowserWindow,ipcMain,shell,dialog}=require("electron");const path=require("path");const store=require("./store"),bootstrap=require("./data/players"),bundledOuat=require("./data/ouat-current.json"),{Riot}=require("./services/riot"),pros=require("./services/pros"),spectate=require("./services/spectate"),ouat=require("./services/ouat");let mainWindow;
-let liveCursor=0;function applyOverrides(list){const o=store.get("accountOverrides",{});return(list||[]).map(p=>o[p.id]?{...p,accounts:[o[p.id]],accountOverride:true}:p)}function currentPros(){const c=store.get("proCache",[]);return applyOverrides(Array.isArray(c)&&c.length?c:bootstrap)}function key(){return String(store.get("riotKey","")||"").trim()}
+let liveCursor=0,rankCursor=0;function applyOverrides(list){const o=store.get("accountOverrides",{});return(list||[]).map(p=>o[p.id]?{...p,accounts:[o[p.id]],accountOverride:true}:p)}function currentPros(){const c=store.get("proCache",[]);return applyOverrides(Array.isArray(c)&&c.length?c:bootstrap)}function key(){return String(store.get("riotKey","")||"").trim()}
 function create(){store.init();const found=spectate.detect(store.get("leaguePath",""));if(found&&found!==store.get("leaguePath",""))store.set("leaguePath",found);mainWindow=new BrowserWindow({width:1460,height:920,minWidth:1040,minHeight:700,show:false,backgroundColor:"#070a0f",title:"MidPulse",autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,"preload.js"),contextIsolation:true,nodeIntegration:false,sandbox:false}});mainWindow.loadFile(path.join(__dirname,"renderer/index.html"));mainWindow.once("ready-to-show",()=>mainWindow.show())}
 
+async function rankBatch(){
+  if(!key())return{updates:[],checked:0};
+  const saved=store.get("ouat",{}),o=(Array.isArray(saved.players)&&saved.players.length)?saved:bundledOuat;
+  const players=[...currentPros(),...applyOverrides(o.players||[])].filter(p=>p.accounts?.[0]?.gameName&&p.accounts?.[0]?.tagLine);
+  if(!players.length)return{updates:[],checked:0};
+  const cache=store.get("riotAccountCache",{}),riot=new Riot(key()),updates=[],batch=[];
+  for(let i=0;i<5&&i<players.length;i++)batch.push(players[(rankCursor+i)%players.length]);
+  rankCursor=(rankCursor+batch.length)%players.length;
+  for(const p of batch){
+    const a=p.accounts[0],ck=`${String(a.platform||"EUW1").toUpperCase()}|${a.gameName}#${a.tagLine}`.toLowerCase();
+    try{
+      let puuid=cache[ck];if(!puuid){const resolved=await riot.resolveAccount(a);puuid=resolved.puuid;cache[ck]=puuid}
+      const ranked=await riot.ranked(a.platform||"EUW1",puuid),solo=(ranked||[]).find(x=>x.queueType==="RANKED_SOLO_5x5");
+      updates.push({id:p.id,rank:solo?{tier:solo.tier,rank:solo.rank,leaguePoints:solo.leaguePoints}:null,checkedAt:Date.now()});
+    }catch(e){updates.push({id:p.id,rank:undefined,error:String(e.message||e)})}
+  }
+  store.set("riotAccountCache",cache);return{updates,checked:batch.length,total:players.length};
+}
 async function liveBatch(){
   if(!key())return{updates:[],checked:0};
   const saved=store.get("ouat",{}),o=(Array.isArray(saved.players)&&saved.players.length)?saved:bundledOuat;
@@ -40,6 +58,7 @@ ipcMain.handle("pros:profile",(_e,name,league)=>pros.profile(name,league));
 ipcMain.handle("ouat:refresh",async(_e,url)=>{try{const r=await ouat.refresh(String(url||store.get("ouat",{}).url||""));if(r.players?.length)store.set("ouat",r);return r}catch(e){const saved=store.get("ouat",{});const fallback=(saved.players?.length?saved:bundledOuat);if(fallback.players?.length)return{...fallback,warning:`LEA live indisponible : ${e.message}. Snapshot local conservé.`};throw e}});
 ipcMain.handle("ouat:url",(_e,url)=>{const o=store.get("ouat",{});o.url=String(url||"").trim();store.set("ouat",o);return o.url});
 ipcMain.handle("riot:liveBatch",()=>liveBatch());
+ipcMain.handle("riot:rankBatch",()=>rankBatch());
 ipcMain.handle("riot:check",async(_e,a)=>{if(!key())throw new Error("Ajoute ta clé Riot dans Settings.");const riot=new Riot(key()),acc=await riot.resolveAccount(a);let ranked=[];try{ranked=await riot.ranked(acc.platform,acc.puuid)}catch(_){}let active=null;try{active=await riot.active(acc.platform,acc.puuid)}catch(e){if(e.status!==404)throw e}return{account:acc,ranked,active}});
 ipcMain.handle("spectate:launch",async(_e,a)=>{if(!key())throw new Error("Ajoute ta clé Riot dans Settings.");const riot=new Riot(key()),acc=await riot.resolveAccount(a);let game;try{game=await riot.active(acc.platform,acc.puuid)}catch(e){if(e.status===404)throw new Error("Ce joueur n’est plus en partie.");throw e}const root=spectate.launch(store.get("leaguePath",""),game);store.set("leaguePath",root);return{ok:true,gameId:game.gameId}});
 ipcMain.handle("external:open",(_e,url)=>{if(/^https?:\/\//i.test(String(url)))return shell.openExternal(String(url));return false});
