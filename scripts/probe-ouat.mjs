@@ -1,1 +1,1 @@
-const r=await fetch("https://api.leamateur.pro/team");const t=await r.text();console.log("STATUS",r.status,"LEN",t.length);console.log(t.slice(0,150000));
+for(const p of ["/player/1988","/user/1988","/users/1988","/playerInfo/1988"]){const u="https://api.leamateur.pro"+p;try{const r=await fetch(u);const t=await r.text();console.log("\n",p,r.status,t.slice(0,5000));}catch(e){console.log(p,e.message)}}
