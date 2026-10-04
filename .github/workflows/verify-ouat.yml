@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/verify-ouat.yml
+      - src/services/ouat.js
 
 jobs:
   probe:
