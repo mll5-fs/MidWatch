@@ -22,6 +22,6 @@ class Riot{
   ranked(p,u){return json(`https://${p.toLowerCase()}.api.riotgames.com/lol/league/v4/entries/by-puuid/${encodeURIComponent(u)}`,this.key)}
   active(p,u){return json(`https://${p.toLowerCase()}.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/${encodeURIComponent(u)}`,this.key)}
   validate(){return json("https://euw1.api.riotgames.com/lol/status/v4/platform-data",this.key)}
-  async resolveAccount(a){if(a.puuid)return{...a,puuid:a.puuid};if(!a.gameName||!a.tagLine)throw new Error("Riot ID incomplet.");const x=await this.account(a.gameName,a.tagLine,routeForPlatform(a.platform));return{...a,puuid:x.puuid}}
+  async resolveAccount(a){if(a.gameName&&a.tagLine){const x=await this.account(a.gameName,a.tagLine,routeForPlatform(a.platform));return{...a,puuid:x.puuid}}if(a.puuid)return{...a,puuid:a.puuid};throw new Error("Riot ID incomplet.")}
 }
 module.exports={Riot,routeForPlatform};
