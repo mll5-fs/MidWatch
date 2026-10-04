@@ -21,6 +21,8 @@ class Riot{
   account(n,t,r){return json(`https://${r||"europe"}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(n)}/${encodeURIComponent(t)}`,this.key)}
   ranked(p,u){return json(`https://${p.toLowerCase()}.api.riotgames.com/lol/league/v4/entries/by-puuid/${encodeURIComponent(u)}`,this.key)}
   active(p,u){return json(`https://${p.toLowerCase()}.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/${encodeURIComponent(u)}`,this.key)}
+  matchIds(p,u,count=20){return json(`https://${routeForPlatform(p)}.api.riotgames.com/lol/match/v5/matches/by-puuid/${encodeURIComponent(u)}/ids?start=0&count=${count}`,this.key)}
+  match(p,id){return json(`https://${routeForPlatform(p)}.api.riotgames.com/lol/match/v5/matches/${encodeURIComponent(id)}`,this.key)}
   validate(){return json("https://euw1.api.riotgames.com/lol/status/v4/platform-data",this.key)}
   async resolveAccount(a){if(a.gameName&&a.tagLine){const x=await this.account(a.gameName,a.tagLine,routeForPlatform(a.platform));return{...a,puuid:x.puuid}}if(a.puuid)return{...a,puuid:a.puuid};throw new Error("Riot ID incomplet.")}
 }
