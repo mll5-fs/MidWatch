@@ -114,9 +114,12 @@ function extract(payloads) {
 }
 
 async function discoverOfficialTournamentUrl() {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
   try {
     const response = await net.fetch(OFFICIAL_PAGE, {
       headers: { "User-Agent": "Mozilla/5.0 MidWatch/2.0" },
+      signal: controller.signal,
     });
     if (!response.ok) return "";
     const html = await response.text();
@@ -130,6 +133,8 @@ async function discoverOfficialTournamentUrl() {
       .replace(/ /g, "%20");
   } catch (_) {
     return "";
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
