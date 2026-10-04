@@ -1,8 +1,274 @@
-const{BrowserWindow}=require("electron");const DEFAULTS=[23,22,21].map(n=>`https://lol.leamateur.pro/tournaments/OUATventure%20Saison%20${n}`);const wait=ms=>new Promise(r=>setTimeout(r,ms));const str=v=>typeof v==="string"?v.trim():"";function role(v){if(v&&typeof v==="object")v=v.value||v.name||v.label;return str(v).toUpperCase()}const midRole=v=>/(^|\W)(MID|MIDDLE|MIDLANE|MIDLANER)(\W|$)/.test(role(v));const nameOf=o=>str(o?.displayName||o?.playerName||o?.summonerName||o?.nickname||o?.nick||o?.gameName||o?.username||o?.pseudo||o?.name);function teamOf(v){if(typeof v==="string")return v.trim();if(v&&typeof v==="object")return str(v.teamName||v.displayName||v.name||v.title||v.tag);return""}
-function extract(payloads){const out=[],seen=new Set();function add(o,ctx,roleHint=""){const r=role(o?.role||o?.position||o?.lane||o?.playerRole||roleHint);if(!midRole(r))return;const n=nameOf(o),t=teamOf(o?.team||o?.teamName||o?.squad)||ctx.team;if(!n||!t||n===t)return;const rid=str(o?.riotId||o?.riotID||o?.riot_id);let gameName=str(o?.gameName),tagLine=str(o?.tagLine||o?.tag);if(rid.includes("#"))[gameName,tagLine]=rid.split("#",2);const k=`${t}|${n}`.toLowerCase();if(seen.has(k))return;seen.add(k);out.push({id:`ouat-${k.replace(/[^a-z0-9]+/g,"-")}`,name:n,team:t,region:"OUAT",division:ctx.division||str(o?.division||o?.group),platform:"EUW1",role:"MID",source:"LEA",accounts:gameName&&tagLine?[{gameName,tagLine,platform:"EUW1"}]:[]})}
-function walk(x,ctx={team:"",division:""},hint=""){if(!x)return;if(Array.isArray(x)){for(const v of x)walk(v,ctx,hint);return}if(typeof x!=="object")return;let next={...ctx};const div=teamOf(x.division||x.group||x.pool);if(div)next.division=div;const rosterKeys=["players","roster","members","lineup","participants"],hasRoster=rosterKeys.some(k=>Array.isArray(x[k])||x[k]?.players),maybeTeam=teamOf(x.teamName||x.team||x.squad||(hasRoster?x.name:""));if(maybeTeam)next.team=maybeTeam;add(x,next,hint);for(const[k,v]of Object.entries(x)){const h=/^(mid|middle|midlane|midlaner)$/i.test(k)?"MID":"";if(v&&typeof v==="object")walk(v,next,h||hint)}}for(const p of payloads)walk(p);return out.sort((a,b)=>(a.division||"").localeCompare(b.division||"")||a.team.localeCompare(b.team)||a.name.localeCompare(b.name))}
-async function capture(url){const w=new BrowserWindow({show:false,webPreferences:{contextIsolation:true,sandbox:true,backgroundThrottling:false}}),payloads=[],responses=new Map();let attached=false;try{w.webContents.debugger.attach("1.3");attached=true;await w.webContents.debugger.sendCommand("Network.enable")}catch(_){}if(attached)w.webContents.debugger.on("message",async(_e,method,p)=>{if(method==="Network.responseReceived"){const type=p.type||"",mime=(p.response?.mimeType||"").toLowerCase(),u=p.response?.url||"";if(["XHR","Fetch"].includes(type)||mime.includes("json")||/api|tournament|team|roster/i.test(u))responses.set(p.requestId,{url:u})}if(method==="Network.loadingFinished"&&responses.has(p.requestId))try{const b=await w.webContents.debugger.sendCommand("Network.getResponseBody",{requestId:p.requestId}),s=b.base64Encoded?Buffer.from(b.body,"base64").toString("utf8"):b.body;if(s&&/^[\s]*[\[{]/.test(s))payloads.push(JSON.parse(s))}catch(_){}});
-try{const load=w.loadURL(url,{userAgent:"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36"}).catch(()=>null);await Promise.race([load,wait(15000)]);await wait(4500);const page=await w.webContents.executeJavaScript(`(()=>{const p=[];for(const s of document.scripts){const t=(s.textContent||'').trim();if(t&&t.length<5000000&&(t[0]=='{'||t[0]=='['))p.push(t)}for(let i=0;i<localStorage.length;i++){const t=localStorage.getItem(localStorage.key(i));if(t&&t.length<5000000&&(t.trim()[0]=='{'||t.trim()[0]=='['))p.push(t)}return {title:document.title,text:document.body?.innerText||'',json:p}})()`);for(const s of page.json||[])try{payloads.push(JSON.parse(s))}catch(_){}return{payloads,page}}finally{try{if(attached)w.webContents.debugger.detach()}catch(_){}w.destroy()}}
-function seasonFrom(url,title=""){const m=(url+" "+title).match(/Saison(?:%20|\s)*(\d+)/i);return m?`S${m[1]}`:"OUATventure"}
-async function refresh(configured=""){const urls=[configured,...DEFAULTS].filter((v,i,a)=>v&&a.indexOf(v)===i);let last="";for(const url of urls)try{const c=await capture(url),mids=extract(c.payloads);if(mids.length)return{url,season:seasonFrom(url,c.page.title),players:mids,updatedAt:Date.now(),warning:""};last=`${url}: aucun roster MID structuré trouvé`}catch(e){last=`${url}: ${e.message}`}throw new Error(`Import OUAT impossible. ${last}`)}
-module.exports={refresh,extract};
+const { BrowserWindow, net } = require("electron");
+
+const OFFICIAL_PAGE = "https://www.onceuponateam.be/?page_id=3104";
+const FALLBACK_SEASONS = [20, 23, 22, 21, 19];
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const str = (value) => (typeof value === "string" ? value.trim() : "");
+
+function role(value) {
+  if (value && typeof value === "object") value = value.value || value.name || value.label;
+  return str(value).toUpperCase();
+}
+
+function isMidRole(value) {
+  return /(^|\W)(MID|MIDDLE|MIDLANE|MIDLANER)(\W|$)/.test(role(value));
+}
+
+function nameOf(obj) {
+  return str(
+    obj?.displayName ||
+      obj?.playerName ||
+      obj?.summonerName ||
+      obj?.nickname ||
+      obj?.nick ||
+      obj?.gameName ||
+      obj?.username ||
+      obj?.pseudo ||
+      obj?.name
+  );
+}
+
+function teamOf(value) {
+  if (typeof value === "string") return value.trim();
+  if (value && typeof value === "object") {
+    return str(value.teamName || value.displayName || value.name || value.title || value.tag);
+  }
+  return "";
+}
+
+function extract(payloads) {
+  const out = [];
+  const seen = new Set();
+  const rosterKeys = new Set(["players", "roster", "members", "lineup", "participants"]);
+  const orderedRoles = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"];
+
+  function add(obj, ctx, roleHint = "") {
+    const detectedRole = role(obj?.role || obj?.position || obj?.lane || obj?.playerRole || roleHint);
+    if (!isMidRole(detectedRole)) return;
+
+    const name = nameOf(obj);
+    const team = teamOf(obj?.team || obj?.teamName || obj?.squad) || ctx.team;
+    if (!name || !team || name === team) return;
+
+    const rawRiotId = str(obj?.riotId || obj?.riotID || obj?.riot_id);
+    let gameName = str(obj?.gameName);
+    let tagLine = str(obj?.tagLine || obj?.tag);
+    if (rawRiotId.includes("#")) [gameName, tagLine] = rawRiotId.split("#", 2);
+
+    const key = `${team}|${name}`.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    out.push({
+      id: `ouat-${key.replace(/[^a-z0-9]+/g, "-")}`,
+      name,
+      team,
+      region: "OUAT",
+      division: ctx.division || str(obj?.division || obj?.group),
+      platform: "EUW1",
+      role: "MID",
+      source: "LEA",
+      accounts: gameName && tagLine ? [{ gameName, tagLine, platform: "EUW1" }] : [],
+    });
+  }
+
+  function walk(value, ctx = { team: "", division: "" }, roleHint = "") {
+    if (!value) return;
+    if (Array.isArray(value)) {
+      for (const item of value) walk(item, ctx, roleHint);
+      return;
+    }
+    if (typeof value !== "object") return;
+
+    const next = { ...ctx };
+    const division = teamOf(value.division || value.group || value.pool);
+    if (division) next.division = division;
+
+    const hasRoster = [...rosterKeys].some(
+      (key) => Array.isArray(value[key]) || (value[key] && value[key].players)
+    );
+    const possibleTeam = teamOf(value.teamName || value.team || value.squad || (hasRoster ? value.name : ""));
+    if (possibleTeam) next.team = possibleTeam;
+
+    add(value, next, roleHint);
+
+    for (const [key, child] of Object.entries(value)) {
+      if (!child || typeof child !== "object") continue;
+
+      let hint = /^(mid|middle|midlane|midlaner)$/i.test(key) ? "MID" : "";
+      if (rosterKeys.has(key) && Array.isArray(child) && child.length >= 5) {
+        child.forEach((player, index) => walk(player, next, orderedRoles[index] || ""));
+        continue;
+      }
+      walk(child, next, hint || roleHint);
+    }
+  }
+
+  for (const payload of payloads) walk(payload);
+  return out.sort(
+    (a, b) =>
+      (a.division || "").localeCompare(b.division || "") ||
+      a.team.localeCompare(b.team) ||
+      a.name.localeCompare(b.name)
+  );
+}
+
+async function discoverOfficialTournamentUrl() {
+  try {
+    const response = await net.fetch(OFFICIAL_PAGE, {
+      headers: { "User-Agent": "Mozilla/5.0 MidWatch/2.0" },
+    });
+    if (!response.ok) return "";
+    const html = await response.text();
+    const match = html.match(
+      /href=["']([^"']*lol\.leamateur\.pro\/tournaments\/OUATventure(?:%20|\s|%2520)[^"']*)["']/i
+    );
+    if (!match) return "";
+    return match[1]
+      .replace(/&amp;/g, "&")
+      .replace(/^http:/i, "https:")
+      .replace(/ /g, "%20");
+  } catch (_) {
+    return "";
+  }
+}
+
+async function capture(url) {
+  const window = new BrowserWindow({
+    show: false,
+    webPreferences: {
+      contextIsolation: true,
+      sandbox: true,
+      backgroundThrottling: false,
+    },
+  });
+
+  const payloads = [];
+  const responses = new Map();
+  let attached = false;
+
+  try {
+    window.webContents.debugger.attach("1.3");
+    attached = true;
+    await window.webContents.debugger.sendCommand("Network.enable");
+  } catch (_) {}
+
+  if (attached) {
+    window.webContents.debugger.on("message", async (_event, method, params) => {
+      if (method === "Network.responseReceived") {
+        const type = params.type || "";
+        const mime = (params.response?.mimeType || "").toLowerCase();
+        const responseUrl = params.response?.url || "";
+        if (
+          ["XHR", "Fetch"].includes(type) ||
+          mime.includes("json") ||
+          /api|tournament|team|roster|participant/i.test(responseUrl)
+        ) {
+          responses.set(params.requestId, { url: responseUrl });
+        }
+      }
+
+      if (method === "Network.loadingFinished" && responses.has(params.requestId)) {
+        try {
+          const body = await window.webContents.debugger.sendCommand("Network.getResponseBody", {
+            requestId: params.requestId,
+          });
+          const text = body.base64Encoded
+            ? Buffer.from(body.body, "base64").toString("utf8")
+            : body.body;
+          if (text && /^[\s]*[\[{]/.test(text)) payloads.push(JSON.parse(text));
+        } catch (_) {}
+      }
+    });
+  }
+
+  try {
+    const load = window
+      .loadURL(url, {
+        userAgent:
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36",
+      })
+      .catch(() => null);
+
+    await Promise.race([load, wait(15000)]);
+    await wait(4500);
+
+    const readPage = window.webContents
+      .executeJavaScript(`(() => {
+        const json = [];
+        for (const script of document.scripts) {
+          const text = (script.textContent || "").trim();
+          if (text && text.length < 5000000 && (text[0] === "{" || text[0] === "[")) json.push(text);
+        }
+        for (let i = 0; i < localStorage.length; i++) {
+          const text = localStorage.getItem(localStorage.key(i));
+          if (text && text.length < 5000000 && (text.trim()[0] === "{" || text.trim()[0] === "[")) json.push(text);
+        }
+        return {
+          title: document.title || "",
+          text: document.body?.innerText || "",
+          json,
+        };
+      })()`)
+      .catch(() => ({ title: "", text: "", json: [] }));
+
+    const page = await Promise.race([
+      readPage,
+      wait(5000).then(() => ({ title: "", text: "", json: [] })),
+    ]);
+
+    for (const item of page.json || []) {
+      try {
+        payloads.push(JSON.parse(item));
+      } catch (_) {}
+    }
+
+    return { payloads, page };
+  } finally {
+    try {
+      if (attached) window.webContents.debugger.detach();
+    } catch (_) {}
+    try {
+      window.destroy();
+    } catch (_) {}
+  }
+}
+
+function seasonFrom(url, title = "") {
+  const match = (url + " " + title).match(/Saison(?:%20|\s)*(\d+)/i);
+  return match ? `S${match[1]}` : "OUATventure";
+}
+
+async function refresh(configured = "") {
+  const official = await discoverOfficialTournamentUrl();
+  const fallbacks = FALLBACK_SEASONS.map(
+    (season) => `https://lol.leamateur.pro/tournaments/OUATventure%20Saison%20${season}`
+  );
+  const urls = [configured, official, ...fallbacks].filter(
+    (value, index, array) => value && array.indexOf(value) === index
+  );
+
+  let last = "";
+  for (const url of urls) {
+    try {
+      const captured = await capture(url);
+      const mids = extract(captured.payloads);
+      if (mids.length) {
+        return {
+          url,
+          season: seasonFrom(url, captured.page.title),
+          players: mids,
+          updatedAt: Date.now(),
+          warning: "",
+        };
+      }
+      last = `${url}: aucun roster MID structuré trouvé`;
+    } catch (error) {
+      last = `${url}: ${error.message}`;
+    }
+  }
+
+  throw new Error(`Import OUAT impossible. ${last}`);
+}
+
+module.exports = { refresh, extract, discoverOfficialTournamentUrl };
