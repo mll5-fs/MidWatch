@@ -1,0 +1,2 @@
+const urls=["https://lol.leamateur.pro/tournaments/OUATventure%20Saison%2023","https://lol.leamateur.pro/tournaments/OUATventure%20Saison%2022","https://lol.leamateur.pro/tournaments/OUATventure%20Saison%2020"];
+for(const u of urls){try{const r=await fetch(u,{redirect:"follow"});const t=await r.text();console.log("\nURL",u,"STATUS",r.status,"FINAL",r.url,"LEN",t.length);console.log(t.slice(0,12000));}catch(e){console.error("ERR",u,e.message)}}
