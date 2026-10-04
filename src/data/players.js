@@ -5,4 +5,4 @@ const rows = [
 ["Loki","Cloud9","LCS","NA1"],["Palafox","Dignitas","LCS","NA1"],["Quad","FlyQuest","LCS","NA1"],["Saint","LYON","LCS","NA1"],["Quid","Team Liquid","LCS","NA1"],["callme","Disguised","LCS","NA1"],["DARKWINGS","Sentinels","LCS","NA1"],["Zinie","Shopify Rebellion","LCS","NA1"],
 ["Pout","CTBC Flying Oyster","LCP","TW2"],["Aria","SoftBank HAWKS gaming","LCP","JP1"],["Gloryy","GAM Esports","LCP","VN2"],["Uniboy","Ground Zero Gaming","LCP","TW2"],["Dire","Secret Whales","LCP","VN2"],["Fisher","DetonatioN FocusMe","LCP","JP1"],["Chika","MVK Esports","LCP","VN2"],["HongSuo","Deep Cross Gaming","LCP","TW2"]
 ];
-module.exports=rows.map(([name,team,region,platform],i)=>({id:`pro-${region.toLowerCase()}-${name.toLowerCase().replace(/[^a-z0-9]+/g,"-")}-${i}`,name,team,region,platform,role:"MID",source:"bootstrap",accounts:[]}));
+module.exports=rows.map(([name,team,region,platform])=>({id:`pro-${region.toLowerCase()}-${name.toLowerCase().replace(/[^a-z0-9]+/g,"-")}`,name,team,region,platform,role:"MID",source:"bootstrap",accounts:[]}));
