@@ -1,0 +1,1 @@
+const{contextBridge,ipcRenderer}=require("electron");contextBridge.exposeInMainWorld("midwatch",{players:()=>ipcRenderer.invoke("players:list"),lookup:x=>ipcRenderer.invoke("riot:lookup",x)});
