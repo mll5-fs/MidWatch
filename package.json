@@ -1,6 +1,6 @@
 {
   "name": "midwatch",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Tier-1 League of Legends midlaner tracker",
   "main": "src/main.js",
@@ -49,6 +49,7 @@
       "createStartMenuShortcut": true,
       "shortcutName": "MidWatch"
     },
-    "publish": null
+    "publish": null,
+    "artifactName": "MidWatch-Setup-${version}.exe"
   }
 }
