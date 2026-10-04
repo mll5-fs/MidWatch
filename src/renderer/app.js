@@ -1,15 +1,15 @@
 let S={players:[],ouatPlayers:[],ouat:{},favorites:[],hasKey:false,leaguePath:"",proCacheAt:0};
-let view="OVERVIEW",liveOnly=false,busy=false;
+let view="OVERVIEW",liveOnly=false,busy=false,ouatDivision="ALL";
 const $=q=>document.querySelector(q);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const REGIONS=["ALL","LCK","LEC","LPL","LCS","LCP"];
+const REGIONS=["ALL","LCK","LCKCL","LEC","LFL","LPL","LCS","LCP"];
 
 function rankLabel(r={}){const tier=String(r.tier||"").toUpperCase();if(!tier)return"";return `${tier}${r.rank&&r.rank!=="I"?" "+r.rank:""} · ${r.leaguePoints??r.lp??0} LP`}
 function rankScore(p){const o={CHALLENGER:10,GRANDMASTER:9,MASTER:8,DIAMOND:7,EMERALD:6,PLATINUM:5,GOLD:4,SILVER:3,BRONZE:2,IRON:1};const r=p.bestRank||{};return(o[String(r.tier||"").toUpperCase()]||0)*100000+(+r.leaguePoints||+r.lp||0)}
 function allPlayers(){return[...S.players,...S.ouatPlayers]}
 function tracked(p){return p.source==="DPM public data"||p.source==="live"||p.live===true}
 function stateOf(p){if(p.live===true)return"live";return tracked(p)?"offline":"unknown"}
-function dpmUrl(p){const a=(p.accounts||[])[0];if(p.region==="OUAT"){if(a?.gameName&&a?.tagLine)return`https://dpm.lol/?q=${encodeURIComponent(a.gameName+"#"+a.tagLine)}`;return"https://dpm.lol/"}return`https://dpm.lol/pro/${encodeURIComponent(p.name)}`}
+function dpmUrl(p){const a=(p.accounts||[])[0];if(p.region==="OUAT"){if(a?.gameName&&a?.tagLine)return`https://dpm.lol/${encodeURIComponent(a.gameName)}-${encodeURIComponent(a.tagLine)}`;return"https://dpm.lol/"}return`https://dpm.lol/pro/${encodeURIComponent(p.name)}`}
 
 function setView(next){view=next;liveOnly=false;$("#qTop").value="";renderNav();render()}
 function renderNav(){
@@ -21,13 +21,13 @@ function renderNav(){
   $("#liveNav").classList.toggle("on",view==="LIVE");
   $("#favNav").classList.toggle("on",view==="FAV");
   $("#ouatNav").classList.toggle("on",view==="OUAT");
-  $("#regions").innerHTML=REGIONS.map(r=>`<button data-region="${r}" class="${view===r?"on":""}"><span>◇</span><span>${r==="ALL"?"Tous les pros":r}</span><em>${r==="ALL"?S.players.length:S.players.filter(p=>p.region===r).length}</em></button>`).join("");
+  const labels={ALL:"Tous les pros",LCKCL:"LCK CL"};$("#regions").innerHTML=REGIONS.map(r=>`<button data-region="${r}" class="${view===r?"on":""}"><span>◇</span><span>${labels[r]||r}</span><em>${r==="ALL"?S.players.length:S.players.filter(p=>p.region===r).length}</em></button>`).join("");
   document.querySelectorAll("[data-region]").forEach(b=>b.onclick=()=>setView(b.dataset.region));
 }
 
 function queryMatch(p,q){return`${p.name} ${p.team} ${p.division||""} ${p.group||""} ${(p.accounts||[]).map(a=>`${a.gameName||""}#${a.tagLine||""}`).join(" ")}`.toLowerCase().includes(q)}
 function baseForView(){
-  if(view==="OUAT")return S.ouatPlayers;
+  if(view==="OUAT")return ouatDivision==="ALL"?S.ouatPlayers:S.ouatPlayers.filter(p=>String(p.division||"Sans division")===ouatDivision);
   if(view==="LIVE")return allPlayers().filter(p=>p.live===true);
   if(view==="FAV")return allPlayers().filter(p=>S.favorites.includes(p.id));
   if(REGIONS.includes(view))return view==="ALL"?S.players:S.players.filter(p=>p.region===view);
@@ -36,7 +36,7 @@ function baseForView(){
 function listForView(){
   let a=[...baseForView()];
   const q=$("#qTop").value.trim().toLowerCase();
-  if(q)a=allPlayers().filter(p=>queryMatch(p,q));
+  if(q){const scope=view==="OVERVIEW"?allPlayers():baseForView();a=scope.filter(p=>queryMatch(p,q));}
   if(liveOnly)a=a.filter(p=>p.live===true);
   const sort=$("#sort").value;
   if(sort==="rank")a.sort((x,y)=>rankScore(y)-rankScore(x));
@@ -59,16 +59,23 @@ function bindCards(){
   document.querySelectorAll(".player-card").forEach(c=>c.onclick=e=>{if(e.target.closest("[data-star]"))return;openPlayer(c.dataset.id)});
   document.querySelectorAll("[data-star]").forEach(b=>b.onclick=async e=>{e.stopPropagation();S.favorites=await window.mw.favorite(b.dataset.star);renderNav();render()});
 }
-function ouatGroups(players){
-  const groups=new Map();
-  for(const p of players){const k=`${p.division||""}|${p.team||"Équipe inconnue"}`;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(p)}
-  return[...groups.entries()].map(([k,ps])=>{const[division,team]=k.split("|"),logo=ps.find(p=>p.teamLogo)?.teamLogo||"";
-    return`<section class="team-group"><div class="team-head"><div class="team-title-wrap">${logo?`<img class="team-logo" src="${esc(logo)}" alt="">`:""}<div><h2>${esc(team)}</h2><small>${division?esc(division):"OUATVENTURE"}</small></div></div><em>${ps.length} mid</em></div><div class="team-cards">${ps.map(card).join("")}</div></section>`
-  }).join("");
+function ouatBrowser(players){
+  const teams=new Map();
+  for(const p of players){const key=`${p.team||"Équipe inconnue"}|${p.division||"Sans division"}`;if(!teams.has(key))teams.set(key,[]);teams.get(key).push(p)}
+  return`<div class="ouat-team-grid">${[...teams.entries()].map(([key,ps])=>{const[team,division]=key.split("|"),logo=ps.find(p=>p.teamLogo)?.teamLogo||"";
+    return`<section class="ouat-team-card"><div class="ouat-team-head">${logo?`<img src="${esc(logo)}" alt="">`:`<div class="ouat-team-fallback">${esc(team.slice(0,2).toUpperCase())}</div>`}<div><h3>${esc(team)}</h3><span>${esc(division)}</span></div><em>${ps.length} MID</em></div><div class="ouat-roster">${ps.map(p=>{const a=(p.accounts||[])[0],state=stateOf(p);return`<button class="ouat-player-row" data-id="${esc(p.id)}"><span class="ouat-player-main">${avatar(p,"ouat-avatar")}<span><b>${esc(p.name)}</b><small>${a?.gameName?`${esc(a.gameName)}#${esc(a.tagLine||"")}`:"Riot ID non renseigné"}</small></span></span><span class="ouat-row-state ${state}">${state==="live"?"● LIVE":a?.gameName?"DPM ↗":"—"}</span></button>`}).join("")}</div></section>`
+  }).join("")}</div>`;
 }
 
 function hero(){
   const live=allPlayers().filter(p=>p.live===true);
+  if(view==="OUAT"&&!$("#qTop").value){
+    const divisions=["ALL",...new Set(S.ouatPlayers.map(p=>String(p.division||"Sans division")).filter(Boolean).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})))];
+    const teams=new Set((ouatDivision==="ALL"?S.ouatPlayers:S.ouatPlayers.filter(p=>String(p.division||"Sans division")===ouatDivision)).map(p=>p.team)).size;
+    $("#hero").innerHTML=`<div class="ouat-control-panel"><div class="ouat-control-copy"><div class="panel-kicker">OUATVENTURE · ${esc(S.ouat.season||"SAISON EN COURS")}</div><h2>Parcours les équipes, pas une liste infinie.</h2><p>${S.ouatPlayers.length} midlaners · ${S.ouat.teams||teams} équipes référencées depuis LEA</p></div><div class="ouat-kpis"><div><b>${teams}</b><span>ÉQUIPES AFFICHÉES</span></div><div><b>${S.ouatPlayers.filter(p=>p.accounts?.length).length}</b><span>RIOT IDS</span></div></div><div class="division-strip">${divisions.map(d=>`<button data-division="${esc(d)}" class="${ouatDivision===d?"on":""}">${d==="ALL"?"Toutes":esc(d)}</button>`).join("")}</div></div>`;
+    document.querySelectorAll("[data-division]").forEach(b=>b.onclick=()=>{ouatDivision=b.dataset.division;render()});
+    return;
+  }
   const proLive=S.players.filter(p=>p.live===true).length,ouatLive=S.ouatPlayers.filter(p=>p.live===true).length;
   const followed=S.favorites.length;
   if(view==="OVERVIEW"&&!$("#qTop").value){
@@ -88,7 +95,7 @@ function titles(){
   if(view==="LIVE")return["LIVE","En direct","Tous les midlaners actuellement détectés en partie."];
   if(view==="FAV")return["LIBRARY","Favoris","Les joueurs que tu veux garder sous les yeux."];
   if(view==="OUAT")return["ONCE UPON A TEAM",`OUATventure ${S.ouat.season||""}`,`${S.ouat.teams||0} équipes · ${S.ouatPlayers.length} midlaners`];
-  if(view==="ALL")return["PRO SCENE","Tous les pros","LCK · LEC · LPL · LCS · LCP"];
+  if(view==="ALL")return["PRO SCENE","Tous les pros","LCK · LCK CL · LEC · LFL · LPL · LCS · LCP"];
   return["PRO LEAGUE",view,`Midlaners ${view}`];
 }
 function render(){
@@ -98,8 +105,8 @@ function render(){
   $("#sectionTitle").textContent=q?"Résultats":view==="OVERVIEW"?"Tous les pros":view==="LIVE"?"Live maintenant":view==="FAV"?"Mes favoris":view==="OUAT"?"Équipes OUAT":"Joueurs";
   $("#summary").textContent=`${list.length} résultat${list.length>1?"s":""}`;
   $("#liveOnly").classList.toggle("on",liveOnly);
-  $("#grid").innerHTML=list.length?(view==="OUAT"&&!q?ouatGroups(list):list.map(card).join("")):`<div class="empty">${q?"Aucun résultat pour cette recherche.":view==="LIVE"?"Aucun midlaner détecté en partie actuellement.":"Aucun joueur dans cette vue."}</div>`;
-  bindCards();status();
+  $("#grid").innerHTML=list.length?(view==="OUAT"&&!q?ouatBrowser(list):list.map(card).join("")):`<div class="empty">${q?"Aucun résultat pour cette recherche.":view==="LIVE"?"Aucun midlaner détecté en partie actuellement.":"Aucun joueur dans cette vue."}</div>`;
+  bindCards();document.querySelectorAll(".ouat-player-row").forEach(r=>r.onclick=()=>openPlayer(r.dataset.id));status();
 }
 function status(){
   $("#apiDot").classList.toggle("ok",S.hasKey);
@@ -151,7 +158,7 @@ async function spectateAccount(p,i){
 }
 function settings(){
   $("#shade").classList.remove("hidden");$("#drawer").classList.remove("hidden");
-  $("#drawer").innerHTML=`<div class="drawer-header"><div><div class="drawer-kicker">MIDPULSE 3.0</div><h2>Réglages</h2><div class="drawer-team">Configuration locale</div></div><button class="drawer-close">✕</button></div>
+  $("#drawer").innerHTML=`<div class="drawer-header"><div><div class="drawer-kicker">MIDPULSE 3.1</div><h2>Réglages</h2><div class="drawer-team">Configuration locale</div></div><button class="drawer-close">✕</button></div>
   <div class="panel"><div class="panel-title">RIOT API KEY</div><p class="helper">Ta clé reste sur ce PC. Les Development Keys Riot expirent régulièrement.</p><input id="key" class="fullinput" type="password" placeholder="RGAPI-…"><button id="saveKey" class="action primary">Valider la clé</button><div id="keyMsg"></div><button id="portal" class="action">Ouvrir Riot Developer Portal</button></div>
   <div class="panel"><div class="panel-title">LEAGUE OF LEGENDS</div><p id="lolpath" class="helper">${S.leaguePath?"✓ "+esc(S.leaguePath):"Installation non détectée"}</p><button id="pick" class="action">Choisir le dossier League</button></div>`;
   $(".drawer-close").onclick=closeDrawer;

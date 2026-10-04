@@ -1,8 +1,8 @@
 {
   "name": "midpulse",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "private": true,
-  "description": "Live midlaner tracking for Tier-1 and OUATventure League of Legends",
+  "description": "Live midlaner tracking for pro leagues, LCK CL, LFL and OUATventure",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
