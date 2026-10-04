@@ -2,6 +2,17 @@ const{app,BrowserWindow,ipcMain,shell,dialog}=require("electron");const path=req
 let liveCursor=0,rankCursor=0;function applyOverrides(list){const o=store.get("accountOverrides",{});return(list||[]).map(p=>o[p.id]?{...p,accounts:[o[p.id]],accountOverride:true}:p)}function currentPros(){const c=store.get("proCache",[]);return applyOverrides(Array.isArray(c)&&c.length?c:bootstrap)}function key(){return String(store.get("riotKey","")||"").trim()}
 function create(){store.init();const found=spectate.detect(store.get("leaguePath",""));if(found&&found!==store.get("leaguePath",""))store.set("leaguePath",found);mainWindow=new BrowserWindow({width:1460,height:920,minWidth:1040,minHeight:700,show:false,backgroundColor:"#070a0f",title:"MidPulse",autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,"preload.js"),contextIsolation:true,nodeIntegration:false,sandbox:false}});mainWindow.loadFile(path.join(__dirname,"renderer/index.html"));mainWindow.once("ready-to-show",()=>mainWindow.show())}
 
+async function playerStats(a){
+ if(!key())throw new Error("Ajoute ta clé Riot dans Settings.");
+ const riot=new Riot(key()),acc=await riot.resolveAccount(a),ids=await riot.matchIds(acc.platform,acc.puuid,12),rows=[];
+ for(const id of (ids||[]).slice(0,12)){try{const m=await riot.match(acc.platform,id),x=(m.info?.participants||[]).find(z=>z.puuid===acc.puuid);if(x)rows.push(x)}catch(e){if(e.status===429)break}}
+ if(!rows.length)return{games:0,champions:[]};
+ const games=rows.length,wins=rows.filter(x=>x.win).length,kills=rows.reduce((s,x)=>s+x.kills,0),deaths=rows.reduce((s,x)=>s+x.deaths,0),assists=rows.reduce((s,x)=>s+x.assists,0),cs=rows.reduce((s,x)=>s+(x.totalMinionsKilled||0)+(x.neutralMinionsKilled||0),0),mins=rows.reduce((s,x)=>s+(x.timePlayed||0)/60,0),dmg=rows.reduce((s,x)=>s+(x.totalDamageDealtToChampions||0),0),gold=rows.reduce((s,x)=>s+(x.goldEarned||0),0),vision=rows.reduce((s,x)=>s+(x.visionScore||0),0);
+ const cm={};for(const x of rows){const n=x.championName||"?";cm[n]??={name:n,games:0,wins:0,k:0,d:0,a:0};const q=cm[n];q.games++;q.wins+=x.win?1:0;q.k+=x.kills;q.d+=x.deaths;q.a+=x.assists}
+ const champions=Object.values(cm).sort((a,b)=>b.games-a.games).slice(0,6).map(x=>({...x,winrate:Math.round(100*x.wins/x.games),kda:+((x.k+x.a)/Math.max(1,x.d)).toFixed(2)}));
+ return{games,wins,winrate:Math.round(100*wins/games),kda:+((kills+assists)/Math.max(1,deaths)).toFixed(2),kills:+(kills/games).toFixed(1),deaths:+(deaths/games).toFixed(1),assists:+(assists/games).toFixed(1),cspm:+(cs/Math.max(1,mins)).toFixed(1),dpm:Math.round(dmg/Math.max(1,mins)),gpm:Math.round(gold/Math.max(1,mins)),vision:+(vision/games).toFixed(1),champions};
+}
+
 async function rankBatch(){
   if(!key())return{updates:[],checked:0};
   const saved=store.get("ouat",{}),o=(Array.isArray(saved.players)&&saved.players.length)?saved:bundledOuat;
@@ -57,6 +68,7 @@ ipcMain.handle("pros:refresh",async()=>{const r=await pros.refreshPros();if(r.pl
 ipcMain.handle("pros:profile",(_e,name,league)=>pros.profile(name,league));
 ipcMain.handle("ouat:refresh",async(_e,url)=>{try{const r=await ouat.refresh(String(url||store.get("ouat",{}).url||""));if(r.players?.length)store.set("ouat",r);return r}catch(e){const saved=store.get("ouat",{});const fallback=(saved.players?.length?saved:bundledOuat);if(fallback.players?.length)return{...fallback,warning:`LEA live indisponible : ${e.message}. Snapshot local conservé.`};throw e}});
 ipcMain.handle("ouat:url",(_e,url)=>{const o=store.get("ouat",{});o.url=String(url||"").trim();store.set("ouat",o);return o.url});
+ipcMain.handle("riot:stats",(_e,a)=>playerStats(a));
 ipcMain.handle("riot:liveBatch",()=>liveBatch());
 ipcMain.handle("riot:rankBatch",()=>rankBatch());
 ipcMain.handle("riot:check",async(_e,a)=>{if(!key())throw new Error("Ajoute ta clé Riot dans Settings.");const riot=new Riot(key()),acc=await riot.resolveAccount(a);let ranked=[];try{ranked=await riot.ranked(acc.platform,acc.puuid)}catch(_){}let active=null;try{active=await riot.active(acc.platform,acc.puuid)}catch(e){if(e.status!==404)throw e}return{account:acc,ranked,active}});
