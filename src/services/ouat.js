@@ -4,19 +4,43 @@ const API = "https://api.leamateur.pro";
 const TIMEOUT = 12000;
 const MID_RE = /^(mid|middle|midlane|mid laner)$/i;
 
-async function getJson(path) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT);
-  try {
-    const response = await net.fetch(API + path, {
-      headers: { "Accept": "application/json", "User-Agent": "MidWatch/2.1" },
-      signal: controller.signal
-    });
-    if (!response.ok) throw new Error(`LEA HTTP ${response.status}`);
-    return await response.json();
-  } finally {
-    clearTimeout(timer);
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+async function getJson(path, attempts = 5) {
+  let lastError;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT);
+    try {
+      const response = await net.fetch(API + path, {
+        headers: { "Accept": "application/json", "User-Agent": "MidWatch/2.1" },
+        signal: controller.signal
+      });
+      if (response.ok) return await response.json();
+
+      const error = new Error(`LEA HTTP ${response.status}`);
+      error.status = response.status;
+      lastError = error;
+
+      if (response.status === 429 || response.status >= 500) {
+        const retryAfter = Number(response.headers.get("retry-after") || 0);
+        const delay = retryAfter > 0 ? retryAfter * 1000 : Math.min(8000, 700 * Math.pow(2, attempt));
+        await sleep(delay);
+        continue;
+      }
+      throw error;
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts - 1 && (error.name === "AbortError" || error.status === 429 || error.status >= 500)) {
+        await sleep(Math.min(8000, 700 * Math.pow(2, attempt)));
+        continue;
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
   }
+  throw lastError || new Error("LEA indisponible");
 }
 
 function clean(v) { return String(v || "").trim(); }
@@ -114,7 +138,7 @@ async function refresh() {
     };
   }
 
-  const fetched = await pool(entries, 10, async entry => {
+  const fetched = await pool(entries, 3, async entry => {
     const teamId = Number(entry.teamId || entry?.team?.id);
     if (!teamId) return [];
     const roster = await getJson(`/team/${teamId}`);
