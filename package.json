@@ -1,8 +1,8 @@
 {
   "name": "midwatch",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Tier-1 League of Legends midlaner tracker",
+  "description": "Tier-1 and OUATventure League of Legends midlaner tracker",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
@@ -10,12 +10,9 @@
     "dist": "electron-builder --win nsis",
     "release": "electron-builder --win nsis --publish never"
   },
-  "dependencies": {
-    "dotenv": "^16.4.5",
-    "electron-store": "^8.2.0"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "electron": "^33.0.0",
+    "electron": "^33.4.11",
     "electron-builder": "^25.1.8"
   },
   "build": {
@@ -27,9 +24,9 @@
     },
     "files": [
       "src/**/*",
-      "package.json",
-      ".env"
+      "package.json"
     ],
+    "publish": null,
     "win": {
       "target": [
         {
@@ -48,8 +45,6 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "MidWatch"
-    },
-    "publish": null,
-    "artifactName": "MidWatch-Setup-${version}.exe"
+    }
   }
 }
