@@ -1,21 +1,22 @@
-# MidWatch 1.1
+# MidWatch 2.0
 
-Windows desktop companion for following Tier-1 League of Legends midlaners.
+MidWatch is a Windows desktop companion for following professional League of Legends midlaners and OUATventure midlaners.
 
-## 1.1
-- DPM-inspired player browser
-- LCK / LPL / LEC / LCS / LCP filters
-- Favorites
-- Riot ID mapping stored locally
-- Riot API key can now be entered directly in Settings
-- Ranked SoloQ rank / LP
-- Spectator-v5 live-game detection
-- One-click Windows NSIS installer
+## What 2.0 does
 
-### API key
-Open **Settings** inside MidWatch and paste your Riot development/personal key. It is stored only in Electron's local user settings and is not committed to the repository. Riot development keys expire every 24 hours.
+- Tier-1 MID directory for LCK, LEC, LPL, LCS and LCP with a 2026 bootstrap snapshot.
+- Refreshes pro rosters and public SoloQ accounts when the live source is available; keeps the bundled snapshot if it is unavailable.
+- Player profiles, teams, SoloQ accounts, rank/LP, recent champions and favorites.
+- Uses Riot's official API at check time for live-game verification.
+- One-click **Spectate**: if Riot reports an active game, MidWatch launches the locally installed League game executable with the spectator payload.
+- Detects common League installation folders automatically, with a folder picker as fallback.
+- **OUATventure** section: imports MID players from the public LEA tournament page and groups them by team (and division when LEA exposes it). It tests recent season URLs and also accepts an exact LEA tournament URL in Settings.
+- Riot API key and preferences are stored only in the local Electron user-data folder, never in the repository or installer.
 
-### Important
-The current directory deliberately does not invent unknown pro Riot IDs. Public Riot IDs can be linked as they are verified. Automatic client spectating remains disabled until a supported/reliable launch path is validated.
+## Data notes
 
-MidWatch is independent and is not endorsed by Riot Games.
+The bundled pro roster is a fallback. Public roster/SoloQ sources can change independently of MidWatch. OUATventure rosters are imported live rather than hard-coded because amateur teams and accounts can change during a season.
+
+LPL players may use Chinese servers that are not exposed through the global Riot API; live detection and spectating can therefore be unavailable for those accounts.
+
+MidWatch is an independent community project and is not endorsed by Riot Games, DPM, OUAT or LEA.
