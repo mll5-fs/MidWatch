@@ -1,5 +1,5 @@
 :root{
-  --bg:#0b0d12;
+  --bg:#080b10;
   --surface:#11141b;
   --surface-2:#151923;
   --surface-3:#1a1f2b;
@@ -8,8 +8,8 @@
   --text:#f4f6f9;
   --muted:#8b95a6;
   --muted-2:#5f6878;
-  --accent:#7c8cff;
-  --accent-2:#56d8c4;
+  --accent:#4da3ff;
+  --accent-2:#8b7cff;
   --live:#66e3a4;
   --warn:#e7bd65;
   --danger:#ff7d8b;
@@ -173,3 +173,5 @@ select{outline:0}
 .ouat-player-main{display:flex;align-items:center;gap:9px;min-width:0}.ouat-avatar{width:31px;height:31px;flex:0 0 31px;border-radius:9px;overflow:hidden;background:#1b2230;border:1px solid #293140;display:grid;place-items:center;color:#aab4c5;font-size:8px;font-weight:800}.ouat-avatar img{width:100%;height:100%;object-fit:cover}.ouat-player-main b{display:block;font-size:11px}.ouat-player-main small{display:block;margin-top:2px;color:#626e80;font-size:8px;max-width:175px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ouat-row-state{font-size:7px;font-weight:800;letter-spacing:.08em;color:#6d788a}.ouat-row-state.live{color:#86ebb2}.ouat-row-state.unknown{color:#8c96a5}
 @media(max-width:900px){.ouat-control-panel{grid-template-columns:1fr}.ouat-kpis{justify-content:flex-start}}
+
+.player-grid{grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:12px}.player-name-line,.ouat-name-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.elo-badge{display:inline-flex;white-space:nowrap;border:1px solid currentColor;border-radius:6px;padding:3px 6px;font-size:7px;font-weight:850}.elo-badge.challenger{color:#69e6ff}.elo-badge.grandmaster{color:#ff6a72}.elo-badge.master{color:#d889ff}.elo-badge.diamond{color:#79a9ff}.elo-badge.emerald{color:#43d8a2}.elo-badge.platinum{color:#63d4cf}.elo-badge.gold{color:#e6b85b}.elo-badge.silver{color:#aeb8c8}.elo-badge.bronze{color:#c9875a}.elo-badge.iron{color:#8f817b}.elo-badge.unranked{color:#566273;border-color:#283443}.tag.rank{display:none}.ouat-team-grid{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}.scout-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.scout-grid>div{border:1px solid var(--line-soft);background:#0b1119;border-radius:9px;padding:11px}.scout-grid small,.signature small{display:block;color:#66788e;font-size:7px;font-weight:850;letter-spacing:.14em;margin-bottom:7px}.scout-grid p{margin:5px 0;color:#a9b7c8;font-size:9px}.signature{margin-top:9px;border-left:2px solid var(--accent);padding:8px 10px;background:rgba(77,163,255,.04)}.signature b{font-size:10px;color:#dbeaff}
