@@ -13,42 +13,32 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-
       - name: Install dependencies
         run: npm install
-
       - name: Generate current OUATventure roster
         run: node scripts/generate-ouat-snapshot.mjs
-
-      - name: Build MidWatch 2.2.0
+      - name: Build MidPulse 3.0
         run: npm run dist
-
       - uses: actions/upload-artifact@v4
         with:
-          name: MidWatch-Windows-Installer
-          path: dist/MidWatch-Setup-2.2.0.exe
-
-      - name: Publish MidWatch 2.2.0 release
+          name: MidPulse-Windows-Installer
+          path: dist/MidPulse-Setup-3.0.0.exe
+      - name: Publish MidPulse 3.0 release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "v2.2.0"
-          $exe = "dist/MidWatch-Setup-2.2.0.exe"
-
+          $tag = "v3.0.0"
+          $exe = "dist/MidPulse-Setup-3.0.0.exe"
           $ErrorActionPreference = "Continue"
           gh release view $tag *> $null
-          $releaseExists = ($LASTEXITCODE -eq 0)
+          $exists = ($LASTEXITCODE -eq 0)
           $ErrorActionPreference = "Stop"
-
-          if ($releaseExists) {
-            git tag -f $tag "${{ github.sha }}"
-            git push origin "refs/tags/$tag" --force
+          if ($exists) {
             gh release upload $tag $exe --clobber
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidWatch 2.2.0.1" --notes "Major visual redesign with a refined glass interface, clearer live states, global search, DPM links for pro and OUAT players, Riot ID correction and bundled OUATventure rosters."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse 3.0.0" --notes "Product-level redesign: dashboard-first IA, live rail, faster search, improved hierarchy, refined player cards and detail panels, DPM links, OUAT roster support and Riot live checks."
           }

@@ -1,4 +1,79 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MidWatch</title><link rel="stylesheet" href="style.css"></head><body>
-<aside><div class="brand"><div class="mark">MW</div><div><b>MIDWATCH</b><small>LIVE MID TRACKER</small></div></div><input id="q" class="hidden" aria-hidden="true" tabindex="-1"><div class="label">PRO LEAGUES</div><nav id="regions"></nav><div class="label">TOURNAMENT</div><nav><button id="ouatNav"><span>♜</span> OUATventure <em id="ouatCount">—</em></button></nav><div class="label">LIBRARY</div><nav><button id="favNav"><span>★</span> Favoris <em id="favCount">0</em></button><button id="settingsNav"><span>⚙</span> Settings</button></nav><div class="sidefoot"><i></i><span>MidWatch 2.2</span></div></aside>
-<main><header><div class="header-copy"><div class="eyebrow" id="eyebrow">GLOBAL PRO MIDLANER TRACKER</div><h1 id="title">Midlaners</h1><p id="sub">Tier 1 · SoloQ · spectate en un clic</p><div class="top-search"><span>⌕</span><input id="qTop" placeholder="Rechercher un joueur, une équipe ou un Riot ID…"><kbd>Ctrl K</kbd></div></div><div class="head-actions"><button id="refresh" class="ghost">↻ REFRESH</button><div id="api" class="pill"></div></div></header><div id="notice" class="notice hidden"></div><div id="statusStrip" class="status-strip"></div><div class="toolbar"><div id="summary"></div><div class="toolbar-right"><button id="liveOnly" class="ghost mini">● LIVE</button><select id="sort"><option value="team">Équipe A–Z</option><option value="name">Joueur A–Z</option><option value="rank">Rang SoloQ</option></select></div></div><section id="grid"></section></main>
-<div id="shade" class="shade hidden"></div><section id="drawer" class="drawer hidden"></section><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MidPulse</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><span></span></div>
+      <div class="brand-copy"><b>MIDPULSE</b><small>LIVE MID TRACKER</small></div>
+    </div>
+
+    <button class="nav-item primary" id="overviewNav"><span class="nav-icon">⌂</span><span>Vue d’ensemble</span></button>
+    <button class="nav-item" id="liveNav"><span class="nav-icon live-dot"></span><span>En direct</span><em id="liveNavCount">0</em></button>
+    <button class="nav-item" id="favNav"><span class="nav-icon">☆</span><span>Favoris</span><em id="favCount">0</em></button>
+
+    <div class="nav-section">LEAGUES</div>
+    <nav id="regions"></nav>
+
+    <div class="nav-section">TOURNOI</div>
+    <button class="nav-item" id="ouatNav"><span class="nav-icon">◈</span><span>OUATventure</span><em id="ouatCount">—</em></button>
+
+    <div class="sidebar-spacer"></div>
+    <button class="nav-item" id="settingsNav"><span class="nav-icon">⚙</span><span>Réglages</span></button>
+    <div class="sidebar-footer">
+      <div><span id="apiDot" class="health-dot"></span><span id="apiText">Riot API</span></div>
+      <small>MidPulse 3.0</small>
+    </div>
+  </aside>
+
+  <main class="workspace">
+    <div class="topbar">
+      <div class="view-heading">
+        <div class="eyebrow" id="eyebrow">MIDPULSE</div>
+        <h1 id="title">Vue d’ensemble</h1>
+        <p id="sub">Les midlaners que tu veux suivre, sans bruit.</p>
+      </div>
+
+      <div class="top-actions">
+        <div class="global-search">
+          <span class="search-icon">⌕</span>
+          <input id="qTop" autocomplete="off" placeholder="Joueur, équipe, Riot ID…">
+          <kbd>Ctrl K</kbd>
+        </div>
+        <button id="refresh" class="icon-button" title="Actualiser">↻</button>
+        <button id="settingsTop" class="icon-button" title="Réglages">⚙</button>
+      </div>
+    </div>
+
+    <div id="notice" class="notice hidden"></div>
+
+    <section id="hero" class="hero-area"></section>
+
+    <div class="content-bar">
+      <div>
+        <div id="sectionTitle" class="section-title">Tous les joueurs</div>
+        <div id="summary" class="section-sub"></div>
+      </div>
+      <div class="content-actions">
+        <button id="liveOnly" class="seg-button">● Live</button>
+        <select id="sort">
+          <option value="team">Équipe A–Z</option>
+          <option value="name">Joueur A–Z</option>
+          <option value="rank">Rang SoloQ</option>
+        </select>
+      </div>
+    </div>
+
+    <section id="grid" class="player-grid"></section>
+  </main>
+
+  <div id="shade" class="shade hidden"></div>
+  <section id="drawer" class="drawer hidden"></section>
+  <script src="app.js"></script>
+</body>
+</html>

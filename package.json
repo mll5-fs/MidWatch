@@ -1,8 +1,8 @@
 {
-  "name": "midwatch",
-  "version": "2.2.0",
+  "name": "midpulse",
+  "version": "3.0.0",
   "private": true,
-  "description": "Tier-1 and OUATventure League of Legends midlaner tracker",
+  "description": "Live midlaner tracking for Tier-1 and OUATventure League of Legends",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
@@ -17,7 +17,7 @@
   },
   "build": {
     "appId": "com.midwatch.app",
-    "productName": "MidWatch",
+    "productName": "MidPulse",
     "asar": true,
     "directories": {
       "output": "dist"
@@ -36,7 +36,7 @@
           ]
         }
       ],
-      "artifactName": "MidWatch-Setup-${version}.exe"
+      "artifactName": "MidPulse-Setup-${version}.exe"
     },
     "nsis": {
       "oneClick": true,
@@ -44,8 +44,7 @@
       "allowElevation": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "MidWatch"
-    },
-    "artifactName": "MidWatch-Setup-${version}.exe"
+      "shortcutName": "MidPulse"
+    }
   }
 }
