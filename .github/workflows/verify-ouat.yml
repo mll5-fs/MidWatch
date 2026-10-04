@@ -1,0 +1,36 @@
+name: Verify OUAT importer
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/verify-ouat.yml
+
+jobs:
+  probe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - name: Probe current OUATventure roster
+        shell: pwsh
+        run: |
+          @'
+          const { app } = require("electron");
+          const ouat = require("./src/services/ouat");
+          app.whenReady().then(async () => {
+            try {
+              const r = await ouat.refresh("");
+              console.log("MIDWATCH_OUAT_RESULT=" + JSON.stringify(r));
+              app.exit(r.players && r.players.length ? 0 : 2);
+            } catch (e) {
+              console.error("MIDWATCH_OUAT_ERROR=" + (e && e.stack || e));
+              app.exit(1);
+            }
+          });
+          '@ | Set-Content -Encoding UTF8 probe-ouat.js
+          npx electron probe-ouat.js
