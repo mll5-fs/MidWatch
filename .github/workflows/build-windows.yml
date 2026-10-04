@@ -1,19 +1,49 @@
 name: Build Windows installer
+
 on:
   workflow_dispatch:
   push:
-    tags: ['v*']
+    branches: [main]
+
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - run: npm install
-      - run: npm run dist
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build MidWatch 2.0
+        run: npm run dist
+
       - uses: actions/upload-artifact@v4
         with:
           name: MidWatch-Windows-Installer
-          path: dist/MidWatch-Setup-*.exe
+          path: dist/MidWatch-Setup-2.0.0.exe
+
+      - name: Publish MidWatch 2.0 release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "v2.0.0"
+          $exe = "dist/MidWatch-Setup-2.0.0.exe"
+
+          $ErrorActionPreference = "Continue"
+          gh release view $tag *> $null
+          $releaseExists = ($LASTEXITCODE -eq 0)
+          $ErrorActionPreference = "Stop"
+
+          if ($releaseExists) {
+            gh release upload $tag $exe --clobber
+          } else {
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidWatch 2.0.0" --notes "Tier-1 and OUATventure midlaner tracking, automatic SoloQ data, Riot live checks, favorites and one-click spectate."
+          }
