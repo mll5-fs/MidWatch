@@ -24,21 +24,21 @@ jobs:
       - name: Generate current OUATventure roster
         run: node scripts/generate-ouat-snapshot.mjs
 
-      - name: Build MidWatch 2.1.2
+      - name: Build MidWatch 2.2.0
         run: npm run dist
 
       - uses: actions/upload-artifact@v4
         with:
           name: MidWatch-Windows-Installer
-          path: dist/MidWatch-Setup-2.1.2.exe
+          path: dist/MidWatch-Setup-2.2.0.exe
 
-      - name: Publish MidWatch 2.1.2 release
+      - name: Publish MidWatch 2.2.0 release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "v2.1.2"
-          $exe = "dist/MidWatch-Setup-2.1.2.exe"
+          $tag = "v2.2.0"
+          $exe = "dist/MidWatch-Setup-2.2.0.exe"
 
           $ErrorActionPreference = "Continue"
           gh release view $tag *> $null
@@ -50,5 +50,5 @@ jobs:
             git push origin "refs/tags/$tag" --force
             gh release upload $tag $exe --clobber
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidWatch 2.1.2.1" --notes "Visual overhaul, explicit live/offline states, verified Riot API key handling and a bundled current OUATventure roster generated directly from the LEA API."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidWatch 2.2.0.1" --notes "Major visual redesign with a refined glass interface, clearer live states, global search, DPM links for pro and OUAT players, Riot ID correction and bundled OUATventure rosters."
           }
