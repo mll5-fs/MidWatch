@@ -1,7 +1,54 @@
 {
-  "name":"midwatch","version":"1.0.0","private":true,"description":"Tier-1 League of Legends midlaner tracker","main":"src/main.js",
-  "scripts":{"start":"electron .","dev":"electron .","dist":"electron-builder --win nsis","release":"electron-builder --win nsis --publish never"},
-  "dependencies":{"dotenv":"^16.4.5","electron-store":"^8.2.0"},
-  "devDependencies":{"electron":"^33.0.0","electron-builder":"^25.1.8"},
-  "build":{"appId":"com.midwatch.app","productName":"MidWatch","asar":true,"directories":{"output":"dist"},"files":["src/**/*","package.json",".env"],"win":{"target":[{"target":"nsis","arch":["x64"]}],"artifactName":"MidWatch-Setup-${version}.exe"},"nsis":{"oneClick":true,"perMachine":false,"allowElevation":true,"createDesktopShortcut":true,"createStartMenuShortcut":true,"shortcutName":"MidWatch"}}
+  "name": "midwatch",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tier-1 League of Legends midlaner tracker",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "dist": "electron-builder --win nsis",
+    "release": "electron-builder --win nsis --publish never"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "electron-store": "^8.2.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.midwatch.app",
+    "productName": "MidWatch",
+    "asar": true,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json",
+      ".env"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "MidWatch-Setup-${version}.exe"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "MidWatch"
+    },
+    "publish": null
+  }
 }
