@@ -1,1 +1,1 @@
-const{contextBridge,ipcRenderer}=require("electron");contextBridge.exposeInMainWorld("midwatch",{players:()=>ipcRenderer.invoke("players:list"),lookup:x=>ipcRenderer.invoke("riot:lookup",x)});
+const{contextBridge,ipcRenderer}=require("electron");contextBridge.exposeInMainWorld("mw",{data:()=>ipcRenderer.invoke("app:data"),favorite:id=>ipcRenderer.invoke("favorite:toggle",id),saveAccount:(id,a)=>ipcRenderer.invoke("account:save",id,a),lookup:x=>ipcRenderer.invoke("riot:lookup",x),open:url=>ipcRenderer.invoke("external:open",url)});
