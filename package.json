@@ -1,6 +1,6 @@
 {
   "name": "midwatch",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "private": true,
   "description": "Tier-1 and OUATventure League of Legends midlaner tracker",
   "main": "src/main.js",
