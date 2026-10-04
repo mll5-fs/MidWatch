@@ -1,21 +1,7 @@
 module.exports=[
-{id:"faker",name:"Faker",team:"T1",region:"LCK",country:"South Korea"},
-{id:"chovy",name:"Chovy",team:"Gen.G",region:"LCK",country:"South Korea"},
-{id:"zeka",name:"Zeka",team:"Hanwha Life Esports",region:"LCK",country:"South Korea"},
-{id:"showmaker",name:"ShowMaker",team:"Dplus KIA",region:"LCK",country:"South Korea"},
-{id:"bdd",name:"Bdd",team:"KT Rolster",region:"LCK",country:"South Korea"},
-{id:"vicla",name:"VicLa",team:"BNK FearX",region:"LCK",country:"South Korea"},
-{id:"clozer",name:"Clozer",team:"DN SOOPers",region:"LCK",country:"South Korea"},
-{id:"ucal",name:"Ucal",team:"Kiwoom DRX",region:"LCK",country:"South Korea"},
-{id:"scout",name:"Scout",team:"Nongshim RedForce",region:"LCK",country:"South Korea"},
-{id:"roamer",name:"Roamer",team:"HANJIN BRION",region:"LCK",country:"South Korea"},
-{id:"caps",name:"Caps",team:"G2 Esports",region:"LEC",country:"Denmark"},
-{id:"vladi",name:"Vladi",team:"Fnatic",region:"LEC",country:"Greece"},
-{id:"jackies",name:"Jackies",team:"GIANTX",region:"LEC",country:"Czechia"},
-{id:"nuc",name:"nuc",team:"Karmine Corp",region:"LEC",country:"France"},
-{id:"aria",name:"Aria",team:"Fukuoka SoftBank HAWKS gaming",region:"LCP",country:"South Korea"},
-{id:"pungyeon",name:"Pungyeon",team:"CTBC Flying Oyster",region:"LCP",country:"South Korea"},
-{id:"loki",name:"Loki",team:"Cloud9",region:"LCS",country:"South Korea"},
-{id:"apa",name:"APA",team:"Cloud9",region:"LCS",country:"United States"},
-{id:"palafox",name:"Palafox",team:"Dignitas",region:"LCS",country:"United States"}
-];
+["Faker","T1","LCK","South Korea"],["Chovy","Gen.G","LCK","South Korea"],["Zeka","Hanwha Life Esports","LCK","South Korea"],["ShowMaker","Dplus KIA","LCK","South Korea"],["Bdd","KT Rolster","LCK","South Korea"],["VicLa","BNK FEARX","LCK","South Korea"],["Fisher","OK BRION","LCK","South Korea"],["ucal","DRX","LCK","South Korea"],["Clozer","DN Freecs","LCK","South Korea"],["Scout","Nongshim RedForce","LCK","South Korea"],
+["knight","Bilibili Gaming","LPL","China"],["Shanks","Anyone's Legend","LPL","China"],["Angel","Edward Gaming","LPL","China"],["Rookie","Invictus Gaming","LPL","South Korea"],["HongQ","JD Gaming","LPL","China"],["Tangyuan","LGD Gaming","LPL","China"],["BullDoG","LNG Esports","LPL","South Korea"],["Care","Ninjas in Pyjamas","LPL","China"],["haichao","Oh My God","LPL","China"],["Creme","Top Esports","LPL","China"],["Heru","ThunderTalk Gaming","LPL","China"],
+["Caps","G2 Esports","LEC","Denmark"],["Vladi","Fnatic","LEC","Greece"],["Jackies","GIANTX","LEC","Czechia"],["kyeahoo","Karmine Corp","LEC","South Korea"],["Jojopyun","Movistar KOI","LEC","Canada"],["Poby","Natus Vincere","LEC","South Korea"],["Humanoid","Team Vitality","LEC","Czechia"],["Serin","Team Heretics","LEC","Turkey"],
+["Saint","LYON","LCS","South Korea"],["Quid","Team Liquid","LCS","South Korea"],
+["Aria","Fukuoka SoftBank HAWKS gaming","LCP","South Korea"],["Pungyeon","CTBC Flying Oyster","LCP","South Korea"]
+].map((x,i)=>({id:x[0].toLowerCase().replace(/[^a-z0-9]/g,"")+"-"+i,name:x[0],team:x[1],region:x[2],country:x[3],role:"MID"}));
