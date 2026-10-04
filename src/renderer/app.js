@@ -1,12 +1,12 @@
 let S={players:[],ouatPlayers:[],ouat:{},favorites:[],hasKey:false,leaguePath:"",proCacheAt:0};
-let view="OVERVIEW",liveOnly=false,busy=false,ouatDivision="ALL",liveState={};
+let view="OVERVIEW",liveOnly=false,busy=false,ouatDivision="ALL",liveState={},rankState={};
 const $=q=>document.querySelector(q);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const REGIONS=["ALL","LCK","LCKCL","LEC","LFL","LPL","LCS","LCP"];
 
 function rankLabel(r={}){const tier=String(r.tier||"").toUpperCase();if(!tier)return"";return `${tier}${r.rank&&r.rank!=="I"?" "+r.rank:""} · ${r.leaguePoints??r.lp??0} LP`}
 function rankScore(p){const o={CHALLENGER:10,GRANDMASTER:9,MASTER:8,DIAMOND:7,EMERALD:6,PLATINUM:5,GOLD:4,SILVER:3,BRONZE:2,IRON:1};const r=p.bestRank||{};return(o[String(r.tier||"").toUpperCase()]||0)*100000+(+r.leaguePoints||+r.lp||0)}
-function applyLive(list){return(list||[]).map(p=>liveState[p.id]===undefined?p:{...p,live:liveState[p.id]})}function allPlayers(){return[...applyLive(S.players),...applyLive(S.ouatPlayers)]}
+function applyLive(list){return(list||[]).map(p=>{const x=liveState[p.id]===undefined?p:{...p,live:liveState[p.id]};return rankState[p.id]===undefined?x:{...x,bestRank:rankState[p.id]||{}}})}function allPlayers(){return[...applyLive(S.players),...applyLive(S.ouatPlayers)]}
 function tracked(p){return p.source==="DPM public data"||p.source==="live"||p.live===true}
 function stateOf(p){if(p.live===true)return"live";return tracked(p)?"offline":"unknown"}
 function dpmUrl(p){const a=(p.accounts||[])[0];if(p.region==="OUAT"){if(a?.gameName&&a?.tagLine)return`https://dpm.lol/${encodeURIComponent(a.gameName)}-${encodeURIComponent(a.tagLine)}`;return"https://dpm.lol/"}return`https://dpm.lol/pro/${encodeURIComponent(p.name)}`}
@@ -166,6 +166,14 @@ function settings(){
   $("#portal").onclick=()=>window.mw.open("https://developer.riotgames.com/");
   $("#pick").onclick=async()=>{try{S.leaguePath=await window.mw.pickLeague();$("#lolpath").textContent=S.leaguePath?"✓ "+S.leaguePath:"Installation non détectée"}catch(e){$("#lolpath").textContent=e.message}};
 }
+async function refreshRanks(){
+  if(!S.hasKey)return;
+  try{
+    const r=await window.mw.rankBatch();
+    for(const u of r.updates||[]){if(u.rank!==undefined)rankState[u.id]=u.rank}
+    render();
+  }catch(_){}
+}
 async function refreshLive(){
   if(!S.hasKey)return;
   try{
@@ -205,6 +213,6 @@ window.addEventListener("keydown",e=>{
   S=await window.mw.data();
   if(S.hasKey)try{S.hasKey=await window.mw.keyCheck()}catch(_){S.hasKey=false}
   renderNav();render();status();
-  setTimeout(()=>{if(!S.proCacheAt)refresh()},700);setTimeout(refreshLive,1200);
-  setInterval(refreshLive,20000);setInterval(async()=>{if(busy)return;try{const r=await window.mw.refreshPros();if(r.players?.length){S.players=r.players;S.proCacheAt=r.at;renderNav();render()}}catch(_){}},120000);
+  setTimeout(()=>{if(!S.proCacheAt)refresh()},700);setTimeout(refreshLive,1200);setTimeout(refreshRanks,1800);
+  setInterval(refreshLive,20000);setInterval(refreshRanks,30000);setInterval(async()=>{if(busy)return;try{const r=await window.mw.refreshPros();if(r.players?.length){S.players=r.players;S.proCacheAt=r.at;renderNav();render()}}catch(_){}},120000);
 })();
