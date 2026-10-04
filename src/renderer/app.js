@@ -1,12 +1,12 @@
 let S={players:[],ouatPlayers:[],ouat:{},favorites:[],hasKey:false,leaguePath:"",proCacheAt:0};
-let view="OVERVIEW",liveOnly=false,busy=false,ouatDivision="ALL";
+let view="OVERVIEW",liveOnly=false,busy=false,ouatDivision="ALL",liveState={};
 const $=q=>document.querySelector(q);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const REGIONS=["ALL","LCK","LCKCL","LEC","LFL","LPL","LCS","LCP"];
 
 function rankLabel(r={}){const tier=String(r.tier||"").toUpperCase();if(!tier)return"";return `${tier}${r.rank&&r.rank!=="I"?" "+r.rank:""} · ${r.leaguePoints??r.lp??0} LP`}
 function rankScore(p){const o={CHALLENGER:10,GRANDMASTER:9,MASTER:8,DIAMOND:7,EMERALD:6,PLATINUM:5,GOLD:4,SILVER:3,BRONZE:2,IRON:1};const r=p.bestRank||{};return(o[String(r.tier||"").toUpperCase()]||0)*100000+(+r.leaguePoints||+r.lp||0)}
-function allPlayers(){return[...S.players,...S.ouatPlayers]}
+function applyLive(list){return(list||[]).map(p=>liveState[p.id]===undefined?p:{...p,live:liveState[p.id]})}function allPlayers(){return[...applyLive(S.players),...applyLive(S.ouatPlayers)]}
 function tracked(p){return p.source==="DPM public data"||p.source==="live"||p.live===true}
 function stateOf(p){if(p.live===true)return"live";return tracked(p)?"offline":"unknown"}
 function dpmUrl(p){const a=(p.accounts||[])[0];if(p.region==="OUAT"){if(a?.gameName&&a?.tagLine)return`https://dpm.lol/${encodeURIComponent(a.gameName)}-${encodeURIComponent(a.tagLine)}`;return"https://dpm.lol/"}return`https://dpm.lol/pro/${encodeURIComponent(p.name)}`}
@@ -27,11 +27,11 @@ function renderNav(){
 
 function queryMatch(p,q){return`${p.name} ${p.team} ${p.division||""} ${p.group||""} ${(p.accounts||[]).map(a=>`${a.gameName||""}#${a.tagLine||""}`).join(" ")}`.toLowerCase().includes(q)}
 function baseForView(){
-  if(view==="OUAT")return ouatDivision==="ALL"?S.ouatPlayers:S.ouatPlayers.filter(p=>String(p.division||"Sans division")===ouatDivision);
+  if(view==="OUAT"){const x=applyLive(S.ouatPlayers);return ouatDivision==="ALL"?x:x.filter(p=>String(p.division||"Sans division")===ouatDivision);}
   if(view==="LIVE")return allPlayers().filter(p=>p.live===true);
   if(view==="FAV")return allPlayers().filter(p=>S.favorites.includes(p.id));
-  if(REGIONS.includes(view))return view==="ALL"?S.players:S.players.filter(p=>p.region===view);
-  return S.players;
+  if(REGIONS.includes(view)){const x=applyLive(S.players);return view==="ALL"?x:x.filter(p=>p.region===view);}
+  return applyLive(S.players);
 }
 function listForView(){
   let a=[...baseForView()];
@@ -76,7 +76,7 @@ function hero(){
     document.querySelectorAll("[data-division]").forEach(b=>b.onclick=()=>{ouatDivision=b.dataset.division;render()});
     return;
   }
-  const proLive=S.players.filter(p=>p.live===true).length,ouatLive=S.ouatPlayers.filter(p=>p.live===true).length;
+  const proLive=applyLive(S.players).filter(p=>p.live===true).length,ouatLive=applyLive(S.ouatPlayers).filter(p=>p.live===true).length;
   const followed=S.favorites.length;
   if(view==="OVERVIEW"&&!$("#qTop").value){
     const chips=live.slice(0,8).map(p=>`<div class="live-chip" data-id="${esc(p.id)}">${avatar(p,"live-chip-avatar")}<div><b>${esc(p.name)}</b><span>${esc(p.team)} · ${esc(p.region)}</span></div></div>`).join("");
@@ -166,6 +166,14 @@ function settings(){
   $("#portal").onclick=()=>window.mw.open("https://developer.riotgames.com/");
   $("#pick").onclick=async()=>{try{S.leaguePath=await window.mw.pickLeague();$("#lolpath").textContent=S.leaguePath?"✓ "+S.leaguePath:"Installation non détectée"}catch(e){$("#lolpath").textContent=e.message}};
 }
+async function refreshLive(){
+  if(!S.hasKey)return;
+  try{
+    const r=await window.mw.liveBatch();
+    for(const u of r.updates||[]){if(u.live===true||u.live===false)liveState[u.id]=u.live}
+    renderNav();render();
+  }catch(_){}
+}
 async function refresh(){
   if(busy)return;busy=true;$("#refresh").innerHTML='<span class="spinner">↻</span>';
   notice("");
@@ -197,6 +205,6 @@ window.addEventListener("keydown",e=>{
   S=await window.mw.data();
   if(S.hasKey)try{S.hasKey=await window.mw.keyCheck()}catch(_){S.hasKey=false}
   renderNav();render();status();
-  setTimeout(()=>{if(!S.proCacheAt)refresh()},700);
-  setInterval(async()=>{if(busy)return;try{const r=await window.mw.refreshPros();if(r.players?.length){S.players=r.players;S.proCacheAt=r.at;renderNav();render()}}catch(_){}},120000);
+  setTimeout(()=>{if(!S.proCacheAt)refresh()},700);setTimeout(refreshLive,1200);
+  setInterval(refreshLive,20000);setInterval(async()=>{if(busy)return;try{const r=await window.mw.refreshPros();if(r.players?.length){S.players=r.players;S.proCacheAt=r.at;renderNav();render()}}catch(_){}},120000);
 })();
