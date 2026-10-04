@@ -2,203 +2,148 @@ const { BrowserWindow, net } = require("electron");
 
 const OFFICIAL_PAGE = "https://www.onceuponateam.be/?page_id=3104";
 const wait = ms => new Promise(r => setTimeout(r, ms));
-const text = v => typeof v === "string" ? v.trim() : "";
-const ROLE_RE = /(^|[^A-Z])(MID|MIDDLE|MIDLANE|MIDLANER)([^A-Z]|$)/i;
+const txt = v => typeof v === "string" ? v.trim() : "";
+const MID = /(^|[^A-Z])(MID|MIDDLE|MIDLANE|MIDLANER)([^A-Z]|$)/i;
 
 function predictedSeason(date = new Date()) {
-  // OUATventure S20 was Jan-Mar 2026 and the competition runs four seasons/year.
   if (date.getFullYear() < 2026) return 20;
   return 20 + (date.getFullYear() - 2026) * 4 + Math.floor(date.getMonth() / 3);
 }
+function tournamentUrl(s){return `https://lol.leamateur.pro/tournaments/OUATventure%20Saison%20${s}`}
+function role(v){if(v&&typeof v==="object")v=v.value||v.name||v.label||v.role;return txt(v).toUpperCase()}
+function isMid(v){return MID.test(role(v))}
+function val(o,...ks){for(const k of ks){const v=o?.[k];if(typeof v==="string"&&v.trim())return v.trim();if(v&&typeof v==="object"){const s=txt(v.name||v.displayName||v.title||v.label||v.tag);if(s)return s}}return""}
+function nameOf(o){return val(o,"displayName","playerName","summonerName","nickname","nick","gameName","username","pseudo","name")}
+function teamOf(o){return val(o,"teamName","team","squad","organization","club")}
+function divisionOf(o){const v=o?.division||o?.group||o?.pool||o?.league||o?.bracket;if(typeof v==="number")return`Division ${v}`;return val({v},"v")}
+function accountOf(o){let raw=txt(o?.riotId||o?.riotID||o?.riot_id||o?.summoner||o?.account),gameName=txt(o?.gameName),tagLine=txt(o?.tagLine||o?.tag);if(raw.includes("#")){const i=raw.lastIndexOf("#");gameName=raw.slice(0,i).trim();tagLine=raw.slice(i+1).trim()}return gameName&&tagLine?{gameName,tagLine,platform:"EUW1"}:null}
 
-function tournamentUrl(season) {
-  return `https://lol.leamateur.pro/tournaments/OUATventure%20Saison%20${season}`;
-}
-
-function role(v) {
-  if (v && typeof v === "object") v = v.value || v.name || v.label || v.role;
-  return text(v).toUpperCase();
-}
-function isMid(v) { return ROLE_RE.test(role(v)); }
-function nameOf(o) {
-  return text(o?.displayName || o?.playerName || o?.summonerName || o?.nickname || o?.nick || o?.gameName || o?.username || o?.pseudo || o?.name);
-}
-function teamOf(v) {
-  if (typeof v === "string") return v.trim();
-  if (v && typeof v === "object") return text(v.teamName || v.displayName || v.name || v.title || v.tag);
-  return "";
-}
-function divisionOf(v) {
-  if (typeof v === "number") return `Division ${v}`;
-  const s = teamOf(v);
-  if (!s) return "";
-  if (/^\d+$/.test(s)) return `Division ${s}`;
-  return s;
-}
-function accountFrom(o) {
-  const raw = text(o?.riotId || o?.riotID || o?.riot_id || o?.summoner || o?.account);
-  let gameName = text(o?.gameName), tagLine = text(o?.tagLine || o?.tag);
-  if (raw.includes("#")) {
-    const i = raw.lastIndexOf("#");
-    gameName = raw.slice(0, i).trim();
-    tagLine = raw.slice(i + 1).trim();
+function extract(payloads){
+  const out=[],seen=new Set(),rosterKeys=new Set(["players","roster","members","lineup","participants","teamMembers","registrations"]),ordered=["TOP","JUNGLE","MID","ADC","SUPPORT"];
+  function add(o,ctx,hint=""){
+    if(!o||typeof o!=="object")return;
+    if(!isMid(o.role||o.position||o.lane||o.playerRole||o.gameRole||hint))return;
+    const name=nameOf(o),team=teamOf(o)||ctx.team,division=ctx.division||divisionOf(o);
+    if(!name||!team||name.toLowerCase()===team.toLowerCase())return;
+    const key=`${team}|${name}`.toLowerCase();if(seen.has(key))return;seen.add(key);
+    const a=accountOf(o);
+    out.push({id:`ouat-${key.replace(/[^a-z0-9]+/g,"-")}`,name,team,region:"OUAT",division,platform:"EUW1",role:"MID",source:"LEA",accounts:a?[a]:[]});
   }
-  return gameName && tagLine ? { gameName, tagLine, platform: "EUW1" } : null;
-}
-
-function extract(payloads) {
-  const out = [], seen = new Set();
-  const rosterKeys = new Set(["players","roster","members","lineup","participants","teamMembers","registrations"]);
-  const orderedRoles = ["TOP","JUNGLE","MID","ADC","SUPPORT"];
-
-  function add(o, ctx, hint = "") {
-    if (!o || typeof o !== "object") return;
-    const detected = role(o.role || o.position || o.lane || o.playerRole || o.gameRole || hint);
-    if (!isMid(detected)) return;
-    const name = nameOf(o);
-    const team = teamOf(o.team || o.teamName || o.squad || o.organization) || ctx.team;
-    if (!name || !team || name.toLowerCase() === team.toLowerCase()) return;
-    const div = ctx.division || divisionOf(o.division || o.group || o.pool || o.league);
-    const key = `${team}|${name}`.toLowerCase();
-    if (seen.has(key)) return;
-    seen.add(key);
-    const acc = accountFrom(o);
-    out.push({
-      id: `ouat-${key.replace(/[^a-z0-9]+/g,"-")}`,
-      name, team, region:"OUAT", division:div, platform:"EUW1", role:"MID",
-      source:"LEA · OUATventure", accounts:acc ? [acc] : []
-    });
-  }
-
-  function walk(v, ctx={team:"",division:""}, hint="") {
-    if (!v) return;
-    if (Array.isArray(v)) {
-      v.forEach((x,i)=>walk(x,ctx,hint || ""));
-      return;
-    }
-    if (typeof v !== "object") return;
-    const next={...ctx};
-    const d=divisionOf(v.division || v.group || v.pool || v.league || v.bracket);
-    if (d) next.division=d;
-    const hasRoster=[...rosterKeys].some(k=>Array.isArray(v[k]) || v[k]?.players);
-    const possible=teamOf(v.teamName || v.team || v.squad || v.organization || (hasRoster ? v.name : ""));
-    if (possible) next.team=possible;
+  function walk(v,ctx={team:"",division:""},hint=""){
+    if(!v)return;
+    if(Array.isArray(v)){v.forEach((x,i)=>walk(x,ctx,hint));return}
+    if(typeof v!=="object")return;
+    const next={...ctx},d=divisionOf(v);if(d)next.division=d;
+    const hasRoster=[...rosterKeys].some(k=>Array.isArray(v[k])||v[k]?.players);
+    const t=teamOf(v)||(hasRoster?txt(v.name):"");if(t)next.team=t;
     add(v,next,hint);
-
-    for (const [k,child] of Object.entries(v)) {
-      if (!child || typeof child !== "object") continue;
-      let childHint=/^(mid|middle|midlane|midlaner)$/i.test(k) ? "MID" : "";
-      if (rosterKeys.has(k) && Array.isArray(child) && child.length >= 5) {
-        const explicit=child.some(x=>x && typeof x==="object" && (x.role||x.position||x.lane||x.playerRole));
-        child.forEach((player,i)=>walk(player,next,explicit ? "" : orderedRoles[i] || ""));
-      } else walk(child,next,childHint || hint);
+    for(const[k,ch]of Object.entries(v)){
+      if(!ch||typeof ch!=="object")continue;
+      const rh=/^(mid|middle|midlane|midlaner)$/i.test(k)?"MID":"";
+      if(rosterKeys.has(k)&&Array.isArray(ch)&&ch.length>=5){
+        const explicit=ch.some(x=>x&&(x.role||x.position||x.lane||x.playerRole));
+        ch.forEach((p,i)=>walk(p,next,explicit?"":ordered[i]||""));
+      }else walk(ch,next,rh||hint);
     }
   }
   payloads.forEach(p=>walk(p));
-  return out.sort((a,b)=>{
-    const na=+(String(a.division).match(/\d+/)?.[0]||999), nb=+(String(b.division).match(/\d+/)?.[0]||999);
-    return na-nb || String(a.division).localeCompare(String(b.division)) || a.team.localeCompare(b.team) || a.name.localeCompare(b.name);
-  });
+  return out;
 }
 
-function extractDom(rows=[]) {
-  const out=[],seen=new Set();
-  for(const row of rows){
-    const cells=(row.cells||[]).map(text).filter(Boolean);
-    if(!cells.length || !cells.some(isMid)) continue;
-    const midIndex=cells.findIndex(isMid);
-    const name=text(row.name) || cells[midIndex-1] || cells[midIndex+1] || "";
-    const team=text(row.team) || text(row.heading) || "";
-    if(!name || !team || isMid(name)) continue;
-    const key=`${team}|${name}`.toLowerCase();
-    if(seen.has(key)) continue; seen.add(key);
-    const riot=cells.find(x=>x.includes("#"));
-    let accounts=[];
-    if(riot){const i=riot.lastIndexOf("#");accounts=[{gameName:riot.slice(0,i).trim(),tagLine:riot.slice(i+1).trim(),platform:"EUW1"}]}
-    out.push({id:`ouat-${key.replace(/[^a-z0-9]+/g,"-")}`,name,team,region:"OUAT",division:text(row.division),platform:"EUW1",role:"MID",source:"LEA · page",accounts});
+function extractRows(rows=[]){
+  const out=[],seen=new Set(),bad=/^(TOP|JUNGLE|JGL|MID|MIDDLE|MIDLANE|ADC|BOT|SUPPORT|SUP)$/i;
+  for(const r of rows){
+    const lines=(r.lines||r.cells||[]).map(txt).filter(Boolean);
+    const i=lines.findIndex(x=>MID.test(x));if(i<0)continue;
+    let name=txt(r.name);
+    const candidates=[lines[i-1],lines[i+1],lines[i-2],lines[i+2]].filter(Boolean).filter(x=>!bad.test(x)&&!MID.test(x)&&x.length<50);
+    if(!name)name=candidates[0]||"";
+    let team=txt(r.team)||txt(r.heading);
+    if(!team){
+      const h=(r.context||[]).map(txt).find(x=>x&&x!==name&&!bad.test(x)&&!MID.test(x)&&x.length<80);
+      team=h||"";
+    }
+    if(!name||!team)continue;
+    const key=`${team}|${name}`.toLowerCase();if(seen.has(key))continue;seen.add(key);
+    const riot=lines.find(x=>x.includes("#")&&x.length<80);let accounts=[];
+    if(riot){const j=riot.lastIndexOf("#");accounts=[{gameName:riot.slice(0,j).trim(),tagLine:riot.slice(j+1).trim(),platform:"EUW1"}]}
+    out.push({id:`ouat-${key.replace(/[^a-z0-9]+/g,"-")}`,name,team,region:"OUAT",division:txt(r.division),platform:"EUW1",role:"MID",source:"LEA page",accounts});
   }
   return out;
 }
 
-async function discoverOfficialTournamentUrl(){
-  const c=new AbortController(),t=setTimeout(()=>c.abort(),8000);
+async function discover(){
+  const c=new AbortController(),to=setTimeout(()=>c.abort(),5000);
   try{
-    const r=await net.fetch(OFFICIAL_PAGE,{headers:{"User-Agent":"Mozilla/5.0 MidWatch/2.0"},signal:c.signal});
-    if(!r.ok)return"";
-    const html=await r.text();
-    const all=[...html.matchAll(/href=["']([^"']*lol\.leamateur\.pro\/tournaments\/OUATventure[^"']*)["']/ig)].map(m=>m[1]);
-    return all.at(-1)?.replace(/&amp;/g,"&").replace(/^http:/i,"https:").replace(/ /g,"%20")||"";
-  }catch(_){return""}finally{clearTimeout(t)}
+    const r=await net.fetch(OFFICIAL_PAGE,{headers:{"User-Agent":"Mozilla/5.0 MidWatch/2.0"},signal:c.signal});if(!r.ok)return"";
+    const h=await r.text(),m=[...h.matchAll(/href=["']([^"']*lol\.leamateur\.pro\/tournaments\/OUATventure[^"']*)["']/ig)];
+    return m.at(-1)?.[1]?.replace(/&amp;/g,"&").replace(/^http:/i,"https:").replace(/ /g,"%20")||"";
+  }catch(_){return""}finally{clearTimeout(to)}
 }
 
 async function capture(url){
-  const win=new BrowserWindow({show:false,webPreferences:{contextIsolation:true,sandbox:true,backgroundThrottling:false}});
-  const payloads=[],targets=new Map();let attached=false;
+  const w=new BrowserWindow({show:false,webPreferences:{contextIsolation:true,sandbox:true,backgroundThrottling:false}});
+  const payloads=[],targets=new Set();let attached=false;
   try{
-    try{win.webContents.debugger.attach("1.3");attached=true;await win.webContents.debugger.sendCommand("Network.enable")}catch(_){}
-    if(attached)win.webContents.debugger.on("message",async(_e,method,p)=>{
-      if(method==="Network.responseReceived"){
-        const mime=String(p.response?.mimeType||"").toLowerCase(),u=String(p.response?.url||"");
-        if(["XHR","Fetch"].includes(p.type)||mime.includes("json")||/api|tournament|team|roster|participant|player/i.test(u))targets.set(p.requestId,u);
+    try{w.webContents.debugger.attach("1.3");attached=true;await w.webContents.debugger.sendCommand("Network.enable")}catch(_){}
+    if(attached)w.webContents.debugger.on("message",async(_e,m,p)=>{
+      if(m==="Network.responseReceived"){
+        const u=String(p.response?.url||""),mime=String(p.response?.mimeType||"").toLowerCase();
+        if(["XHR","Fetch"].includes(p.type)||mime.includes("json")||/api|tournament|team|roster|participant|player/i.test(u))targets.add(p.requestId);
       }
-      if(method==="Network.loadingFinished"&&targets.has(p.requestId)){
-        try{
-          const b=await win.webContents.debugger.sendCommand("Network.getResponseBody",{requestId:p.requestId});
-          const s=b.base64Encoded?Buffer.from(b.body,"base64").toString("utf8"):b.body;
-          if(s&&/^[\s]*[\[{]/.test(s))payloads.push(JSON.parse(s));
-        }catch(_){}
+      if(m==="Network.loadingFinished"&&targets.has(p.requestId)){
+        try{const b=await w.webContents.debugger.sendCommand("Network.getResponseBody",{requestId:p.requestId}),s=b.base64Encoded?Buffer.from(b.body,"base64").toString("utf8"):b.body;if(s&&/^[\s]*[\[{]/.test(s))payloads.push(JSON.parse(s))}catch(_){}
       }
     });
-    const load=win.loadURL(url,{userAgent:"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36"}).catch(()=>null);
-    await Promise.race([load,wait(18000)]);await wait(6000);
-    const page=await win.webContents.executeJavaScript(`(() => {
-      const json=[];
+    const load=w.loadURL(url,{userAgent:"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/154 Safari/537.36"}).catch(()=>null);
+    await Promise.race([load,wait(8000)]);await wait(2500);
+    const page=await w.webContents.executeJavaScript(`(() => {
+      const json=[],rows=[];
       const push=v=>{try{if(v&&typeof v==="object")json.push(JSON.stringify(v))}catch(e){}};
-      push(window.__NEXT_DATA__); push(window.__NUXT__); push(window.__INITIAL_STATE__); push(window.__APOLLO_STATE__);
-      for(const s of document.scripts){const t=(s.textContent||"").trim();if(t.length<8000000&&(t[0]==="{"||t[0]==="["))json.push(t)}
-      for(const area of [localStorage,sessionStorage])for(let i=0;i<area.length;i++){const t=area.getItem(area.key(i));if(t&&t.length<8000000&&["{","["].includes(t.trim()[0]))json.push(t)}
-      const rows=[];
-      for(const tr of document.querySelectorAll("tr")){
-        const cells=[...tr.querySelectorAll("th,td")].map(x=>(x.innerText||"").trim()).filter(Boolean);
-        if(cells.some(x=>/(^|\\W)(MID|MIDDLE|MIDLANE|MIDLANER)(\\W|$)/i.test(x))){
-          const table=tr.closest("table"), heading=table?.previousElementSibling?.innerText||"";
-          rows.push({cells,heading});
+      push(window.__NEXT_DATA__);push(window.__NUXT__);push(window.__INITIAL_STATE__);push(window.__APOLLO_STATE__);
+      for(const s of document.scripts){const t=(s.textContent||"").trim();if(t.length<6000000&&(t[0]==="{"||t[0]==="["))json.push(t)}
+      const all=[...document.querySelectorAll("body *")];
+      for(const el of all){
+        const t=(el.innerText||"").trim();
+        if(!t||t.length>900||!/(^|[^A-Z])(MID|MIDDLE|MIDLANE|MIDLANER)([^A-Z]|$)/i.test(t))continue;
+        const childText=[...el.children].map(x=>(x.innerText||"").trim()).filter(Boolean).join("\n");
+        if(childText===t&&el.children.length>8)continue;
+        const lines=t.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+        if(lines.length>35)continue;
+        let a=el,heading="",team="",division="";
+        for(let n=0;n<5&&a;n++,a=a.parentElement){
+          const h=a.querySelector?.("h1,h2,h3,h4,h5,[class*='title'],[class*='name']");
+          if(h&&h!==el){heading=(h.innerText||"").trim();if(heading)break}
         }
+        const tr=el.closest("tr"),cells=tr?[...tr.querySelectorAll("th,td")].map(x=>(x.innerText||"").trim()).filter(Boolean):lines;
+        rows.push({lines,cells,heading,team,division,context:[heading]});
       }
-      for(const el of document.querySelectorAll("[class*='player'],[class*='roster'],[class*='member'],[class*='team']")){
-        const t=(el.innerText||"").trim(); if(!t||t.length>1200||!/(^|\\W)(MID|MIDDLE|MIDLANE|MIDLANER)(\\W|$)/i.test(t))continue;
-        const lines=t.split(/\\n+/).map(x=>x.trim()).filter(Boolean);
-        const i=lines.findIndex(x=>/(^|\\W)(MID|MIDDLE|MIDLANE|MIDLANER)(\\W|$)/i.test(x));
-        rows.push({cells:lines,name:lines[i-1]||lines[i+1]||"",team:el.closest("[class*='team']")?.querySelector("h1,h2,h3,h4,[class*='name']")?.innerText||""});
-      }
-      return {title:document.title||"",text:(document.body?.innerText||"").slice(0,200000),json,rows};
-    })()`).catch(()=>({title:"",text:"",json:[],rows:[]}));
+      return{title:document.title||"",json,rows};
+    })()`).catch(()=>({title:"",json:[],rows:[]}));
     for(const s of page.json||[])try{payloads.push(JSON.parse(s))}catch(_){}
     return{payloads,page};
-  }finally{
-    try{if(attached)win.webContents.debugger.detach()}catch(_){}
-    try{win.destroy()}catch(_){}
-  }
+  }finally{try{if(attached)w.webContents.debugger.detach()}catch(_){}try{w.destroy()}catch(_){}}
 }
 
 function seasonFrom(url,title=""){const m=(url+" "+title).match(/Saison(?:%20|\s)*(\d+)/i);return m?`S${m[1]}`:"OUATventure"}
 
 async function refresh(configured=""){
-  const official=await discoverOfficialTournamentUrl();
-  const p=predictedSeason();
-  const candidates=[configured,tournamentUrl(p),tournamentUrl(p-1),tournamentUrl(p+1),official,tournamentUrl(20)]
-    .filter((v,i,a)=>v&&a.indexOf(v)===i);
+  const s=predictedSeason(),official=await discover();
+  const urls=[configured,tournamentUrl(s),official,tournamentUrl(s-1)].filter((v,i,a)=>v&&a.indexOf(v)===i);
   const errors=[];
-  for(const url of candidates){
+  for(const url of urls){
     try{
       const c=await capture(url);
       let mids=extract(c.payloads);
-      if(!mids.length)mids=extractDom(c.page.rows);
-      if(mids.length)return{url,season:seasonFrom(url,c.page.title),players:mids,updatedAt:Date.now(),warning:mids.length<8?"Import public partiel : certains rosters LEA ne sont peut-être pas exposés.":""};
-      errors.push(`${seasonFrom(url)}: aucun MID structuré`);
+      if(!mids.length)mids=extractRows(c.page.rows);
+      if(mids.length){
+        mids.sort((a,b)=>String(a.division).localeCompare(String(b.division),undefined,{numeric:true})||a.team.localeCompare(b.team)||a.name.localeCompare(b.name));
+        return{url,season:seasonFrom(url,c.page.title),players:mids,updatedAt:Date.now(),warning:""};
+      }
+      errors.push(`${seasonFrom(url)}: 0 MID`);
     }catch(e){errors.push(`${seasonFrom(url)}: ${e.message}`)}
   }
-  throw new Error(`Import OUATventure impossible. ${errors.slice(-3).join(" · ")}`);
+  throw new Error(`OUATventure : aucun roster MID public détecté. ${errors.join(" · ")}`);
 }
 
-module.exports={refresh,extract,extractDom,discoverOfficialTournamentUrl,predictedSeason,tournamentUrl};
+module.exports={refresh,extract,extractRows,discoverOfficialTournamentUrl:discover,predictedSeason,tournamentUrl};
