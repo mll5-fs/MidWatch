@@ -20,19 +20,19 @@ jobs:
         run: npm install
       - name: Generate current OUATventure roster
         run: node scripts/generate-ouat-snapshot.mjs
-      - name: Build MidPulse 3.1
+      - name: Build MidPulse 3.1.1
         run: npm run dist
       - uses: actions/upload-artifact@v4
         with:
           name: MidPulse-Windows-Installer
-          path: dist/MidPulse-Setup-3.1.0.exe
-      - name: Publish MidPulse 3.1 release
+          path: dist/MidPulse-Setup-3.1.1.exe
+      - name: Publish MidPulse 3.1.1 release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "v3.1.0"
-          $exe = "dist/MidPulse-Setup-3.1.0.exe"
+          $tag = "v3.1.1"
+          $exe = "dist/MidPulse-Setup-3.1.1.exe"
           $ErrorActionPreference = "Continue"
           gh release view $tag *> $null
           $exists = ($LASTEXITCODE -eq 0)
@@ -40,5 +40,5 @@ jobs:
           if ($exists) {
             gh release upload $tag $exe --clobber
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse 3.1.0" --notes "OUAT ergonomics overhaul, direct DPM account links, plus LCK CL and LFL midlaners."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse 3.1.1.1" --notes "OUAT ergonomics overhaul, direct DPM account links, plus LCK CL and LFL midlaners."
           }
