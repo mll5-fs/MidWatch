@@ -118,14 +118,14 @@ function findPlayer(id){return allPlayers().find(p=>p.id===id)}
 function normalizeProfile(p,d){
   if(!d)return p;const ep=d.esportPlayer||{},accounts=(d.players||[]).map(x=>({gameName:x.gameName||"",tagLine:x.tagLine||"",platform:String(x.platform||"").toUpperCase(),puuid:x.puuid||"",rank:(x.ranks||[]).find(r=>r.queue==="RANKED_SOLO_5x5")||{},isLive:!!x.isLive}));
   for(const a of p.accounts||[]){const f=accounts.find(x=>x.gameName.toLowerCase()===String(a.gameName||"").toLowerCase()&&x.tagLine.toLowerCase()===String(a.tagLine||"").toLowerCase());if(f)Object.assign(f,a);else accounts.push(a)}
-  return{...p,country:ep.country||p.country,age:ep.age,lastChampions:d.lastChampions||[],accounts};
+  return{...p,country:ep.country||p.country,age:ep.age,lastChampions:d.lastChampions||[],accounts,profile:{...(p.profile||{}),league:p.region,team:p.team,role:"MID"}};
 }
 async function openPlayer(id){
   let p=findPlayer(id);if(!p)return;
   $("#shade").classList.remove("hidden");$("#drawer").classList.remove("hidden");
   $("#drawer").innerHTML=`<div class="drawer-header"><div><div class="drawer-kicker">${esc(p.region)} · MID</div><h2>${esc(p.name)}</h2><div class="drawer-team">${esc(p.team)}</div></div><button class="drawer-close">✕</button></div><div class="panel"><span class="spinner">↻</span> Chargement…</div>`;
   $(".drawer-close").onclick=closeDrawer;
-  if(p.region!=="OUAT")try{p=normalizeProfile(p,await window.mw.profile(p.name))}catch(_){}
+  if(p.region!=="OUAT")try{p=normalizeProfile(p,await window.mw.profile(p.name,p.region))}catch(_){}
   drawPlayer(p);
 }
 function accountHtml(a,i){
@@ -135,7 +135,7 @@ function champHtml(p){const cs=(p.lastChampions||[]).slice(0,5);if(!cs.length)re
 function drawPlayer(p){
   const accounts=p.accounts||[],fav=S.favorites.includes(p.id),ouat=p.region==="OUAT";
   $("#drawer").innerHTML=`<div class="drawer-header"><div><div class="drawer-kicker">${esc(p.region)}${p.division?" · "+esc(p.division):""} · MID</div><h2>${esc(p.name)}</h2><div class="drawer-team">${esc(p.team)}${p.country?" · "+esc(p.country):""}</div></div><button class="drawer-close">✕</button></div>
-    <div class="drawer-actions"><button id="fav" class="action">${fav?"★ Retirer des favoris":"☆ Ajouter aux favoris"}</button><button id="dpm" class="action primary">↗ DPM.LOL</button></div>
+    <div class="drawer-actions"><button id="fav" class="action">${fav?"★ Retirer des favoris":"☆ Ajouter aux favoris"}</button><button id="dpm" class="action primary">↗ DPM.LOL</button></div>${p.region==="LFL"||p.region==="LCKCL"?`<div class="panel"><div class="panel-title">PROFIL COMPÉTITIF</div><div class="champions"><span class="champ"><b>LIGUE</b> · ${esc(p.region==="LCKCL"?"LCK CL":p.region)}</span><span class="champ"><b>ÉQUIPE</b> · ${esc(p.team||"—")}</span><span class="champ"><b>RÔLE</b> · MID</span><span class="champ"><b>SOLOQ</b> · ${esc(rankLabel(p.bestRank)||"Non classé")}</span></div></div>`:""}
     <div class="panel"><div class="panel-title">SOLOQ ACCOUNTS</div>${accounts.length?accounts.map(accountHtml).join(""):'<p class="helper">Aucun compte public relié pour ce joueur.</p>'}
     ${ouat?`<div class="account"><div class="panel-title">CORRIGER LE RIOT ID LEA</div><p class="helper">Si le Riot ID LEA est ancien, remplace-le ici. La correction reste uniquement sur ton PC.</p><div class="fix-row"><input id="fixName" class="fullinput" placeholder="Game name" value="${esc(accounts[0]?.gameName||"")}"><input id="fixTag" class="fullinput" placeholder="TAG" value="${esc(accounts[0]?.tagLine||"")}"></div><button id="saveFix" class="action">Enregistrer</button>${p.accountOverride?'<button id="clearFix" class="action">Revenir au Riot ID LEA</button>':""}<div id="fixMsg"></div></div>`:""}</div>
     ${champHtml(p)}<div class="source">Source roster : ${esc(p.source||"snapshot")}.</div>`;
@@ -158,7 +158,7 @@ async function spectateAccount(p,i){
 }
 function settings(){
   $("#shade").classList.remove("hidden");$("#drawer").classList.remove("hidden");
-  $("#drawer").innerHTML=`<div class="drawer-header"><div><div class="drawer-kicker">MIDPULSE 3.1</div><h2>Réglages</h2><div class="drawer-team">Configuration locale</div></div><button class="drawer-close">✕</button></div>
+  $("#drawer").innerHTML=`<div class="drawer-header"><div><div class="drawer-kicker">MIDPULSE 3.1.1</div><h2>Réglages</h2><div class="drawer-team">Configuration locale</div></div><button class="drawer-close">✕</button></div>
   <div class="panel"><div class="panel-title">RIOT API KEY</div><p class="helper">Ta clé reste sur ce PC. Les Development Keys Riot expirent régulièrement.</p><input id="key" class="fullinput" type="password" placeholder="RGAPI-…"><button id="saveKey" class="action primary">Valider la clé</button><div id="keyMsg"></div><button id="portal" class="action">Ouvrir Riot Developer Portal</button></div>
   <div class="panel"><div class="panel-title">LEAGUE OF LEGENDS</div><p id="lolpath" class="helper">${S.leaguePath?"✓ "+esc(S.leaguePath):"Installation non détectée"}</p><button id="pick" class="action">Choisir le dossier League</button></div>`;
   $(".drawer-close").onclick=closeDrawer;
