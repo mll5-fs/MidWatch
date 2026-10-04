@@ -1,0 +1,21 @@
+module.exports=[
+{id:"faker",name:"Faker",team:"T1",region:"LCK",country:"South Korea"},
+{id:"chovy",name:"Chovy",team:"Gen.G",region:"LCK",country:"South Korea"},
+{id:"zeka",name:"Zeka",team:"Hanwha Life Esports",region:"LCK",country:"South Korea"},
+{id:"showmaker",name:"ShowMaker",team:"Dplus KIA",region:"LCK",country:"South Korea"},
+{id:"bdd",name:"Bdd",team:"KT Rolster",region:"LCK",country:"South Korea"},
+{id:"vicla",name:"VicLa",team:"BNK FearX",region:"LCK",country:"South Korea"},
+{id:"clozer",name:"Clozer",team:"DN SOOPers",region:"LCK",country:"South Korea"},
+{id:"ucal",name:"Ucal",team:"Kiwoom DRX",region:"LCK",country:"South Korea"},
+{id:"scout",name:"Scout",team:"Nongshim RedForce",region:"LCK",country:"South Korea"},
+{id:"roamer",name:"Roamer",team:"HANJIN BRION",region:"LCK",country:"South Korea"},
+{id:"caps",name:"Caps",team:"G2 Esports",region:"LEC",country:"Denmark"},
+{id:"vladi",name:"Vladi",team:"Fnatic",region:"LEC",country:"Greece"},
+{id:"jackies",name:"Jackies",team:"GIANTX",region:"LEC",country:"Czechia"},
+{id:"nuc",name:"nuc",team:"Karmine Corp",region:"LEC",country:"France"},
+{id:"aria",name:"Aria",team:"Fukuoka SoftBank HAWKS gaming",region:"LCP",country:"South Korea"},
+{id:"pungyeon",name:"Pungyeon",team:"CTBC Flying Oyster",region:"LCP",country:"South Korea"},
+{id:"loki",name:"Loki",team:"Cloud9",region:"LCS",country:"South Korea"},
+{id:"apa",name:"APA",team:"Cloud9",region:"LCS",country:"United States"},
+{id:"palafox",name:"Palafox",team:"Dignitas",region:"LCS",country:"United States"}
+];
