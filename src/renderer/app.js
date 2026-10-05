@@ -60,11 +60,9 @@ function bindCards(){
   document.querySelectorAll("[data-star]").forEach(b=>b.onclick=async e=>{e.stopPropagation();S.favorites=await window.mw.favorite(b.dataset.star);renderNav();render()});
 }
 function ouatBrowser(players){
-  const teams=new Map();
-  for(const p of players){const key=`${p.team||"Équipe inconnue"}|${p.division||"Sans division"}`;if(!teams.has(key))teams.set(key,[]);teams.get(key).push(p)}
-  return`<div class="ouat-team-grid">${[...teams.entries()].map(([key,ps])=>{const[team,division]=key.split("|"),logo=ps.find(p=>p.teamLogo)?.teamLogo||"";
-    return`<section class="ouat-team-card"><div class="ouat-team-head">${logo?`<img src="${esc(logo)}" alt="">`:`<div class="ouat-team-fallback">${esc(team.slice(0,2).toUpperCase())}</div>`}<div><h3>${esc(team)}</h3><span>${esc(division)}</span></div><em>${ps.length} MID</em></div><div class="ouat-roster">${ps.map(p=>{const a=(p.accounts||[])[0],state=stateOf(p);return`<button class="ouat-player-row" data-id="${esc(p.id)}"><span class="ouat-player-main">${avatar(p,"ouat-avatar")}<span><span class="ouat-name-line"><b>${esc(p.name)}</b>${rankLabel(p.bestRank)?`<span class="elo-badge ${rankClass(p.bestRank)}">${esc(rankLabel(p.bestRank))}</span>`:"<span class=\"elo-badge unranked\">—</span>"}</span><small>${a?.gameName?`${esc(a.gameName)}#${esc(a.tagLine||"")}`:"Riot ID non renseigné"}</small></span></span><span class="ouat-row-state ${state}">${state==="live"?"● LIVE":a?.gameName?"DPM ↗":"—"}</span></button>`}).join("")}</div></section>`
-  }).join("")}</div>`;
+ const rows=[...players].sort((a,b)=>rankScore(b)-rankScore(a)||String(a.team||"").localeCompare(String(b.team||"")));
+ return `<section class="scout-board"><div class="scout-board-head"><span>JOUEUR</span><span>ÉQUIPE</span><span>DIVISION</span><span>SOLOQ</span><span>RIOT ID</span><span>STATUT</span></div>
+ ${rows.map((p,i)=>{const a=(p.accounts||[])[0],state=stateOf(p),rank=rankLabel(p.bestRank);return`<button class="scout-row" data-id="${esc(p.id)}"><span class="scout-player"><em>${String(i+1).padStart(2,"0")}</em>${avatar(p,"ouat-avatar")}<strong>${esc(p.name)}</strong></span><span class="scout-team">${esc(p.team||"—")}</span><span><i>${esc(p.division||"—")}</i></span><span>${rank?`<b class="elo-badge ${rankClass(p.bestRank)}">${esc(rank)}</b>`:'<b class="elo-badge unranked">NON CLASSÉ</b>'}</span><span class="scout-riot">${a?.gameName?`${esc(a.gameName)}#${esc(a.tagLine||"")}`:"Non relié"}</span><span class="scout-status ${state}">${state==="live"?"● EN GAME":a?.gameName?"● SUIVI":"○ INCOMPLET"}</span></button>`}).join("")}</section>`;
 }
 
 function hero(){
@@ -91,10 +89,10 @@ function hero(){
 function titles(){
   const q=$("#qTop").value.trim();
   if(q)return["RECHERCHE",`Résultats pour “${q}”`,"Joueurs, équipes et Riot IDs"];
-  if(view==="OVERVIEW")return["MIDPULSE","Vue d’ensemble","Ton cockpit pour suivre les midlaners au quotidien."];
+  if(view==="OVERVIEW")return["SCOUTING DESK","Dashboard","Analyse, compare et surveille les midlaners qui comptent."];
   if(view==="LIVE")return["LIVE","En direct","Tous les midlaners actuellement détectés en partie."];
   if(view==="FAV")return["LIBRARY","Favoris","Les joueurs que tu veux garder sous les yeux."];
-  if(view==="OUAT")return["ONCE UPON A TEAM",`OUATventure ${S.ouat.season||""}`,`${S.ouat.teams||0} équipes · ${S.ouatPlayers.length} midlaners`];
+  if(view==="OUAT")return["OUAT SCOUTING",`OUATventure ${S.ouat.season||""}`,`Base scouting · ${S.ouatPlayers.length} midlaners · ${S.ouat.teams||0} équipes`];
   if(view==="ALL")return["PRO SCENE","Tous les pros","LCK · LCK CL · LEC · LFL · LPL · LCS · LCP"];
   return["PRO LEAGUE",view,`Midlaners ${view}`];
 }
@@ -102,11 +100,11 @@ function render(){
   const [ey,title,sub]=titles();$("#eyebrow").textContent=ey;$("#title").textContent=title;$("#sub").textContent=sub;
   hero();
   const list=listForView(),q=$("#qTop").value.trim();
-  $("#sectionTitle").textContent=q?"Résultats":view==="OVERVIEW"?"Tous les pros":view==="LIVE"?"Live maintenant":view==="FAV"?"Mes favoris":view==="OUAT"?"Équipes OUAT":"Joueurs";
+  $("#sectionTitle").textContent=q?"Résultats":view==="OVERVIEW"?"Scouting pro":view==="LIVE"?"Live maintenant":view==="FAV"?"Ma watchlist":view==="OUAT"?"Scouting board OUAT":"Joueurs";
   $("#summary").textContent=`${list.length} résultat${list.length>1?"s":""}`;
   $("#liveOnly").classList.toggle("on",liveOnly);
   $("#grid").innerHTML=list.length?(view==="OUAT"&&!q?ouatBrowser(list):list.map(card).join("")):`<div class="empty">${q?"Aucun résultat pour cette recherche.":view==="LIVE"?"Aucun midlaner détecté en partie actuellement.":"Aucun joueur dans cette vue."}</div>`;
-  bindCards();document.querySelectorAll(".ouat-player-row").forEach(r=>r.onclick=()=>openPlayer(r.dataset.id));status();
+  bindCards();document.querySelectorAll(".ouat-player-row,.scout-row").forEach(r=>r.onclick=()=>openPlayer(r.dataset.id));status();
 }
 function status(){
   $("#apiDot").classList.toggle("ok",S.hasKey);
