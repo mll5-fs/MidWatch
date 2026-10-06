@@ -18,5 +18,5 @@ jobs:
           node-version: 22
       - name: Validate JavaScript syntax
         run: node scripts/check-syntax.mjs
-      - name: Verify client authentication parsing
-        run: node --test tests/lcu-auth.test.js
+      - name: Run regression tests
+        run: node --test tests/*.test.js
