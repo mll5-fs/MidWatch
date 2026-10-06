@@ -23,3 +23,10 @@ test("renders patch samples and their statistical limits", () => {
   assert.match(app, /ÉCHANTILLON FAIBLE/);
   assert.match(app, /Les écarts sont descriptifs et ne prouvent pas un effet du patch/);
 });
+
+test("renders opposing mid champion samples without causal claims", () => {
+  assert.match(app, /function matchupReport\(matchups=\[\]\)/);
+  assert.match(app, /matchupReport\(stats\.matchups\)/);
+  assert.match(app, /MATCHUPS MID RÉCENTS/);
+  assert.match(app, /Ils ne mesurent ni la qualité du micro-gameplay ni la cause du résultat/);
+});
