@@ -81,4 +81,31 @@ function patchBreakdown(matches, puuid) {
   }));
 }
 
-module.exports = { laneAt10, participantForScouting, patchBreakdown };
+function matchupBreakdown(matches, puuid) {
+  const groups = new Map();
+  for (const match of matches || []) {
+    const player = participantForScouting(match, puuid);
+    const opponent = player && midOpponent(match.info.participants || [], player);
+    const champion = String(opponent?.championName || "").trim();
+    if (!player || !opponent || !champion) continue;
+    const values = [player.kills, player.deaths, player.assists];
+    if (!values.every(value => Number.isFinite(value) && value >= 0) || typeof player.win !== "boolean") continue;
+    const group = groups.get(champion) || { champion, games: 0, wins: 0, kills: 0, deaths: 0, assists: 0 };
+    group.games++;
+    group.wins += player.win ? 1 : 0;
+    group.kills += player.kills;
+    group.deaths += player.deaths;
+    group.assists += player.assists;
+    groups.set(champion, group);
+  }
+  return [...groups.values()].sort((a, b) => b.games - a.games || a.champion.localeCompare(b.champion))
+    .slice(0, 6).map(group => ({
+      champion: group.champion,
+      games: group.games,
+      winrate: Math.round(100 * group.wins / group.games),
+      kda: +((group.kills + group.assists) / Math.max(1, group.deaths)).toFixed(2),
+      limited: group.games < 3
+    }));
+}
+
+module.exports = { laneAt10, participantForScouting, patchBreakdown, matchupBreakdown };
