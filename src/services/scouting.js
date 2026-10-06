@@ -1,5 +1,11 @@
 const isMid = x => [x?.teamPosition, x?.individualPosition].some(v => String(v || "").toUpperCase() === "MIDDLE");
 
+function participantForScouting(match, puuid) {
+  if (match?.info?.queueId !== 420) return null;
+  const player = (match.info.participants || []).find(x => x.puuid === puuid);
+  return isMid(player) ? player : null;
+}
+
 function midOpponent(participants, player) {
   return participants.find(x => x.teamId !== player.teamId && isMid(x));
 }
@@ -37,4 +43,4 @@ function laneAt10(samples, puuid) {
     deathRate: Math.round(100 * rows.filter(x => x.earlyDeaths > 0).length / rows.length) };
 }
 
-module.exports = { laneAt10 };
+module.exports = { laneAt10, participantForScouting };

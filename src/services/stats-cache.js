@@ -2,7 +2,7 @@ const TTL = 10 * 60 * 1000;
 const MAX_ENTRIES = 50;
 
 function accountKey(account = {}) {
-  return `${String(account.platform || "EUW1").toUpperCase()}|${account.gameName || ""}#${account.tagLine || ""}`.toLowerCase();
+  return `ranked-mid-v1|${String(account.platform || "EUW1").toUpperCase()}|${account.gameName || ""}#${account.tagLine || ""}`.toLowerCase();
 }
 
 function read(cache, account, now = Date.now()) {
