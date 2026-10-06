@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { laneAt10, participantForScouting, patchBreakdown } = require("../src/services/scouting");
+const { laneAt10, participantForScouting, patchBreakdown, matchupBreakdown } = require("../src/services/scouting");
 
 function sample({ mine = {}, theirs = {}, events = [], position = "MIDDLE" } = {}) {
   return { match: { info: { queueId: 420, participants: [
@@ -94,4 +94,29 @@ test("excludes malformed patches, off-role games and incomplete combat data", ()
     make("26.20.1"), make("unknown"), make("26.20.2", { kills: undefined }),
     make("26.20.3", { teamPosition: "TOP" })
   ], "player"), [{ patch: "26.20", games: 1, winrate: 100, kda: 4, limited: true }]);
+});
+
+test("summarizes results against each identified mid champion", () => {
+  const base = sample().match;
+  const make = (championName, win, kills, deaths, assists) => ({ info: { ...base.info,
+    participants: [
+      { ...base.info.participants[0], win, kills, deaths, assists },
+      { ...base.info.participants[1], championName }
+    ] } });
+  assert.deepEqual(matchupBreakdown([
+    make("Ahri", true, 5, 2, 7), make("Ahri", false, 1, 3, 2), make("Syndra", true, 4, 0, 6)
+  ], "player"), [
+    { champion: "Ahri", games: 2, winrate: 50, kda: 3, limited: true },
+    { champion: "Syndra", games: 1, winrate: 100, kda: 10, limited: true }
+  ]);
+});
+
+test("excludes matchup rows without a valid mid opponent or combat sample", () => {
+  const base = sample().match;
+  const player = { ...base.info.participants[0], win: true, kills: 2, deaths: 1, assists: 3 };
+  const make = (opponent = {}, playerOverrides = {}) => ({ info: { ...base.info,
+    participants: [{ ...player, ...playerOverrides }, { ...base.info.participants[1], championName: "Ahri", ...opponent }] } });
+  assert.deepEqual(matchupBreakdown([
+    make(), make({ championName: "" }), make({ teamPosition: "TOP" }), make({}, { assists: undefined })
+  ], "player"), [{ champion: "Ahri", games: 1, winrate: 100, kda: 5, limited: true }]);
 });

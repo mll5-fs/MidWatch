@@ -134,7 +134,7 @@ async function openPlayer(id){
   if(p.accounts?.[0]&&S.hasKey){
     try{
       const stats=await window.mw.stats(p.accounts[0]);if(request!==drawerRequest)return;
-      const anchor=$("#scout-live");if(anchor)anchor.innerHTML=statReport(stats)+patchReport(stats.patches);
+      const anchor=$("#scout-live");if(anchor)anchor.innerHTML=statReport(stats)+matchupReport(stats.matchups)+patchReport(stats.patches);
     }catch(e){
       if(request!==drawerRequest)return;const anchor=$("#scout-live");
       if(anchor)anchor.innerHTML=`<div class="panel"><div class="panel-title">PERFORMANCE RÉCENTE</div><p class="helper">${esc(String(e.message||e).replace(/^Error invoking remote method [^:]+:\s*Error:\s*/,""))}</p></div>`;
@@ -144,6 +144,10 @@ async function openPlayer(id){
 function patchReport(patches=[]){
   if(!patches.length)return"";
   return`<div class="panel"><div class="panel-title">PERFORMANCE PAR PATCH</div><div class="champions">${patches.map(p=>`<span class="champ"><b>PATCH ${esc(p.patch)}</b> · ${esc(p.games)}G · ${esc(p.winrate)}% WR · ${esc(p.kda)} KDA${p.limited?" · ÉCHANTILLON FAIBLE":""}</span>`).join("")}</div><p class="sample-note">Chaque version utilise son propre échantillon de parties SoloQ au rôle mid. Les écarts sont descriptifs et ne prouvent pas un effet du patch.</p></div>`;
+}
+function matchupReport(matchups=[]){
+  if(!matchups.length)return"";
+  return`<div class="panel"><div class="panel-title">MATCHUPS MID RÉCENTS</div><div class="champions">${matchups.map(m=>`<span class="champ"><b>VS ${esc(m.champion)}</b> · ${esc(m.games)}G · ${esc(m.winrate)}% WR · ${esc(m.kda)} KDA${m.limited?" · ÉCHANTILLON FAIBLE":""}</span>`).join("")}</div><p class="sample-note">Résultats regroupés par champion du mid adverse identifié. Ils ne mesurent ni la qualité du micro-gameplay ni la cause du résultat.</p></div>`;
 }
 function accountHtml(a,i){
   return`<div class="account"><div class="account-head"><div><b>${esc(a.gameName||"Compte")}#${esc(a.tagLine||"?")}</b><small>${esc(a.platform||"")}</small></div><span class="tag ${a.isLive?"live":"rank"}">${a.isLive?"● LIVE":esc(rankLabel(a.rank)||"CHECK")}</span></div><div class="account-actions"><button class="action" data-check="${i}">CHECK RIOT</button><button class="action live" data-spec="${i}">▶ SPECTATE</button></div><div id="res-${i}"></div></div>`;
