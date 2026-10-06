@@ -52,4 +52,33 @@ function laneAt10(samples, puuid) {
     deathRate: Math.round(100 * rows.filter(x => x.earlyDeaths > 0).length / rows.length) };
 }
 
-module.exports = { laneAt10, participantForScouting };
+function patchBreakdown(matches, puuid) {
+  const groups = new Map();
+  for (const match of matches || []) {
+    const player = participantForScouting(match, puuid);
+    const version = String(match?.info?.gameVersion || "").match(/^(\d+)\.(\d+)/);
+    if (!player || !version) continue;
+    const values = [player.kills, player.deaths, player.assists];
+    if (!values.every(value => Number.isFinite(value) && value >= 0) || typeof player.win !== "boolean") continue;
+    const patch = `${Number(version[1])}.${Number(version[2])}`;
+    const group = groups.get(patch) || { patch, games: 0, wins: 0, kills: 0, deaths: 0, assists: 0 };
+    group.games++;
+    group.wins += player.win ? 1 : 0;
+    group.kills += player.kills;
+    group.deaths += player.deaths;
+    group.assists += player.assists;
+    groups.set(patch, group);
+  }
+  return [...groups.values()].sort((a, b) => {
+    const [am, an] = a.patch.split(".").map(Number), [bm, bn] = b.patch.split(".").map(Number);
+    return bm - am || bn - an;
+  }).map(group => ({
+    patch: group.patch,
+    games: group.games,
+    winrate: Math.round(100 * group.wins / group.games),
+    kda: +((group.kills + group.assists) / Math.max(1, group.deaths)).toFixed(2),
+    limited: group.games < 3
+  }));
+}
+
+module.exports = { laneAt10, participantForScouting, patchBreakdown };

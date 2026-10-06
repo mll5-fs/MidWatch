@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { laneAt10, participantForScouting } = require("../src/services/scouting");
+const { laneAt10, participantForScouting, patchBreakdown } = require("../src/services/scouting");
 
 function sample({ mine = {}, theirs = {}, events = [], position = "MIDDLE" } = {}) {
   return { match: { info: { queueId: 420, participants: [
@@ -71,4 +71,27 @@ test("ignores death events with invalid or missing timestamps", () => {
   const events = [undefined, null, -1, "500000", NaN].map(timestamp =>
     ({ type: "CHAMPION_KILL", victimId: 1, timestamp }));
   assert.equal(laneAt10([sample({ events })], "player").deathRate, 0);
+});
+
+test("compares ranked mid performance by normalized game patch", () => {
+  const matches = [
+    { ...sample().match, info: { ...sample().match.info, gameVersion: "26.20.123.456", participants: sample().match.info.participants.map((p, i) => i ? p : { ...p, win: true, kills: 5, deaths: 2, assists: 7 }) } },
+    { ...sample().match, info: { ...sample().match.info, gameVersion: "26.19.9", participants: sample().match.info.participants.map((p, i) => i ? p : { ...p, win: false, kills: 2, deaths: 4, assists: 2 }) } },
+    { ...sample().match, info: { ...sample().match.info, gameVersion: "26.20.999", participants: sample().match.info.participants.map((p, i) => i ? p : { ...p, win: false, kills: 1, deaths: 1, assists: 4 }) } }
+  ];
+  assert.deepEqual(patchBreakdown(matches, "player"), [
+    { patch: "26.20", games: 2, winrate: 50, kda: 5.67, limited: true },
+    { patch: "26.19", games: 1, winrate: 0, kda: 1, limited: true }
+  ]);
+});
+
+test("excludes malformed patches, off-role games and incomplete combat data", () => {
+  const valid = sample().match;
+  const participant = { ...valid.info.participants[0], win: true, kills: 1, deaths: 0, assists: 3 };
+  const make = (gameVersion, overrides = {}) => ({ info: { ...valid.info, gameVersion,
+    participants: [{ ...participant, ...overrides }, valid.info.participants[1]] } });
+  assert.deepEqual(patchBreakdown([
+    make("26.20.1"), make("unknown"), make("26.20.2", { kills: undefined }),
+    make("26.20.3", { teamPosition: "TOP" })
+  ], "player"), [{ patch: "26.20", games: 1, winrate: 100, kda: 4, limited: true }]);
 });
