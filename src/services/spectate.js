@@ -1,4 +1,5 @@
 const fs=require("fs"),path=require("path"),https=require("https"),{execFile}=require("child_process");
+const {fromCommandLine,fromLockfile}=require("./lcu-auth");
 const valid=r=>r&&fs.existsSync(path.join(r,"Game","League of Legends.exe"));
 function detect(saved=""){const drives=["C","D","E","F","G"],c=[saved,...drives.flatMap(d=>[`${d}:\\Riot Games\\League of Legends`,`${d}:\\Games\\Riot Games\\League of Legends`]),"C:\\Program Files\\Riot Games\\League of Legends"];return c.find(valid)||""}
 function ps(script){return new Promise((resolve,reject)=>execFile("powershell.exe",["-NoProfile","-NonInteractive","-Command",script],{windowsHide:true},(e,out)=>e?reject(e):resolve(String(out||"").trim())))}
@@ -6,10 +7,9 @@ async function lcu(root){
  let cmd="";
  try{cmd=await ps("(Get-CimInstance Win32_Process -Filter \"Name='LeagueClientUx.exe'\" | Select-Object -First 1 -ExpandProperty CommandLine)")}catch(_){}
  if(!cmd)try{cmd=await ps("(Get-CimInstance Win32_Process -Filter \"Name='LeagueClient.exe'\" | Select-Object -First 1 -ExpandProperty CommandLine)")}catch(_){}
- const pm=cmd.match(/--app-port(?:=|\\s+)(?:"(\\d+)"|(\\d+))/),tm=cmd.match(/--remoting-auth-token(?:=|\\s+)(?:"([^"]+)"|([^\\s"]+))/);
- if(pm&&tm)return{port:+(pm[1]||pm[2]),password:tm[1]||tm[2],source:"process"};
+ const processAuth=fromCommandLine(cmd);if(processAuth)return processAuth;
  const candidates=[path.join(root,"lockfile"),path.join(path.dirname(root),"League of Legends","lockfile")];
- for(const file of candidates)if(fs.existsSync(file)){const raw=fs.readFileSync(file,"utf8").trim().split(":");if(raw.length>=5)return{port:+raw[2],password:raw[3],source:"lockfile"}}
+ for(const file of candidates){try{const auth=fromLockfile(fs.readFileSync(file,"utf8"));if(auth)return auth}catch(_){}}
  throw new Error("MidPulse ne trouve pas les identifiants locaux du client League. Laisse le client ouvert et connecté puis réessaie.");
 }
 async function raw(root,method,endpoint,body){const a=await lcu(root);return new Promise((resolve,reject)=>{const data=body===undefined?"":JSON.stringify(body),req=https.request({hostname:"127.0.0.1",port:a.port,path:endpoint,method,rejectUnauthorized:false,headers:{Authorization:"Basic "+Buffer.from("riot:"+a.password).toString("base64"),"Content-Type":"application/json",...(data?{"Content-Length":Buffer.byteLength(data)}:{})}},res=>{let out="";res.on("data",d=>out+=d);res.on("end",()=>{let parsed=out;try{parsed=JSON.parse(out)}catch(_){};if(res.statusCode>=200&&res.statusCode<300)return resolve({status:res.statusCode,data:parsed,auth:a.source});reject(Object.assign(new Error(`Client League: HTTP ${res.statusCode}`),{status:res.statusCode,data:parsed,endpoint,auth:a.source}))})});req.on("error",e=>reject(new Error("Connexion au client League impossible : "+e.message)));if(data)req.write(data);req.end()})}
