@@ -1,9 +1,9 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { laneAt10 } = require("../src/services/scouting");
+const { laneAt10, participantForScouting } = require("../src/services/scouting");
 
 function sample({ mine = {}, theirs = {}, events = [], position = "MIDDLE" } = {}) {
-  return { match: { info: { participants: [
+  return { match: { info: { queueId: 420, participants: [
     { puuid: "player", participantId: 1, teamId: 100, teamPosition: position },
     { puuid: "enemy", participantId: 6, teamId: 200, teamPosition: "MIDDLE" }
   ] } }, timeline: { info: { frames: [
@@ -30,4 +30,11 @@ test("reports the share of games with a death before or at 10 minutes", () => {
 
 test("excludes games that cannot be compared to an identified mid opponent", () => {
   assert.deepEqual(laneAt10([sample({ position: "TOP" })], "player"), { games: 0 });
+});
+
+test("selects only ranked SoloQ games where the player was assigned mid", () => {
+  const rankedMid = sample().match;
+  assert.equal(participantForScouting(rankedMid, "player").participantId, 1);
+  assert.equal(participantForScouting(sample({ position: "TOP" }).match, "player"), null);
+  assert.equal(participantForScouting({ info: { ...rankedMid.info, queueId: 450 } }, "player"), null);
 });
