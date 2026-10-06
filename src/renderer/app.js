@@ -1,5 +1,5 @@
 let S={players:[],ouatPlayers:[],ouat:{},favorites:[],hasKey:false,leaguePath:"",proCacheAt:0};
-let view="OVERVIEW",liveOnly=false,busy=false,ouatDivision="ALL",liveState={},rankState={};
+let view="OVERVIEW",liveOnly=false,busy=false,ouatDivision="ALL",liveState={},rankState={},drawerRequest=0;
 const $=q=>document.querySelector(q);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const REGIONS=["ALL","LCK","LCKCL","LEC","LFL","LPL","LCS","LCP"];
@@ -111,7 +111,7 @@ function status(){
   $("#apiText").textContent=S.hasKey?"Riot API connectée":"Riot API à configurer";
 }
 function notice(t=""){const n=$("#notice");n.textContent=t;n.classList.toggle("hidden",!t)}
-function closeDrawer(){$("#drawer").classList.add("hidden");$("#shade").classList.add("hidden")}
+function closeDrawer(){drawerRequest++;$("#drawer").classList.add("hidden");$("#shade").classList.add("hidden")}
 function findPlayer(id){return allPlayers().find(p=>p.id===id)}
 function normalizeProfile(p,d){
   if(!d)return p;const ep=d.esportPlayer||{},accounts=(d.players||[]).map(x=>({gameName:x.gameName||"",tagLine:x.tagLine||"",platform:String(x.platform||"").toUpperCase(),puuid:x.puuid||"",rank:(x.ranks||[]).find(r=>r.queue==="RANKED_SOLO_5x5")||{},isLive:!!x.isLive}));
@@ -120,12 +120,18 @@ function normalizeProfile(p,d){
 }
 async function openPlayer(id){
   let p=findPlayer(id);if(!p)return;
+  const request=++drawerRequest;
   $("#shade").classList.remove("hidden");$("#drawer").classList.remove("hidden");
   $("#drawer").innerHTML=`<div class="drawer-header"><div><div class="drawer-kicker">${esc(p.region)} · MID</div><h2>${esc(p.name)}</h2><div class="drawer-team">${esc(p.team)}</div></div><button class="drawer-close">✕</button></div><div class="panel"><span class="spinner">↻</span> Chargement…</div>`;
   $(".drawer-close").onclick=closeDrawer;
   if(p.region!=="OUAT")try{p=normalizeProfile(p,await window.mw.profile(p.name,p.region))}catch(_){}
+  if(request!==drawerRequest)return;
   drawPlayer(p);
-  if(p.region==="OUAT"&&p.accounts?.[0]&&S.hasKey){try{const stats=await window.mw.stats(p.accounts[0]);const anchor=$("#scout-live");if(anchor)anchor.innerHTML=statReport(stats)}catch(e){const anchor=$("#scout-live");if(anchor)anchor.innerHTML=`<div class="panel"><div class="panel-title">PERFORMANCE RÉCENTE</div><p class="helper">${esc(String(e.message||e).replace(/^Error invoking remote method [^:]+:\s*Error:\s*/,""))}</p></div>`}} 
+  if(p.region!=="OUAT"&&p.accounts?.[0]&&S.hasKey){
+    const source=$("#drawer .source");
+    source?.insertAdjacentHTML("beforebegin",`<div id="scout-live"><div class="panel"><div class="panel-title">SCOUTING</div><p class="helper"><span class="spinner">↻</span> Analyse des matchs Riot récents…</p></div></div>`);
+  }
+  if(p.accounts?.[0]&&S.hasKey){try{const stats=await window.mw.stats(p.accounts[0]);if(request!==drawerRequest)return;const anchor=$("#scout-live");if(anchor)anchor.innerHTML=statReport(stats)}catch(e){if(request!==drawerRequest)return;const anchor=$("#scout-live");if(anchor)anchor.innerHTML=`<div class="panel"><div class="panel-title">PERFORMANCE RÉCENTE</div><p class="helper">${esc(String(e.message||e).replace(/^Error invoking remote method [^:]+:\s*Error:\s*/,""))}</p></div>`}}
 }
 function accountHtml(a,i){
   return`<div class="account"><div class="account-head"><div><b>${esc(a.gameName||"Compte")}#${esc(a.tagLine||"?")}</b><small>${esc(a.platform||"")}</small></div><span class="tag ${a.isLive?"live":"rank"}">${a.isLive?"● LIVE":esc(rankLabel(a.rank)||"CHECK")}</span></div><div class="account-actions"><button class="action" data-check="${i}">CHECK RIOT</button><button class="action live" data-spec="${i}">▶ SPECTATE</button></div><div id="res-${i}"></div></div>`;
