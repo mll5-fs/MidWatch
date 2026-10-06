@@ -38,3 +38,37 @@ test("selects only ranked SoloQ games where the player was assigned mid", () => 
   assert.equal(participantForScouting(sample({ position: "TOP" }).match, "player"), null);
   assert.equal(participantForScouting({ info: { ...rankedMid.info, queueId: 450 } }, "player"), null);
 });
+
+test("does not substitute short games or missing ten-minute snapshots", () => {
+  for (const timestamp of [300000, 540000, 660000, undefined, "600000", NaN]) {
+    const s = sample();
+    s.timeline.info.frames = [{ ...s.timeline.info.frames[1], timestamp }];
+    assert.deepEqual(laneAt10([s], "player"), { games: 0 });
+  }
+});
+
+test("accepts small timestamp drift but excludes snapshots outside one second", () => {
+  for (const [timestamp, games] of [[599000, 1], [600750, 1], [601000, 1], [601001, 0]]) {
+    const s = sample();
+    s.timeline.info.frames[1].timestamp = timestamp;
+    assert.equal(laneAt10([s], "player").games, games);
+  }
+});
+
+test("excludes incomplete or invalid measurements without diluting valid samples", () => {
+  for (const side of ["mine", "theirs"]) {
+    for (const key of ["minionsKilled", "jungleMinionsKilled", "totalGold", "xp"]) {
+      for (const value of [undefined, null, "0", NaN, Infinity, -1]) {
+        const invalid = sample({ [side]: { [key]: value } });
+        assert.deepEqual(laneAt10([invalid, sample()], "player"), laneAt10([sample()], "player"));
+      }
+    }
+  }
+  assert.equal(laneAt10([sample({ mine: { minionsKilled: 0, jungleMinionsKilled: 0, totalGold: 0, xp: 0 } })], "player").games, 1);
+});
+
+test("ignores death events with invalid or missing timestamps", () => {
+  const events = [undefined, null, -1, "500000", NaN].map(timestamp =>
+    ({ type: "CHAMPION_KILL", victimId: 1, timestamp }));
+  assert.equal(laneAt10([sample({ events })], "player").deathRate, 0);
+});
