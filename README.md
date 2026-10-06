@@ -7,6 +7,7 @@ MidWatch is a Windows desktop companion for following professional League of Leg
 - Tier-1 MID directory for LCK, LEC, LPL, LCS and LCP with a 2026 bootstrap snapshot.
 - Refreshes pro rosters and public SoloQ accounts when the live source is available; keeps the bundled snapshot if it is unavailable.
 - Player profiles, teams, SoloQ accounts, rank/LP, recent champions and favorites.
+- Recent Ranked Solo/Duo mid-role scouting reports are available for every player with a public Riot ID, not only OUATventure players.
 - Uses Riot's official API at check time for live-game verification.
 - One-click **Spectate**: if Riot reports an active game, MidWatch launches the locally installed League game executable with the spectator payload.
 - Detects common League installation folders automatically, with a folder picker as fallback.
