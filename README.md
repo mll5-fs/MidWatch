@@ -19,6 +19,8 @@ MidWatch is a Windows desktop companion for following professional League of Leg
 
 Scouting reports use up to 12 mid-role games from the 20 most recent Ranked Solo/Duo matches. Lane-at-10 measurements require a timeline snapshot within one second of 10:00 and complete, finite, non-negative CS, gold and XP values for both midlaners. Short games and incomplete snapshots are excluded from the lane sample rather than treated as zero. This one-second window is an application validation rule, not a Riot API guarantee. The displayed lane sample can therefore be smaller than the overall report sample; these measurements do not establish the causes of lane outcomes.
 
+Every report records its collection coverage: recent match IDs requested, match payloads loaded, eligible mid games, and timelines loaded. A Riot rate limit, authentication failure, or individual payload error marks the report as partial instead of presenting it as a complete sample. A report is considered controlled when all requested history was inspected or the 12-game mid target was reached without collection errors. Lane samples below three comparable games are explicitly marked as weak.
+
 Patch comparisons normalize Riot's full `gameVersion` to its major/minor patch and show their own game count. Samples below three games are explicitly marked as limited; differences remain descriptive and do not establish that a patch caused a performance change.
 
 Matchup summaries group results by the opposing player assigned to mid and display their own sample size. They describe results against a champion; they do not measure matchup causality or micro-gameplay quality.
