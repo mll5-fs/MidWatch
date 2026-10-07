@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { loadBatch, hydrate, resetErrors, accountKey } = require("../src/services/ranks");
+const { loadBatch, hydrate, resetErrors, accountKey, playerRankState } = require("../src/services/ranks");
 const player = (id, region = "OUAT") => ({ id, region, accounts: [{ gameName: id, tagLine: "EUW", platform: "EUW1" }] });
 const solo = { queueType: "RANKED_SOLO_5x5", tier: "DIAMOND", rank: "II", leaguePoints: 0 };
 function mock(entries = [solo]) {
@@ -78,4 +78,42 @@ test("shared Riot accounts are fetched once and update all linked players", asyn
   assert.equal(result.checked, 1);
   assert.equal(riot.calls.length, 1);
   assert.deepEqual(result.updates.map(u => u.id), ["same", "duplicate"]);
+});
+
+test("checks every linked account and keeps the highest verified SoloQ rank", async () => {
+  const p = { ...player("multi"), accounts: [
+    { gameName: "inactive", tagLine: "EUW", platform: "EUW1" },
+    { gameName: "active", tagLine: "EUW", platform: "EUW1" }
+  ] };
+  const riot = mock();
+  riot.ranked = async (_platform, puuid) => puuid === "inactive" ? [] : [solo];
+  const result = await loadBatch(riot, [p], { now: 1000 });
+  assert.equal(result.checked, 2);
+  assert.deepEqual(result.updates, [{ id: "multi", rank: { tier: "DIAMOND", rank: "II", leaguePoints: 0 },
+    status: "ranked", checkedAt: 1000, error: undefined }]);
+  assert.equal(hydrate([p], result.cache)[0].bestRank.tier, "DIAMOND");
+});
+
+test("does not call a multi-account player unranked while another account is pending", () => {
+  const p = { ...player("multi"), accounts: [
+    { gameName: "first", tagLine: "EUW", platform: "EUW1" },
+    { gameName: "second", tagLine: "EUW", platform: "EUW1" }
+  ] };
+  const cache = { [accountKey(p.accounts[0])]: { rank: null, status: "unranked", checkedAt: 1000 } };
+  assert.deepEqual(playerRankState(p, cache), { status: "pending", checkedAt: 1000 });
+  assert.equal(hydrate([p], cache)[0].rankStatus, "pending");
+});
+
+test("selects the strongest rank across cached accounts regardless of account order", () => {
+  const p = { ...player("multi"), accounts: [
+    { gameName: "diamond", tagLine: "EUW", platform: "EUW1" },
+    { gameName: "master", tagLine: "EUW", platform: "EUW1" }
+  ] };
+  const cache = {
+    [accountKey(p.accounts[0])]: { rank: solo, status: "ranked", checkedAt: 1000 },
+    [accountKey(p.accounts[1])]: { rank: { ...solo, tier: "MASTER", rank: "I", leaguePoints: 25 }, status: "ranked", checkedAt: 2000 }
+  };
+  const state = playerRankState(p, cache);
+  assert.equal(state.rank.tier, "MASTER");
+  assert.equal(state.checkedAt, 2000);
 });
