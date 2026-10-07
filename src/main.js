@@ -62,7 +62,7 @@ async function liveBatch(){
   return{updates,checked:batch.length,total:withAccounts.length};
 }
 
-function data(){const saved=store.get("ouat",{}),o=(Array.isArray(saved.players)&&saved.players.length)?saved:bundledOuat;return{players:currentPros(),ouatPlayers:applyOverrides(o.players||[]),ouat:{url:o.url||"",season:o.season||"",status:o.status||"",start:o.start||"",end:o.end||"",teams:o.teams||0,warning:o.warning||"",updatedAt:o.updatedAt||0,source:o.source||""},favorites:store.get("favorites",[]),hasKey:!!key(),leaguePath:spectate.detect(store.get("leaguePath","")),proCacheAt:store.get("proCacheAt",0)}}
+function data(){const saved=store.get("ouat",{}),o=(Array.isArray(saved.players)&&saved.players.length)?saved:bundledOuat;return{version:app.getVersion(),players:currentPros(),ouatPlayers:applyOverrides(o.players||[]),ouat:{url:o.url||"",season:o.season||"",status:o.status||"",start:o.start||"",end:o.end||"",teams:o.teams||0,warning:o.warning||"",updatedAt:o.updatedAt||0,source:o.source||""},favorites:store.get("favorites",[]),hasKey:!!key(),leaguePath:spectate.detect(store.get("leaguePath","")),proCacheAt:store.get("proCacheAt",0)}}
 ipcMain.handle("app:data",()=>data());
 ipcMain.handle("favorite:toggle",(_e,id)=>{let f=store.get("favorites",[]);f=f.includes(id)?f.filter(x=>x!==id):[...f,id];store.set("favorites",f);return f});
 ipcMain.handle("settings:key",async(_e,v)=>{const next=String(v||"").trim();if(!next){store.set("riotKey","");return false}await new Riot(next).validate();store.set("riotKey",next);return true});ipcMain.handle("riot:keycheck",async()=>{if(!key())return false;try{await new Riot(key()).validate();return true}catch(_){return false}});
