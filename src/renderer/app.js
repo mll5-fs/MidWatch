@@ -1,5 +1,5 @@
 let S={players:[],ouatPlayers:[],ouat:{},favorites:[],hasKey:false,leaguePath:"",proCacheAt:0};
-let view="OVERVIEW",liveOnly=false,busy=false,ouatDivision="ALL",liveState={},rankState={},rankMeta={},rankBusy=false,drawerRequest=0;
+let view="OVERVIEW",liveOnly=false,busy=false,ouatDivision="ALL",liveState={},rankState={},rankMeta={},rankBusy=false,rankCooldownAt=0,drawerRequest=0;
 const $=q=>document.querySelector(q);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const REGIONS=["ALL","LCK","LCKCL","LEC","LFL","LPL","LCS","LCP"];
@@ -114,7 +114,7 @@ function render(){
 }
 function status(){
   $("#apiDot").classList.toggle("ok",S.hasKey);
-  $("#apiText").textContent=S.hasKey?"Riot API connectée":"Riot API à configurer";
+  $("#apiText").textContent=!S.hasKey?"Riot API à configurer":Date.now()<rankCooldownAt?"Riot API limitée · reprise auto":"Riot API connectée";
 }
 function notice(t=""){const n=$("#notice");n.textContent=t;n.classList.toggle("hidden",!t)}
 function closeDrawer(){drawerRequest++;$("#drawer").classList.add("hidden");$("#shade").classList.add("hidden")}
@@ -192,18 +192,21 @@ function settings(){
   <div class="panel"><div class="panel-title">RIOT API KEY</div><p class="helper">Ta clé reste sur ce PC. Les Development Keys Riot expirent régulièrement.</p><input id="key" class="fullinput" type="password" placeholder="RGAPI-…"><button id="saveKey" class="action primary">Valider la clé</button><div id="keyMsg"></div><button id="portal" class="action">Ouvrir Riot Developer Portal</button></div>
   <div class="panel"><div class="panel-title">LEAGUE OF LEGENDS</div><p id="lolpath" class="helper">${S.leaguePath?"✓ "+esc(S.leaguePath):"Installation non détectée"}</p><button id="pick" class="action">Choisir le dossier League</button></div>`;
   $(".drawer-close").onclick=closeDrawer;
-  $("#saveKey").onclick=async()=>{try{S.hasKey=await window.mw.saveKey($("#key").value);status();$("#keyMsg").innerHTML='<div class="result live">✓ Clé valide et enregistrée.</div>'}catch(e){S.hasKey=false;status();$("#keyMsg").innerHTML=`<div class="result">${esc(e.message)}</div>`}};
+  $("#saveKey").onclick=async()=>{try{S.hasKey=await window.mw.saveKey($("#key").value);rankCooldownAt=0;status();$("#keyMsg").innerHTML='<div class="result live">✓ Clé valide. Rechargement des rangs lancé.</div>';refreshRanks()}catch(e){S.hasKey=false;status();$("#keyMsg").innerHTML=`<div class="result">${esc(e.message)}</div>`}};
   $("#portal").onclick=()=>window.mw.open("https://developer.riotgames.com/");
   $("#pick").onclick=async()=>{try{S.leaguePath=await window.mw.pickLeague();$("#lolpath").textContent=S.leaguePath?"✓ "+S.leaguePath:"Installation non détectée"}catch(e){$("#lolpath").textContent=e.message}};
 }
 async function refreshRanks(){
-  if(!S.hasKey||rankBusy)return;
+  if(!S.hasKey||rankBusy||Date.now()<rankCooldownAt)return;
   rankBusy=true;
   try{
-    const visible=[...document.querySelectorAll(".player-card,.scout-row")].filter(node=>{
+    const onScreen=[...document.querySelectorAll(".player-card,.scout-row")].filter(node=>{
       const rect=node.getBoundingClientRect();return rect.bottom>0&&rect.top<window.innerHeight;
     }).map(node=>node.dataset.id);
+    const visible=[...new Set([...onScreen,...listForView().slice(0,20).map(p=>p.id)])];
     const r=await window.mw.rankBatch(visible);
+    rankCooldownAt=Number(r.retryAt)||0;
+    if([401,403].includes(r.blockedStatus))S.hasKey=false;
     for(const u of r.updates||[]){if(u.rank!==undefined)rankState[u.id]=u.rank;rankMeta[u.id]={rankStatus:u.status,rankCheckedAt:u.checkedAt,rankError:u.error}}
     render();
   }catch(_){}finally{rankBusy=false}
