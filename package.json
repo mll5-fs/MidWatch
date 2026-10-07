@@ -1,8 +1,8 @@
 {
   "name": "midpulse",
-  "version": "5.1.11",
+  "version": "5.2.0",
   "private": true,
-  "description": "Live midlaner tracking for pro leagues, LCK CL, LFL and OUATventure",
+  "description": "OUATventure scouting and patch analysis",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
