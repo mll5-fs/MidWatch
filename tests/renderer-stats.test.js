@@ -6,6 +6,19 @@ const vm = require("node:vm");
 
 const app = fs.readFileSync(path.join(__dirname, "../src/renderer/app.js"), "utf8");
 
+test("rank labels distinguish pending, missing credentials, error and confirmed unranked", () => {
+  const source = app.slice(app.indexOf("function rankPlaceholder("), app.indexOf("function tracked("));
+  const context = vm.createContext({ S: { hasKey: true } });
+  vm.runInContext(source, context);
+  const linked = { accounts: [{ gameName: "Test", tagLine: "EUW" }] };
+  assert.equal(context.rankPlaceholder(linked), "RANG À CHARGER");
+  assert.equal(context.rankPlaceholder({ ...linked, rankStatus: "unranked" }), "NON CLASSÉ SOLOQ");
+  assert.equal(context.rankPlaceholder({ ...linked, rankStatus: "error" }), "RANG INDISPONIBLE");
+  context.S.hasKey = false;
+  assert.equal(context.rankPlaceholder(linked), "CLÉ RIOT REQUISE");
+  assert.equal(context.rankPlaceholder({ accounts: [] }), "COMPTE NON RELIÉ");
+});
+
 test("scouting panel explains unavailable data and only loads with credentials", () => {
   const source = app.slice(app.indexOf("function scoutingPanel("), app.indexOf("function drawPlayer("));
   const context = vm.createContext({ S: { hasKey: false }, esc: value => String(value) });
