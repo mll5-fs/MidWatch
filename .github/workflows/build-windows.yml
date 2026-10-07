@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: windows-release
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: windows-latest
@@ -22,25 +26,35 @@ jobs:
         run: node scripts/generate-ouat-snapshot.mjs
       - name: Validate JavaScript syntax
         run: node scripts/check-syntax.mjs
-      - name: Build MidPulse 5.0.4
+      - name: Run regression tests
+        run: node --test tests/*.test.js
+      - name: Read release version
+        id: version
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          "value=$version" >> $env:GITHUB_OUTPUT
+      - name: Build MidPulse
         run: npm run dist
       - uses: actions/upload-artifact@v4
         with:
           name: MidPulse-Windows-Installer
-          path: dist/MidPulse-Setup-5.0.4.exe
-      - name: Publish MidPulse 5.0.4 release
+          path: dist/MidPulse-Setup-${{ steps.version.outputs.value }}.exe
+      - name: Publish versioned release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "v5.0.4"
-          $exe = "dist/MidPulse-Setup-5.0.4.exe"
+          $version = "${{ steps.version.outputs.value }}"
+          $tag = "v$version"
+          $exe = "dist/MidPulse-Setup-$version.exe"
           $ErrorActionPreference = "Continue"
           gh release view $tag *> $null
           $exists = ($LASTEXITCODE -eq 0)
           $ErrorActionPreference = "Stop"
           if ($exists) {
-            gh release upload $tag $exe --clobber
+            Write-Host "Release $tag already exists. Preserving its installer; bump package.json to publish changes."
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse 5.0.4" --notes "OUAT ergonomics overhaul, direct DPM account links, plus LCK CL and LFL midlaners."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Scouting SoloQ pour tous les comptes publics : Lane a 10 min, matchups mid et comparaisons par patch. Version visible et configuration Riot explicite. Source commit: ${{ github.sha }}."
+            if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           }
