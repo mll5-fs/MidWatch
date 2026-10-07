@@ -35,6 +35,14 @@ test("scouting reports expose collection coverage and weak lane samples", () => 
   assert.match(app, /coverageReport\(s\?\.coverage\)/);
 });
 
+test("renders lane-at-ten median and gold-ahead frequency with a strict definition", () => {
+  assert.match(app, /MÉDIANE Δ OR/);
+  assert.match(app, /DEVANT EN OR/);
+  assert.match(app, /strictement plus d’or que le mid adverse à 10:00/);
+  assert.match(app, /l\.medianGoldDiff/);
+  assert.match(app, /l\.goldAheadRate/);
+});
+
 test("renders early timeline habits with their own sample and non-causal limit", () => {
   assert.match(app, /function earlyReport\(e=\{\}\)/);
   assert.match(app, /HABITUDES AVANT 10 MINUTES/);

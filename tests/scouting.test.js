@@ -18,7 +18,17 @@ function sample({ mine = {}, theirs = {}, events = [], position = "MIDDLE", cham
 
 test("calculates lane values and matchup deltas at 10 minutes", () => {
   assert.deepEqual(laneAt10([sample()], "player"), {
-    games: 1, cs: 72, gold: 4100, xp: 4800, csDiff: 7, goldDiff: 200, xpDiff: 200, deathRate: 0
+    games: 1, cs: 72, gold: 4100, xp: 4800, csDiff: 7, goldDiff: 200, xpDiff: 200,
+    medianGoldDiff: 200, goldAheadRate: 100, deathRate: 0
+  });
+});
+
+test("reports lane consistency without letting one extreme game define the median", () => {
+  const behind = sample({ mine: { totalGold: 3500 } });
+  const outlier = sample({ mine: { totalGold: 5900 } });
+  assert.deepEqual(laneAt10([sample(), sample(), behind, outlier], "player"), {
+    games: 4, cs: 72, gold: 4400, xp: 4800, csDiff: 7, goldDiff: 500, xpDiff: 200,
+    medianGoldDiff: 200, goldAheadRate: 75, deathRate: 0
   });
 });
 
