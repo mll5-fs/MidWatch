@@ -23,6 +23,8 @@ Every report records its collection coverage: recent match IDs requested, match 
 
 Early-habit summaries use timestamped timeline events through 10:00. They report the share of games with at least one kill/assist participation, average early takedowns, the share with a death, and the median first ward time. Each panel shows its timeline count and the ward-specific sample. These are event frequencies only: they do not infer movement, recalls, causes, positioning quality, or micro-gameplay.
 
+Lane-at-10 comparisons by the player's champion reuse only the same complete 10:00 snapshots with an identified opposing mid. Each champion row reports its own game count, average CS/gold/XP differential and share of games with an early death. Rows below three games are explicitly marked as weak; the values are descriptive and do not explain matchup causality or micro-gameplay quality.
+
 Patch comparisons normalize Riot's full `gameVersion` to its major/minor patch and show their own game count. Samples below three games are explicitly marked as limited; differences remain descriptive and do not establish that a patch caused a performance change.
 
 Matchup summaries group results by the opposing player assigned to mid and display their own sample size. They describe results against a champion; they do not measure matchup causality or micro-gameplay quality.
