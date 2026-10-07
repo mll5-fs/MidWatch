@@ -1,19 +1,11 @@
-# MidWatch 2.0
+# MidPulse — OUAT scouting
 
-MidWatch is a Windows desktop companion for following professional League of Legends midlaners and OUATventure midlaners.
+Windows desktop scouting for OUATventure midlaners only. Professional rosters and professional background requests have been removed. Existing professional cache entries are ignored.
 
-## What 2.0 does
-
-- Tier-1 MID directory for LCK, LEC, LPL, LCS and LCP with a 2026 bootstrap snapshot.
-- Refreshes pro rosters and public SoloQ accounts when the live source is available; keeps the bundled snapshot if it is unavailable.
-- Player profiles, teams, SoloQ accounts, rank/LP, recent champions and favorites.
-- Recent Ranked Solo/Duo mid-role scouting reports are available for every player with a public Riot ID, not only OUATventure players.
-- Uses Riot's official API at check time for live-game verification.
-- One-click **Spectate**: if Riot reports an active game, MidPulse sends a spectator launch request to the locally running League client.
-- Spectate uses the local League Client API. An accepted request does not confirm that the game opened. Local HTTP calls expire after 12 seconds; connection and authentication failures stop the attempt, and alternate launch routes are tried only for HTTP 404/405. Riot does not officially support third-party use of the League Client API or guarantee its endpoints: https://developer.riotgames.com/docs/lol#league-client-api (checked 2026-10-07).
-- Detects common League installation folders automatically, with a folder picker as fallback.
-- **OUATventure** section: imports MID players from the public LEA tournament page and groups them by team (and division when LEA exposes it). It tests recent season URLs and also accepts an exact LEA tournament URL in Settings.
-- Riot API key and preferences are stored only in the local Electron user-data folder, never in the repository or installer.
+- OUAT players, teams, divisions, SoloQ ranks, favorites and spectator requests.
+- Analyse de patchs: choose an OUAT player, load their recent ranked-mid report, compare patch samples with game counts, win rates, IC95 and KDA, and open official Riot patch notes.
+- Riot API credentials remain local. The patch section requires a valid key for player statistics; official notes open without a key.
+- Version is displayed from Electron app.getVersion().
 
 ## Data notes
 
@@ -37,7 +29,7 @@ Observed win rates include a 95% Wilson score interval for the overall report, p
 
 Reports show the actual oldest and newest match timestamps in the retained mid sample, how many matches were successfully dated, and the age of the latest game. A latest game at least 30 days old is explicitly marked as stale, so an inactive account is not presented as current form.
 
-The bundled pro roster is a fallback. Public roster/SoloQ sources can change independently of MidWatch. OUATventure rosters are imported live rather than hard-coded because amateur teams and accounts can change during a season.
+OUATventure rosters are imported from LEA with a bundled build-time snapshot fallback. Amateur teams and accounts can change during a season.
 
 Rank loading prioritizes the current view, caches successful results for 15 minutes, and follows Riot's `Retry-After` delay after an HTTP 429. Replacing an expired API key immediately retries previously failed ranks while retaining the last verified value. Riot documents personal-key limits of 20 requests per second and 100 every two minutes; limits remain enforced per region: https://developer.riotgames.com/docs/portal (checked 2026-10-07).
 
