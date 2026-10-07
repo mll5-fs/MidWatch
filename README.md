@@ -9,7 +9,8 @@ MidWatch is a Windows desktop companion for following professional League of Leg
 - Player profiles, teams, SoloQ accounts, rank/LP, recent champions and favorites.
 - Recent Ranked Solo/Duo mid-role scouting reports are available for every player with a public Riot ID, not only OUATventure players.
 - Uses Riot's official API at check time for live-game verification.
-- One-click **Spectate**: if Riot reports an active game, MidWatch launches the locally installed League game executable with the spectator payload.
+- One-click **Spectate**: if Riot reports an active game, MidPulse sends a spectator launch request to the locally running League client.
+- Spectate uses the local League Client API. An accepted request does not confirm that the game opened. Local HTTP calls expire after 12 seconds; connection and authentication failures stop the attempt, and alternate launch routes are tried only for HTTP 404/405. Riot does not officially support third-party use of the League Client API or guarantee its endpoints: https://developer.riotgames.com/docs/lol#league-client-api (checked 2026-10-07).
 - Detects common League installation folders automatically, with a folder picker as fallback.
 - **OUATventure** section: imports MID players from the public LEA tournament page and groups them by team (and division when LEA exposes it). It tests recent season URLs and also accepts an exact LEA tournament URL in Settings.
 - Riot API key and preferences are stored only in the local Electron user-data folder, never in the repository or installer.
