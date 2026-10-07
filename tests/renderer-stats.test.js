@@ -52,6 +52,14 @@ test("renders lane-at-ten comparisons per played champion with sample limits", (
   assert.match(app, /n’expliquent ni la cause ni la qualité du micro-gameplay/);
 });
 
+test("renders lane-at-ten comparisons per opposing champion with sample limits", () => {
+  assert.match(app, /function opponentLaneReport\(rows=\[\]\)/);
+  assert.match(app, /opponentLaneReport\(stats\.opponentLanes\)/);
+  assert.match(app, /LANE À 10 PAR CHAMPION ADVERSE/);
+  assert.match(app, /Chaque champion adverse a son propre échantillon/);
+  assert.match(app, /ne prouvent ni la cause du matchup ni la qualité du micro-gameplay/);
+});
+
 test("scouting panel explains unavailable data and only loads with credentials", () => {
   const source = app.slice(app.indexOf("function scoutingPanel("), app.indexOf("function drawPlayer("));
   const context = vm.createContext({ S: { hasKey: false }, esc: value => String(value) });

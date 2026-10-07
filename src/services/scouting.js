@@ -63,7 +63,8 @@ function laneRowAt10(sample, puuid) {
     const earlyDeaths = (timeline.info?.frames || []).flatMap(x => x.events || [])
       .filter(e => e.type === "CHAMPION_KILL" && e.victimId === player.participantId &&
         Number.isFinite(e.timestamp) && e.timestamp >= 0 && e.timestamp <= 600000).length;
-    return { champion: String(player.championName || "").trim(), cs, gold: mine.totalGold || 0, xp: mine.xp || 0,
+    return { champion: String(player.championName || "").trim(),
+      opponentChampion: String(opponent.championName || "").trim(), cs, gold: mine.totalGold || 0, xp: mine.xp || 0,
       csDiff: cs - oppCs, goldDiff: (mine.totalGold || 0) - (theirs.totalGold || 0),
       xpDiff: (mine.xp || 0) - (theirs.xp || 0), earlyDeaths };
 }
@@ -89,6 +90,32 @@ function championLaneBreakdown(samples, puuid) {
     group.xpDiff += row.xpDiff;
     group.deaths += row.earlyDeaths > 0 ? 1 : 0;
     groups.set(row.champion, group);
+  }
+  return [...groups.values()].sort((a, b) => b.games - a.games || a.champion.localeCompare(b.champion))
+    .slice(0, 6).map(group => ({
+      champion: group.champion,
+      games: group.games,
+      csDiff: Math.round(group.csDiff / group.games),
+      goldDiff: Math.round(group.goldDiff / group.games),
+      xpDiff: Math.round(group.xpDiff / group.games),
+      deathRate: Math.round(100 * group.deaths / group.games),
+      limited: group.games < 3
+    }));
+}
+
+function opponentLaneBreakdown(samples, puuid) {
+  const groups = new Map();
+  for (const sample of samples || []) {
+    const row = laneRowAt10(sample, puuid);
+    if (!row?.opponentChampion) continue;
+    const champion = row.opponentChampion;
+    const group = groups.get(champion) || { champion, games: 0, csDiff: 0, goldDiff: 0, xpDiff: 0, deaths: 0 };
+    group.games++;
+    group.csDiff += row.csDiff;
+    group.goldDiff += row.goldDiff;
+    group.xpDiff += row.xpDiff;
+    group.deaths += row.earlyDeaths > 0 ? 1 : 0;
+    groups.set(champion, group);
   }
   return [...groups.values()].sort((a, b) => b.games - a.games || a.champion.localeCompare(b.champion))
     .slice(0, 6).map(group => ({
@@ -190,4 +217,4 @@ function matchupBreakdown(matches, puuid) {
     }));
 }
 
-module.exports = { winrateInterval, sampleWindow, laneAt10, championLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown };
+module.exports = { winrateInterval, sampleWindow, laneAt10, championLaneBreakdown, opponentLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown };

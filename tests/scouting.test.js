@@ -1,11 +1,11 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { winrateInterval, sampleWindow, laneAt10, championLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown } = require("../src/services/scouting");
+const { winrateInterval, sampleWindow, laneAt10, championLaneBreakdown, opponentLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown } = require("../src/services/scouting");
 
-function sample({ mine = {}, theirs = {}, events = [], position = "MIDDLE", champion = "Ahri" } = {}) {
+function sample({ mine = {}, theirs = {}, events = [], position = "MIDDLE", champion = "Ahri", opponentChampion = "Syndra" } = {}) {
   return { match: { info: { queueId: 420, participants: [
     { puuid: "player", participantId: 1, teamId: 100, teamPosition: position, championName: champion },
-    { puuid: "enemy", participantId: 6, teamId: 200, teamPosition: "MIDDLE" }
+    { puuid: "enemy", participantId: 6, teamId: 200, teamPosition: "MIDDLE", championName: opponentChampion }
   ] } }, timeline: { info: { frames: [
     { timestamp: 540000, participantFrames: {} },
     { timestamp: 600000, participantFrames: {
@@ -120,6 +120,25 @@ test("champion lane comparison excludes malformed frames, off-role games and mis
     sample({ champion: "" }), sample({ position: "TOP" }), malformed, sample({ champion: "Orianna" })
   ], "player"), [
     { champion: "Orianna", games: 1, csDiff: 7, goldDiff: 200, xpDiff: 200, deathRate: 0, limited: true }
+  ]);
+});
+
+test("compares lane-at-ten deltas by opposing champion with explicit sample limits", () => {
+  const death = { type: "CHAMPION_KILL", victimId: 1, timestamp: 400000 };
+  const weakVsSyndra = sample({ mine: { minionsKilled: 60, jungleMinionsKilled: 2, totalGold: 3700, xp: 4400 }, events: [death] });
+  assert.deepEqual(opponentLaneBreakdown([sample(), weakVsSyndra, sample(), sample({ opponentChampion: "Orianna" })], "player"), [
+    { champion: "Syndra", games: 3, csDiff: 4, goldDiff: 67, xpDiff: 67, deathRate: 33, limited: false },
+    { champion: "Orianna", games: 1, csDiff: 7, goldDiff: 200, xpDiff: 200, deathRate: 0, limited: true }
+  ]);
+});
+
+test("opponent lane comparison excludes malformed frames, off-role games and unidentified champions", () => {
+  const malformed = sample({ mine: { xp: undefined } });
+  assert.deepEqual(opponentLaneBreakdown([
+    sample({ opponentChampion: "" }), sample({ position: "TOP" }), malformed,
+    sample({ opponentChampion: "Ahri" })
+  ], "player"), [
+    { champion: "Ahri", games: 1, csDiff: 7, goldDiff: 200, xpDiff: 200, deathRate: 0, limited: true }
   ]);
 });
 
