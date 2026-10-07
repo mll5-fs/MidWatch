@@ -26,6 +26,15 @@ test("rank refresh prioritizes the current view and reacts to Riot cooldowns", (
   assert.match(app, /Rechargement des rangs lancé/);
 });
 
+test("scouting reports expose collection coverage and weak lane samples", () => {
+  assert.match(app, /function coverageReport\(c=\{\}\)/);
+  assert.match(app, /ÉCHANTILLON PARTIEL/);
+  assert.match(app, /historique chargé/);
+  assert.match(app, /timelines/);
+  assert.match(app, /l\.games<3\?" · échantillon faible"/);
+  assert.match(app, /coverageReport\(s\?\.coverage\)/);
+});
+
 test("scouting panel explains unavailable data and only loads with credentials", () => {
   const source = app.slice(app.indexOf("function scoutingPanel("), app.indexOf("function drawPlayer("));
   const context = vm.createContext({ S: { hasKey: false }, esc: value => String(value) });
