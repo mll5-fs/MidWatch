@@ -1,4 +1,4 @@
-const{app,BrowserWindow,ipcMain,shell,dialog}=require("electron");const path=require("path");const store=require("./store"),bootstrap=require("./data/players"),bundledOuat=require("./data/ouat-current.json"),{Riot}=require("./services/riot"),{laneAt10,participantForScouting,patchBreakdown,matchupBreakdown}=require("./services/scouting"),statsCache=require("./services/stats-cache"),pros=require("./services/pros"),spectate=require("./services/spectate"),ouat=require("./services/ouat");let mainWindow;
+const{app,BrowserWindow,ipcMain,shell,dialog}=require("electron");const path=require("path");const store=require("./store"),bootstrap=require("./data/players"),bundledOuat=require("./data/ouat-current.json"),{Riot}=require("./services/riot"),{laneAt10,participantForScouting,patchBreakdown,matchupBreakdown}=require("./services/scouting"),statsCache=require("./services/stats-cache"),pros=require("./services/pros"),spectate=require("./services/spectate"),ouat=require("./services/ouat");let mainWindow;const ranks=require("./services/ranks");let rankInFlight=null,rankRetryAt=0;
 let liveCursor=0,rankCursor=0;function applyOverrides(list){const o=store.get("accountOverrides",{});return(list||[]).map(p=>o[p.id]?{...p,accounts:[o[p.id]],accountOverride:true}:p)}function currentPros(){const c=store.get("proCache",[]);return applyOverrides(Array.isArray(c)&&c.length?c:bootstrap)}function key(){return String(store.get("riotKey","")||"").trim()}
 function create(){store.init();const found=spectate.detect(store.get("leaguePath",""));if(found&&found!==store.get("leaguePath",""))store.set("leaguePath",found);mainWindow=new BrowserWindow({width:1460,height:920,minWidth:1040,minHeight:700,show:false,backgroundColor:"#070a0f",title:"MidPulse",autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,"preload.js"),contextIsolation:true,nodeIntegration:false,sandbox:false}});mainWindow.loadFile(path.join(__dirname,"renderer/index.html"));mainWindow.once("ready-to-show",()=>mainWindow.show())}
 
@@ -17,23 +17,18 @@ async function playerStats(a){
  store.set("statsCache",statsCache.write(store.get("statsCache",{}),a,report,report.sampledAt));return report;
 }
 
-async function rankBatch(){
-  if(!key())return{updates:[],checked:0};
-  const saved=store.get("ouat",{}),o=(Array.isArray(saved.players)&&saved.players.length)?saved:bundledOuat;
-  const players=[...currentPros(),...applyOverrides(o.players||[])].filter(p=>p.accounts?.[0]?.gameName&&p.accounts?.[0]?.tagLine);
-  if(!players.length)return{updates:[],checked:0};
-  const cache=store.get("riotAccountCache",{}),riot=new Riot(key()),updates=[],batch=[];
-  for(let i=0;i<5&&i<players.length;i++)batch.push(players[(rankCursor+i)%players.length]);
-  rankCursor=(rankCursor+batch.length)%players.length;
-  for(const p of batch){
-    const a=p.accounts[0],ck=`${String(a.platform||"EUW1").toUpperCase()}|${a.gameName}#${a.tagLine}`.toLowerCase();
-    try{
-      let puuid=cache[ck];if(!puuid){const resolved=await riot.resolveAccount(a);puuid=resolved.puuid;cache[ck]=puuid}
-      const ranked=await riot.ranked(a.platform||"EUW1",puuid),solo=(ranked||[]).find(x=>x.queueType==="RANKED_SOLO_5x5");
-      updates.push({id:p.id,rank:solo?{tier:solo.tier,rank:solo.rank,leaguePoints:solo.leaguePoints}:null,checkedAt:Date.now()});
-    }catch(e){updates.push({id:p.id,rank:undefined,error:String(e.message||e)})}
-  }
-  store.set("riotAccountCache",cache);return{updates,checked:batch.length,total:players.length};
+async function rankBatch(priorityIds=[]){
+  if(!key()||Date.now()<rankRetryAt)return{updates:[],checked:0};
+  if(rankInFlight)return rankInFlight;
+  rankInFlight=(async()=>{
+    const saved=store.get("ouat",{}),o=saved.players?.length?saved:bundledOuat;
+    const players=[...currentPros(),...applyOverrides(o.players||[])];
+    const result=await ranks.loadBatch(new Riot(key()),players,{cache:store.get("rankCache",{}),accountCache:store.get("riotAccountCache",{}),priorityIds:Array.isArray(priorityIds)?priorityIds.slice(0,100):[]});
+    store.set("rankCache",result.cache);store.set("riotAccountCache",result.accountCache);
+    rankRetryAt=result.retryAt;
+    return{updates:result.updates,checked:result.checked,total:result.total,retryAt:result.retryAt};
+  })();
+  try{return await rankInFlight}finally{rankInFlight=null}
 }
 async function liveBatch(){
   if(!key())return{updates:[],checked:0};
@@ -62,7 +57,7 @@ async function liveBatch(){
   return{updates,checked:batch.length,total:withAccounts.length};
 }
 
-function data(){const saved=store.get("ouat",{}),o=(Array.isArray(saved.players)&&saved.players.length)?saved:bundledOuat;return{version:app.getVersion(),players:currentPros(),ouatPlayers:applyOverrides(o.players||[]),ouat:{url:o.url||"",season:o.season||"",status:o.status||"",start:o.start||"",end:o.end||"",teams:o.teams||0,warning:o.warning||"",updatedAt:o.updatedAt||0,source:o.source||""},favorites:store.get("favorites",[]),hasKey:!!key(),leaguePath:spectate.detect(store.get("leaguePath","")),proCacheAt:store.get("proCacheAt",0)}}
+function data(){const saved=store.get("ouat",{}),o=(Array.isArray(saved.players)&&saved.players.length)?saved:bundledOuat;return{version:app.getVersion(),players:ranks.hydrate(currentPros(),store.get("rankCache",{})),ouatPlayers:ranks.hydrate(applyOverrides(o.players||[]),store.get("rankCache",{})),ouat:{url:o.url||"",season:o.season||"",status:o.status||"",start:o.start||"",end:o.end||"",teams:o.teams||0,warning:o.warning||"",updatedAt:o.updatedAt||0,source:o.source||""},favorites:store.get("favorites",[]),hasKey:!!key(),leaguePath:spectate.detect(store.get("leaguePath","")),proCacheAt:store.get("proCacheAt",0)}}
 ipcMain.handle("app:data",()=>data());
 ipcMain.handle("favorite:toggle",(_e,id)=>{let f=store.get("favorites",[]);f=f.includes(id)?f.filter(x=>x!==id):[...f,id];store.set("favorites",f);return f});
 ipcMain.handle("settings:key",async(_e,v)=>{const next=String(v||"").trim();if(!next){store.set("riotKey","");return false}await new Riot(next).validate();store.set("riotKey",next);return true});ipcMain.handle("riot:keycheck",async()=>{if(!key())return false;try{await new Riot(key()).validate();return true}catch(_){return false}});
@@ -74,7 +69,7 @@ ipcMain.handle("ouat:refresh",async(_e,url)=>{try{const r=await ouat.refresh(Str
 ipcMain.handle("ouat:url",(_e,url)=>{const o=store.get("ouat",{});o.url=String(url||"").trim();store.set("ouat",o);return o.url});
 ipcMain.handle("riot:stats",(_e,a)=>playerStats(a));
 ipcMain.handle("riot:liveBatch",()=>liveBatch());
-ipcMain.handle("riot:rankBatch",()=>rankBatch());
+ipcMain.handle("riot:rankBatch",(_e,ids)=>rankBatch(ids));
 ipcMain.handle("riot:check",async(_e,a)=>{if(!key())throw new Error("Ajoute ta clé Riot dans Settings.");const riot=new Riot(key()),acc=await riot.resolveAccount(a);let ranked=[];try{ranked=await riot.ranked(acc.platform,acc.puuid)}catch(_){}let active=null;try{active=await riot.active(acc.platform,acc.puuid)}catch(e){if(e.status!==404)throw e}return{account:acc,ranked,active}});
 ipcMain.handle("spectate:launch",async(_e,a)=>{if(!key())throw new Error("Ajoute ta clé Riot dans Settings.");const riot=new Riot(key()),acc=await riot.resolveAccount(a);let game;try{game=await riot.active(acc.platform,acc.puuid)}catch(e){if(e.status===404)throw new Error("Ce joueur n’est plus en partie.");throw e}const launched=await spectate.launch(store.get("leaguePath",""),game,acc.puuid);store.set("leaguePath",launched.root);return{ok:true,verified:launched.verified,gameId:game.gameId}});
 ipcMain.handle("external:open",(_e,url)=>{if(/^https?:\/\//i.test(String(url)))return shell.openExternal(String(url));return false});
