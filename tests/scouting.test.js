@@ -1,10 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { laneAt10, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown } = require("../src/services/scouting");
+const { laneAt10, championLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown } = require("../src/services/scouting");
 
-function sample({ mine = {}, theirs = {}, events = [], position = "MIDDLE" } = {}) {
+function sample({ mine = {}, theirs = {}, events = [], position = "MIDDLE", champion = "Ahri" } = {}) {
   return { match: { info: { queueId: 420, participants: [
-    { puuid: "player", participantId: 1, teamId: 100, teamPosition: position },
+    { puuid: "player", participantId: 1, teamId: 100, teamPosition: position, championName: champion },
     { puuid: "enemy", participantId: 6, teamId: 200, teamPosition: "MIDDLE" }
   ] } }, timeline: { info: { frames: [
     { timestamp: 540000, participantFrames: {} },
@@ -71,6 +71,24 @@ test("ignores death events with invalid or missing timestamps", () => {
   const events = [undefined, null, -1, "500000", NaN].map(timestamp =>
     ({ type: "CHAMPION_KILL", victimId: 1, timestamp }));
   assert.equal(laneAt10([sample({ events })], "player").deathRate, 0);
+});
+
+test("compares lane-at-ten deltas by champion with explicit sample limits", () => {
+  const death = { type: "CHAMPION_KILL", victimId: 1, timestamp: 400000 };
+  const weakAhri = sample({ mine: { minionsKilled: 60, jungleMinionsKilled: 2, totalGold: 3700, xp: 4400 }, events: [death] });
+  assert.deepEqual(championLaneBreakdown([sample(), weakAhri, sample(), sample({ champion: "Syndra" })], "player"), [
+    { champion: "Ahri", games: 3, csDiff: 4, goldDiff: 67, xpDiff: 67, deathRate: 33, limited: false },
+    { champion: "Syndra", games: 1, csDiff: 7, goldDiff: 200, xpDiff: 200, deathRate: 0, limited: true }
+  ]);
+});
+
+test("champion lane comparison excludes malformed frames, off-role games and missing champions", () => {
+  const malformed = sample({ mine: { xp: undefined } });
+  assert.deepEqual(championLaneBreakdown([
+    sample({ champion: "" }), sample({ position: "TOP" }), malformed, sample({ champion: "Orianna" })
+  ], "player"), [
+    { champion: "Orianna", games: 1, csDiff: 7, goldDiff: 200, xpDiff: 200, deathRate: 0, limited: true }
+  ]);
 });
 
 test("summarizes measurable takedown, death and first-ward habits before ten minutes", () => {
