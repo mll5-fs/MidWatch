@@ -35,6 +35,15 @@ test("scouting reports expose collection coverage and weak lane samples", () => 
   assert.match(app, /coverageReport\(s\?\.coverage\)/);
 });
 
+test("renders early timeline habits with their own sample and non-causal limit", () => {
+  assert.match(app, /function earlyReport\(e=\{\}\)/);
+  assert.match(app, /HABITUDES AVANT 10 MINUTES/);
+  assert.match(app, /PARTIES AVEC TAKEDOWN/);
+  assert.match(app, /1ER WARD/);
+  assert.match(app, /pas la position, la cause ni la qualité du micro-gameplay/);
+  assert.match(app, /earlyReport\(s\.early\)/);
+});
+
 test("scouting panel explains unavailable data and only loads with credentials", () => {
   const source = app.slice(app.indexOf("function scoutingPanel("), app.indexOf("function drawPlayer("));
   const context = vm.createContext({ S: { hasKey: false }, esc: value => String(value) });
