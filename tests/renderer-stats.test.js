@@ -92,3 +92,14 @@ test("renders opposing mid champion samples without causal claims", () => {
   assert.match(app, /MATCHUPS MID RÉCENTS/);
   assert.match(app, /Ils ne mesurent ni la qualité du micro-gameplay ni la cause du résultat/);
 });
+
+test("shows Wilson uncertainty and only promotes win-rate signals supported by it", () => {
+  assert.match(app, /function confidenceLabel\(interval\)/);
+  assert.match(app, /IC95/);
+  assert.match(app, /s\.interval\?\.low>=50/);
+  assert.match(app, /s\.interval\?\.high<50/);
+  assert.match(app, /incertitude d’échantillonnage, pas une prédiction/);
+  assert.match(app, /confidenceLabel\(p\.interval\)/);
+  assert.match(app, /confidenceLabel\(m\.interval\)/);
+  assert.match(app, /confidenceLabel\(x\.interval\)/);
+});

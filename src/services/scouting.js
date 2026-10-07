@@ -1,5 +1,13 @@
 const isMid = x => [x?.teamPosition, x?.individualPosition].some(v => String(v || "").toUpperCase() === "MIDDLE");
 
+function winrateInterval(wins, games) {
+  if (!Number.isInteger(wins) || !Number.isInteger(games) || games <= 0 || wins < 0 || wins > games) return null;
+  const z = 1.96, z2 = z * z, proportion = wins / games, denominator = 1 + z2 / games;
+  const center = (proportion + z2 / (2 * games)) / denominator;
+  const margin = z * Math.sqrt((proportion * (1 - proportion) + z2 / (4 * games)) / games) / denominator;
+  return { low: Math.max(0, Math.round(100 * (center - margin))), high: Math.min(100, Math.round(100 * (center + margin))) };
+}
+
 function participantForScouting(match, puuid) {
   if (match?.info?.queueId !== 420) return null;
   const player = (match.info.participants || []).find(x => x.puuid === puuid);
@@ -133,6 +141,7 @@ function patchBreakdown(matches, puuid) {
     patch: group.patch,
     games: group.games,
     winrate: Math.round(100 * group.wins / group.games),
+    interval: winrateInterval(group.wins, group.games),
     kda: +((group.kills + group.assists) / Math.max(1, group.deaths)).toFixed(2),
     limited: group.games < 3
   }));
@@ -160,9 +169,10 @@ function matchupBreakdown(matches, puuid) {
       champion: group.champion,
       games: group.games,
       winrate: Math.round(100 * group.wins / group.games),
+      interval: winrateInterval(group.wins, group.games),
       kda: +((group.kills + group.assists) / Math.max(1, group.deaths)).toFixed(2),
       limited: group.games < 3
     }));
 }
 
-module.exports = { laneAt10, championLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown };
+module.exports = { winrateInterval, laneAt10, championLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown };

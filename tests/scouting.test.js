@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { laneAt10, championLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown } = require("../src/services/scouting");
+const { winrateInterval, laneAt10, championLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown } = require("../src/services/scouting");
 
 function sample({ mine = {}, theirs = {}, events = [], position = "MIDDLE", champion = "Ahri" } = {}) {
   return { match: { info: { queueId: 420, participants: [
@@ -20,6 +20,18 @@ test("calculates lane values and matchup deltas at 10 minutes", () => {
   assert.deepEqual(laneAt10([sample()], "player"), {
     games: 1, cs: 72, gold: 4100, xp: 4800, csDiff: 7, goldDiff: 200, xpDiff: 200, deathRate: 0
   });
+});
+
+test("calculates bounded 95% Wilson intervals for small win-rate samples", () => {
+  assert.deepEqual(winrateInterval(0, 1), { low: 0, high: 79 });
+  assert.deepEqual(winrateInterval(1, 1), { low: 21, high: 100 });
+  assert.deepEqual(winrateInterval(6, 12), { low: 25, high: 75 });
+});
+
+test("rejects malformed win-rate samples instead of inventing certainty", () => {
+  for (const sample of [[0, 0], [-1, 2], [3, 2], [1.5, 2], [1, NaN]]) {
+    assert.equal(winrateInterval(...sample), null);
+  }
 });
 
 test("reports the share of games with a death before or at 10 minutes", () => {
@@ -133,8 +145,8 @@ test("compares ranked mid performance by normalized game patch", () => {
     { ...sample().match, info: { ...sample().match.info, gameVersion: "26.20.999", participants: sample().match.info.participants.map((p, i) => i ? p : { ...p, win: false, kills: 1, deaths: 1, assists: 4 }) } }
   ];
   assert.deepEqual(patchBreakdown(matches, "player"), [
-    { patch: "26.20", games: 2, winrate: 50, kda: 5.67, limited: true },
-    { patch: "26.19", games: 1, winrate: 0, kda: 1, limited: true }
+    { patch: "26.20", games: 2, winrate: 50, interval: { low: 9, high: 91 }, kda: 5.67, limited: true },
+    { patch: "26.19", games: 1, winrate: 0, interval: { low: 0, high: 79 }, kda: 1, limited: true }
   ]);
 });
 
@@ -146,7 +158,7 @@ test("excludes malformed patches, off-role games and incomplete combat data", ()
   assert.deepEqual(patchBreakdown([
     make("26.20.1"), make("unknown"), make("26.20.2", { kills: undefined }),
     make("26.20.3", { teamPosition: "TOP" })
-  ], "player"), [{ patch: "26.20", games: 1, winrate: 100, kda: 4, limited: true }]);
+  ], "player"), [{ patch: "26.20", games: 1, winrate: 100, interval: { low: 21, high: 100 }, kda: 4, limited: true }]);
 });
 
 test("summarizes results against each identified mid champion", () => {
@@ -159,8 +171,8 @@ test("summarizes results against each identified mid champion", () => {
   assert.deepEqual(matchupBreakdown([
     make("Ahri", true, 5, 2, 7), make("Ahri", false, 1, 3, 2), make("Syndra", true, 4, 0, 6)
   ], "player"), [
-    { champion: "Ahri", games: 2, winrate: 50, kda: 3, limited: true },
-    { champion: "Syndra", games: 1, winrate: 100, kda: 10, limited: true }
+    { champion: "Ahri", games: 2, winrate: 50, interval: { low: 9, high: 91 }, kda: 3, limited: true },
+    { champion: "Syndra", games: 1, winrate: 100, interval: { low: 21, high: 100 }, kda: 10, limited: true }
   ]);
 });
 
@@ -171,5 +183,5 @@ test("excludes matchup rows without a valid mid opponent or combat sample", () =
     participants: [{ ...player, ...playerOverrides }, { ...base.info.participants[1], championName: "Ahri", ...opponent }] } });
   assert.deepEqual(matchupBreakdown([
     make(), make({ championName: "" }), make({ teamPosition: "TOP" }), make({}, { assists: undefined })
-  ], "player"), [{ champion: "Ahri", games: 1, winrate: 100, kda: 5, limited: true }]);
+  ], "player"), [{ champion: "Ahri", games: 1, winrate: 100, interval: { low: 21, high: 100 }, kda: 5, limited: true }]);
 });
