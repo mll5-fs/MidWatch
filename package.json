@@ -1,6 +1,6 @@
 {
   "name": "midpulse",
-  "version": "5.1.5",
+  "version": "5.1.6",
   "private": true,
   "description": "Live midlaner tracking for pro leagues, LCK CL, LFL and OUATventure",
   "main": "src/main.js",

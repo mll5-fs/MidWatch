@@ -44,6 +44,14 @@ test("renders early timeline habits with their own sample and non-causal limit",
   assert.match(app, /earlyReport\(s\.early\)/);
 });
 
+test("renders lane-at-ten comparisons per played champion with sample limits", () => {
+  assert.match(app, /function championLaneReport\(rows=\[\]\)/);
+  assert.match(app, /championLaneReport\(stats\.championLanes\)/);
+  assert.match(app, /LANE À 10 PAR CHAMPION JOUÉ/);
+  assert.match(app, /Chaque champion a son propre échantillon/);
+  assert.match(app, /n’expliquent ni la cause ni la qualité du micro-gameplay/);
+});
+
 test("scouting panel explains unavailable data and only loads with credentials", () => {
   const source = app.slice(app.indexOf("function scoutingPanel("), app.indexOf("function drawPlayer("));
   const context = vm.createContext({ S: { hasKey: false }, esc: value => String(value) });
