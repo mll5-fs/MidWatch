@@ -26,30 +26,57 @@ function completeFrame(frame) {
     .every(key => Number.isFinite(frame[key]) && frame[key] >= 0);
 }
 
-function laneAt10(samples, puuid) {
-  const rows = [];
-  for (const { match, timeline } of samples) {
+function laneRowAt10(sample, puuid) {
+    const { match, timeline } = sample || {};
     const participants = match?.info?.participants || [];
     const player = participants.find(x => x.puuid === puuid);
     const opponent = isMid(player) && midOpponent(participants, player);
     const frame = frameAt(timeline, 10);
     const mine = frame?.participantFrames?.[player?.participantId];
     const theirs = frame?.participantFrames?.[opponent?.participantId];
-    if (!player || !opponent || !completeFrame(mine) || !completeFrame(theirs)) continue;
+    if (!player || !opponent || !completeFrame(mine) || !completeFrame(theirs)) return null;
     const cs = (mine.minionsKilled || 0) + (mine.jungleMinionsKilled || 0);
     const oppCs = (theirs.minionsKilled || 0) + (theirs.jungleMinionsKilled || 0);
     const earlyDeaths = (timeline.info?.frames || []).flatMap(x => x.events || [])
       .filter(e => e.type === "CHAMPION_KILL" && e.victimId === player.participantId &&
         Number.isFinite(e.timestamp) && e.timestamp >= 0 && e.timestamp <= 600000).length;
-    rows.push({ cs, gold: mine.totalGold || 0, xp: mine.xp || 0,
+    return { champion: String(player.championName || "").trim(), cs, gold: mine.totalGold || 0, xp: mine.xp || 0,
       csDiff: cs - oppCs, goldDiff: (mine.totalGold || 0) - (theirs.totalGold || 0),
-      xpDiff: (mine.xp || 0) - (theirs.xp || 0), earlyDeaths });
-  }
+      xpDiff: (mine.xp || 0) - (theirs.xp || 0), earlyDeaths };
+}
+
+function laneAt10(samples, puuid) {
+  const rows = (samples || []).map(sample => laneRowAt10(sample, puuid)).filter(Boolean);
   if (!rows.length) return { games: 0 };
   const avg = key => Math.round(rows.reduce((sum, row) => sum + row[key], 0) / rows.length);
   return { games: rows.length, cs: avg("cs"), gold: avg("gold"), xp: avg("xp"),
     csDiff: avg("csDiff"), goldDiff: avg("goldDiff"), xpDiff: avg("xpDiff"),
     deathRate: Math.round(100 * rows.filter(x => x.earlyDeaths > 0).length / rows.length) };
+}
+
+function championLaneBreakdown(samples, puuid) {
+  const groups = new Map();
+  for (const sample of samples || []) {
+    const row = laneRowAt10(sample, puuid);
+    if (!row?.champion) continue;
+    const group = groups.get(row.champion) || { champion: row.champion, games: 0, csDiff: 0, goldDiff: 0, xpDiff: 0, deaths: 0 };
+    group.games++;
+    group.csDiff += row.csDiff;
+    group.goldDiff += row.goldDiff;
+    group.xpDiff += row.xpDiff;
+    group.deaths += row.earlyDeaths > 0 ? 1 : 0;
+    groups.set(row.champion, group);
+  }
+  return [...groups.values()].sort((a, b) => b.games - a.games || a.champion.localeCompare(b.champion))
+    .slice(0, 6).map(group => ({
+      champion: group.champion,
+      games: group.games,
+      csDiff: Math.round(group.csDiff / group.games),
+      goldDiff: Math.round(group.goldDiff / group.games),
+      xpDiff: Math.round(group.xpDiff / group.games),
+      deathRate: Math.round(100 * group.deaths / group.games),
+      limited: group.games < 3
+    }));
 }
 
 function earlyHabits(samples, puuid) {
@@ -138,4 +165,4 @@ function matchupBreakdown(matches, puuid) {
     }));
 }
 
-module.exports = { laneAt10, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown };
+module.exports = { laneAt10, championLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown };
