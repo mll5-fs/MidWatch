@@ -73,8 +73,13 @@ function laneAt10(samples, puuid) {
   const rows = (samples || []).map(sample => laneRowAt10(sample, puuid)).filter(Boolean);
   if (!rows.length) return { games: 0 };
   const avg = key => Math.round(rows.reduce((sum, row) => sum + row[key], 0) / rows.length);
+  const median = key => {
+    const values = rows.map(row => row[key]).sort((a, b) => a - b), middle = Math.floor(values.length / 2);
+    return Math.round(values.length % 2 ? values[middle] : (values[middle - 1] + values[middle]) / 2);
+  };
   return { games: rows.length, cs: avg("cs"), gold: avg("gold"), xp: avg("xp"),
     csDiff: avg("csDiff"), goldDiff: avg("goldDiff"), xpDiff: avg("xpDiff"),
+    medianGoldDiff: median("goldDiff"), goldAheadRate: Math.round(100 * rows.filter(x => x.goldDiff > 0).length / rows.length),
     deathRate: Math.round(100 * rows.filter(x => x.earlyDeaths > 0).length / rows.length) };
 }
 
