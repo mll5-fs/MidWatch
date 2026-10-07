@@ -21,6 +21,8 @@ Scouting reports use up to 12 mid-role games from the 20 most recent Ranked Solo
 
 Every report records its collection coverage: recent match IDs requested, match payloads loaded, eligible mid games, and timelines loaded. A Riot rate limit, authentication failure, or individual payload error marks the report as partial instead of presenting it as a complete sample. A report is considered controlled when all requested history was inspected or the 12-game mid target was reached without collection errors. Lane samples below three comparable games are explicitly marked as weak.
 
+Early-habit summaries use timestamped timeline events through 10:00. They report the share of games with at least one kill/assist participation, average early takedowns, the share with a death, and the median first ward time. Each panel shows its timeline count and the ward-specific sample. These are event frequencies only: they do not infer movement, recalls, causes, positioning quality, or micro-gameplay.
+
 Patch comparisons normalize Riot's full `gameVersion` to its major/minor patch and show their own game count. Samples below three games are explicitly marked as limited; differences remain descriptive and do not establish that a patch caused a performance change.
 
 Matchup summaries group results by the opposing player assigned to mid and display their own sample size. They describe results against a champion; they do not measure matchup causality or micro-gameplay quality.
