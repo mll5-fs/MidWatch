@@ -8,6 +8,21 @@ function winrateInterval(wins, games) {
   return { low: Math.max(0, Math.round(100 * (center - margin))), high: Math.min(100, Math.round(100 * (center + margin))) };
 }
 
+function sampleWindow(matches, sampledAt = Date.now()) {
+  const rows = Array.isArray(matches) ? matches : [];
+  const now = Number.isFinite(sampledAt) ? sampledAt : Date.now();
+  const minimum = Date.UTC(2010, 0, 1), maximum = now + 86400000;
+  const valid = value => Number.isFinite(value) && value >= minimum && value <= maximum;
+  const timestamps = rows.map(match => [match?.info?.gameStartTimestamp, match?.info?.gameCreation].find(valid))
+    .filter(valid).sort((a, b) => a - b);
+  if (!timestamps.length) return { games: rows.length, datedGames: 0, partial: rows.length > 0 };
+  const oldestAt = timestamps[0], newestAt = timestamps[timestamps.length - 1];
+  const latestAgeDays = Math.max(0, Math.floor((now - newestAt) / 86400000));
+  return { games: rows.length, datedGames: timestamps.length, oldestAt, newestAt,
+    spanDays: Math.ceil((newestAt - oldestAt) / 86400000), latestAgeDays,
+    stale: latestAgeDays >= 30, partial: timestamps.length < rows.length };
+}
+
 function participantForScouting(match, puuid) {
   if (match?.info?.queueId !== 420) return null;
   const player = (match.info.participants || []).find(x => x.puuid === puuid);
@@ -175,4 +190,4 @@ function matchupBreakdown(matches, puuid) {
     }));
 }
 
-module.exports = { winrateInterval, laneAt10, championLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown };
+module.exports = { winrateInterval, sampleWindow, laneAt10, championLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown };
