@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { laneAt10, participantForScouting, patchBreakdown, matchupBreakdown } = require("../src/services/scouting");
+const { laneAt10, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown } = require("../src/services/scouting");
 
 function sample({ mine = {}, theirs = {}, events = [], position = "MIDDLE" } = {}) {
   return { match: { info: { queueId: 420, participants: [
@@ -71,6 +71,41 @@ test("ignores death events with invalid or missing timestamps", () => {
   const events = [undefined, null, -1, "500000", NaN].map(timestamp =>
     ({ type: "CHAMPION_KILL", victimId: 1, timestamp }));
   assert.equal(laneAt10([sample({ events })], "player").deathRate, 0);
+});
+
+test("summarizes measurable takedown, death and first-ward habits before ten minutes", () => {
+  const first = sample({ events: [
+    { type: "CHAMPION_KILL", killerId: 1, assistingParticipantIds: [1], victimId: 6, timestamp: 100000 },
+    { type: "CHAMPION_KILL", killerId: 2, assistingParticipantIds: [1], victimId: 6, timestamp: 200000 },
+    { type: "WARD_PLACED", creatorId: 1, timestamp: 60000 }
+  ] });
+  const second = sample({ events: [
+    { type: "CHAMPION_KILL", killerId: 6, victimId: 1, timestamp: 300000 },
+    { type: "WARD_PLACED", creatorId: 1, timestamp: 180000 }
+  ] });
+  assert.deepEqual(earlyHabits([first, second], "player"), {
+    games: 2, earlyTakedowns: 1, takedownRate: 50, deathRate: 50,
+    wardGames: 2, firstWardSeconds: 120, limited: true
+  });
+});
+
+test("early habits include the ten-minute boundary and expose missing ward samples", () => {
+  const valid = sample({ events: [
+    { type: "CHAMPION_KILL", killerId: 1, victimId: 6, timestamp: 600000 },
+    { type: "WARD_PLACED", creatorId: 1, timestamp: 600001 },
+    { type: "WARD_PLACED", creatorId: 1, timestamp: "120000" }
+  ] });
+  assert.deepEqual(earlyHabits([valid], "player"), {
+    games: 1, earlyTakedowns: 1, takedownRate: 100, deathRate: 0,
+    wardGames: 0, firstWardSeconds: null, limited: true
+  });
+});
+
+test("early habits exclude off-role games and require an identified opposing mid", () => {
+  const offRole = sample({ position: "TOP" });
+  const noOpponent = sample();
+  noOpponent.match.info.participants[1].teamPosition = "TOP";
+  assert.deepEqual(earlyHabits([offRole, noOpponent], "player"), { games: 0 });
 });
 
 test("compares ranked mid performance by normalized game patch", () => {
