@@ -136,7 +136,7 @@ async function openPlayer(id){
   if(p.accounts?.[0]&&S.hasKey){
     try{
       const stats=await window.mw.stats(p.accounts[0]);if(request!==drawerRequest)return;
-      const anchor=$("#scout-live");if(anchor)anchor.innerHTML=statReport(stats)+matchupReport(stats.matchups)+patchReport(stats.patches);
+      const anchor=$("#scout-live");if(anchor)anchor.innerHTML=statReport(stats)+championLaneReport(stats.championLanes)+matchupReport(stats.matchups)+patchReport(stats.patches);
     }catch(e){
       if(request!==drawerRequest)return;const anchor=$("#scout-live");
       if(anchor)anchor.innerHTML=`<div class="panel"><div class="panel-title">PERFORMANCE RÉCENTE</div><p class="helper">${esc(String(e.message||e).replace(/^Error invoking remote method [^:]+:\s*Error:\s*/,""))}</p></div>`;
@@ -146,6 +146,10 @@ async function openPlayer(id){
 function patchReport(patches=[]){
   if(!patches.length)return"";
   return`<div class="panel"><div class="panel-title">PERFORMANCE PAR PATCH</div><div class="champions">${patches.map(p=>`<span class="champ"><b>PATCH ${esc(p.patch)}</b> · ${esc(p.games)}G · ${esc(p.winrate)}% WR · ${esc(p.kda)} KDA${p.limited?" · ÉCHANTILLON FAIBLE":""}</span>`).join("")}</div><p class="sample-note">Chaque version utilise son propre échantillon de parties SoloQ au rôle mid. Les écarts sont descriptifs et ne prouvent pas un effet du patch.</p></div>`;
+}
+function championLaneReport(rows=[]){
+  if(!rows.length)return"";const signed=n=>`${n>0?"+":""}${n}`;
+  return`<div class="panel"><div class="panel-title">LANE À 10 PAR CHAMPION JOUÉ</div><div class="champions">${rows.map(r=>`<span class="champ"><b>${esc(r.champion)} · ${esc(r.games)}G</b> · ΔCS ${esc(signed(r.csDiff))} · ΔOR ${esc(signed(r.goldDiff))} · ΔXP ${esc(signed(r.xpDiff))} · MORT ${esc(r.deathRate)}%${r.limited?" · ÉCHANTILLON FAIBLE":""}</span>`).join("")}</div><p class="sample-note">Comparaison descriptive des snapshots complets à 10:00 face au mid adverse identifié. Chaque champion a son propre échantillon ; ces écarts n’expliquent ni la cause ni la qualité du micro-gameplay.</p></div>`;
 }
 function matchupReport(matchups=[]){
   if(!matchups.length)return"";
