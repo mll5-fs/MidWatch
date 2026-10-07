@@ -1,17 +1,23 @@
 let S={players:[],ouatPlayers:[],ouat:{},favorites:[],hasKey:false,leaguePath:"",proCacheAt:0};
-let view="OVERVIEW",liveOnly=false,busy=false,ouatDivision="ALL",liveState={},rankState={},drawerRequest=0;
+let view="OVERVIEW",liveOnly=false,busy=false,ouatDivision="ALL",liveState={},rankState={},rankMeta={},rankBusy=false,drawerRequest=0;
 const $=q=>document.querySelector(q);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const REGIONS=["ALL","LCK","LCKCL","LEC","LFL","LPL","LCS","LCP"];
 
 function rankClass(r={}){return String(r.tier||"unranked").toLowerCase()}function rankLabel(r={}){const tier=String(r.tier||"").toUpperCase();if(!tier)return"";return `${tier}${r.rank&&r.rank!=="I"?" "+r.rank:""} · ${r.leaguePoints??r.lp??0} LP`}
 function rankScore(p){const o={CHALLENGER:10,GRANDMASTER:9,MASTER:8,DIAMOND:7,EMERALD:6,PLATINUM:5,GOLD:4,SILVER:3,BRONZE:2,IRON:1};const r=p.bestRank||{};return(o[String(r.tier||"").toUpperCase()]||0)*100000+(+r.leaguePoints||+r.lp||0)}
-function applyLive(list){return(list||[]).map(p=>{const x=liveState[p.id]===undefined?p:{...p,live:liveState[p.id]};return rankState[p.id]===undefined?x:{...x,bestRank:rankState[p.id]||{}}})}function allPlayers(){return[...applyLive(S.players),...applyLive(S.ouatPlayers)]}
+function applyLive(list){return(list||[]).map(original=>{const p={...original,...rankMeta[original.id]};const x=liveState[p.id]===undefined?p:{...p,live:liveState[p.id]};return rankState[p.id]===undefined?x:{...x,bestRank:rankState[p.id]||{}}})}function allPlayers(){return[...applyLive(S.players),...applyLive(S.ouatPlayers)]}
+function rankPlaceholder(p){
+  if(!p.accounts?.[0]?.gameName||!p.accounts?.[0]?.tagLine)return"COMPTE NON RELIÉ";
+  if(p.rankStatus==="unranked")return"NON CLASSÉ SOLOQ";
+  if(p.rankStatus==="error")return"RANG INDISPONIBLE";
+  return S.hasKey?"RANG À CHARGER":"CLÉ RIOT REQUISE";
+}
 function tracked(p){return p.source==="DPM public data"||p.source==="live"||p.live===true}
 function stateOf(p){if(p.live===true)return"live";return tracked(p)?"offline":"unknown"}
 function dpmUrl(p){const a=(p.accounts||[])[0];if(p.region==="OUAT"){if(a?.gameName&&a?.tagLine)return`https://dpm.lol/${encodeURIComponent(a.gameName)}-${encodeURIComponent(a.tagLine)}`;return"https://dpm.lol/"}return`https://dpm.lol/pro/${encodeURIComponent(p.name)}`}
 
-function setView(next){view=next;liveOnly=false;$("#qTop").value="";renderNav();render()}
+function setView(next){view=next;liveOnly=false;$("#qTop").value="";renderNav();render();refreshRanks()}
 function renderNav(){
   const live=allPlayers().filter(p=>p.live===true).length;
   $("#liveNavCount").textContent=live;
@@ -50,7 +56,7 @@ function card(p){
   const status=state==="live"?"● EN GAME":state==="offline"?"○ HORS LIGNE":p.accounts?.length?"◌ COMPTE LIÉ":"◌ NON SUIVI";
   return`<article class="player-card ${state}" data-id="${esc(p.id)}">
     <div class="card-top"><span class="card-scope">${esc(p.region)}${p.division?" · "+esc(p.division):""}</span><button class="star-btn ${fav?"on":""}" data-star="${esc(p.id)}">★</button></div>
-    <div class="player-main">${avatar(p)}<div><div class="player-name-line"><div class="player-name">${esc(p.name)}</div>${rank?`<span class="elo-badge ${rankClass(p.bestRank)}">${esc(rank)}</span>`:"<span class=\"elo-badge unranked\">NON CLASSÉ</span>"}</div><div class="player-team">${esc(p.team)}</div></div></div>
+    <div class="player-main">${avatar(p)}<div><div class="player-name-line"><div class="player-name">${esc(p.name)}</div>${rank?`<span class="elo-badge ${rankClass(p.bestRank)}">${esc(rank)}</span>`:`<span class="elo-badge unranked">${esc(rankPlaceholder(p))}</span>`}</div><div class="player-team">${esc(p.team)}</div></div></div>
     <div class="card-bottom"><span class="tag ${state}">${status}</span>${rank?`<span class="tag rank">${esc(rank)}</span>`:""}${p.accounts?.[0]?.tagLine?`<span class="tag">#${esc(p.accounts[0].tagLine)}</span>`:""}</div>
     <span class="status-light ${state}"></span>
   </article>`;
@@ -62,7 +68,7 @@ function bindCards(){
 function ouatBrowser(players){
  const rows=[...players].sort((a,b)=>rankScore(b)-rankScore(a)||String(a.team||"").localeCompare(String(b.team||"")));
  return `<section class="scout-board"><div class="scout-board-head"><span>JOUEUR</span><span>ÉQUIPE</span><span>DIVISION</span><span>SOLOQ</span><span>RIOT ID</span><span>STATUT</span></div>
- ${rows.map((p,i)=>{const a=(p.accounts||[])[0],state=stateOf(p),rank=rankLabel(p.bestRank);return`<button class="scout-row" data-id="${esc(p.id)}"><span class="scout-player"><em>${String(i+1).padStart(2,"0")}</em>${avatar(p,"ouat-avatar")}<strong>${esc(p.name)}</strong></span><span class="scout-team">${esc(p.team||"—")}</span><span><i>${esc(p.division||"—")}</i></span><span>${rank?`<b class="elo-badge ${rankClass(p.bestRank)}">${esc(rank)}</b>`:'<b class="elo-badge unranked">NON CLASSÉ</b>'}</span><span class="scout-riot">${a?.gameName?`${esc(a.gameName)}#${esc(a.tagLine||"")}`:"Non relié"}</span><span class="scout-status ${state}">${state==="live"?"● EN GAME":a?.gameName?"● SUIVI":"○ INCOMPLET"}</span></button>`}).join("")}</section>`;
+ ${rows.map((p,i)=>{const a=(p.accounts||[])[0],state=stateOf(p),rank=rankLabel(p.bestRank);return`<button class="scout-row" data-id="${esc(p.id)}"><span class="scout-player"><em>${String(i+1).padStart(2,"0")}</em>${avatar(p,"ouat-avatar")}<strong>${esc(p.name)}</strong></span><span class="scout-team">${esc(p.team||"—")}</span><span><i>${esc(p.division||"—")}</i></span><span>${rank?`<b class="elo-badge ${rankClass(p.bestRank)}">${esc(rank)}</b>`:`<b class="elo-badge unranked">${esc(rankPlaceholder(p))}</b>`}</span><span class="scout-riot">${a?.gameName?`${esc(a.gameName)}#${esc(a.tagLine||"")}`:"Non relié"}</span><span class="scout-status ${state}">${state==="live"?"● EN GAME":a?.gameName?"● SUIVI":"○ INCOMPLET"}</span></button>`}).join("")}</section>`;
 }
 
 function hero(){
@@ -191,12 +197,16 @@ function settings(){
   $("#pick").onclick=async()=>{try{S.leaguePath=await window.mw.pickLeague();$("#lolpath").textContent=S.leaguePath?"✓ "+S.leaguePath:"Installation non détectée"}catch(e){$("#lolpath").textContent=e.message}};
 }
 async function refreshRanks(){
-  if(!S.hasKey)return;
+  if(!S.hasKey||rankBusy)return;
+  rankBusy=true;
   try{
-    const r=await window.mw.rankBatch();
-    for(const u of r.updates||[]){if(u.rank!==undefined)rankState[u.id]=u.rank}
+    const visible=[...document.querySelectorAll(".player-card,.scout-row")].filter(node=>{
+      const rect=node.getBoundingClientRect();return rect.bottom>0&&rect.top<window.innerHeight;
+    }).map(node=>node.dataset.id);
+    const r=await window.mw.rankBatch(visible);
+    for(const u of r.updates||[]){if(u.rank!==undefined)rankState[u.id]=u.rank;rankMeta[u.id]={rankStatus:u.status,rankCheckedAt:u.checkedAt,rankError:u.error}}
     render();
-  }catch(_){}
+  }catch(_){}finally{rankBusy=false}
 }
 async function refreshLive(){
   if(!S.hasKey)return;
@@ -239,5 +249,5 @@ window.addEventListener("keydown",e=>{
   if(S.hasKey)try{S.hasKey=await window.mw.keyCheck()}catch(_){S.hasKey=false}
   renderNav();render();status();
   setTimeout(()=>{if(!S.proCacheAt)refresh()},700);setTimeout(refreshLive,1200);setTimeout(refreshRanks,1800);
-  setInterval(refreshLive,20000);setInterval(refreshRanks,30000);setInterval(async()=>{if(busy)return;try{const r=await window.mw.refreshPros();if(r.players?.length){S.players=r.players;S.proCacheAt=r.at;renderNav();render()}}catch(_){}},120000);
+  setInterval(refreshLive,20000);setInterval(refreshRanks,20000);setInterval(async()=>{if(busy)return;try{const r=await window.mw.refreshPros();if(r.players?.length){S.players=r.players;S.proCacheAt=r.at;renderNav();render()}}catch(_){}},120000);
 })();
