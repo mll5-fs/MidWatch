@@ -103,3 +103,13 @@ test("shows Wilson uncertainty and only promotes win-rate signals supported by i
   assert.match(app, /confidenceLabel\(m\.interval\)/);
   assert.match(app, /confidenceLabel\(x\.interval\)/);
 });
+
+test("shows the real match period, timestamp coverage and stale-data warning", () => {
+  assert.match(app, /function sampleWindowReport\(w=\{\}\)/);
+  assert.match(app, /sampleWindowReport\(s\.window\)/);
+  assert.match(app, /PÉRIODE ANALYSÉE/);
+  assert.match(app, /DONNÉES ANCIENNES/);
+  assert.match(app, /parties datées/);
+  assert.match(app, /datation partielle/);
+  assert.match(app, /dernière partie il y a/);
+});

@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { winrateInterval, laneAt10, championLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown } = require("../src/services/scouting");
+const { winrateInterval, sampleWindow, laneAt10, championLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown } = require("../src/services/scouting");
 
 function sample({ mine = {}, theirs = {}, events = [], position = "MIDDLE", champion = "Ahri" } = {}) {
   return { match: { info: { queueId: 420, participants: [
@@ -32,6 +32,26 @@ test("rejects malformed win-rate samples instead of inventing certainty", () => 
   for (const sample of [[0, 0], [-1, 2], [3, 2], [1.5, 2], [1, NaN]]) {
     assert.equal(winrateInterval(...sample), null);
   }
+});
+
+test("reports the real dated window and age of the analyzed match sample", () => {
+  const day = 86400000, now = Date.UTC(2026, 9, 7);
+  assert.deepEqual(sampleWindow([
+    { info: { gameCreation: now - 40 * day } },
+    { info: { gameStartTimestamp: now - 5 * day, gameCreation: now - 6 * day } },
+    { info: { gameStartTimestamp: now + 2 * day, gameCreation: now - 20 * day } }
+  ], now), { games: 3, datedGames: 3, oldestAt: now - 40 * day, newestAt: now - 5 * day,
+    spanDays: 35, latestAgeDays: 5, stale: false, partial: false });
+});
+
+test("marks old or partially dated samples without accepting impossible timestamps", () => {
+  const day = 86400000, now = Date.UTC(2026, 9, 7);
+  assert.deepEqual(sampleWindow([
+    { info: { gameCreation: now - 31 * day } }, { info: { gameCreation: "invalid" } },
+    { info: { gameStartTimestamp: now + 2 * day } }
+  ], now), { games: 3, datedGames: 1, oldestAt: now - 31 * day, newestAt: now - 31 * day,
+    spanDays: 0, latestAgeDays: 31, stale: true, partial: true });
+  assert.deepEqual(sampleWindow([{ info: {} }], now), { games: 1, datedGames: 0, partial: true });
 });
 
 test("reports the share of games with a death before or at 10 minutes", () => {

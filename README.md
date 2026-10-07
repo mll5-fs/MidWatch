@@ -31,6 +31,8 @@ Matchup summaries group results by the opposing player assigned to mid and displ
 
 Observed win rates include a 95% Wilson score interval for the overall report, played champions, opposing champions and patches. This interval makes the uncertainty of small samples visible; it is not a prediction. Positive or negative form is promoted as a scouting signal only when the full interval is respectively at or above 50%, or below 50%.
 
+Reports show the actual oldest and newest match timestamps in the retained mid sample, how many matches were successfully dated, and the age of the latest game. A latest game at least 30 days old is explicitly marked as stale, so an inactive account is not presented as current form.
+
 The bundled pro roster is a fallback. Public roster/SoloQ sources can change independently of MidWatch. OUATventure rosters are imported live rather than hard-coded because amateur teams and accounts can change during a season.
 
 Rank loading prioritizes the current view, caches successful results for 15 minutes, and follows Riot's `Retry-After` delay after an HTTP 429. Replacing an expired API key immediately retries previously failed ranks while retaining the last verified value. Riot documents personal-key limits of 20 requests per second and 100 every two minutes; limits remain enforced per region: https://developer.riotgames.com/docs/portal (checked 2026-10-07).
