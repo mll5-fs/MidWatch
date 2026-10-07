@@ -25,6 +25,8 @@ Matchup summaries group results by the opposing player assigned to mid and displ
 
 The bundled pro roster is a fallback. Public roster/SoloQ sources can change independently of MidWatch. OUATventure rosters are imported live rather than hard-coded because amateur teams and accounts can change during a season.
 
+Rank loading prioritizes the current view, caches successful results for 15 minutes, and follows Riot's `Retry-After` delay after an HTTP 429. Replacing an expired API key immediately retries previously failed ranks while retaining the last verified value. Riot documents personal-key limits of 20 requests per second and 100 every two minutes; limits remain enforced per region: https://developer.riotgames.com/docs/portal (checked 2026-10-07).
+
 LPL players may use Chinese servers that are not exposed through the global Riot API; live detection and spectating can therefore be unavailable for those accounts.
 
 MidWatch is an independent community project and is not endorsed by Riot Games, DPM, OUAT or LEA.

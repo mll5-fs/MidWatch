@@ -15,6 +15,16 @@ function hydrate(players, cache = {}) {
   });
 }
 
+function resetErrors(cache = {}) {
+  for (const entry of Object.values(cache)) {
+    if (entry?.status !== "error") continue;
+    entry.status = entry.rank ? "ranked" : "pending";
+    entry.nextCheck = 0;
+    delete entry.error;
+  }
+  return cache;
+}
+
 async function loadBatch(riot, players, { cache = {}, accountCache = {}, priorityIds = [], now = Date.now() } = {}) {
   const priority = new Set(priorityIds);
   const candidates = players.filter(player => {
@@ -26,6 +36,7 @@ async function loadBatch(riot, players, { cache = {}, accountCache = {}, priorit
     (cache[accountKey(a.accounts[0])]?.checkedAt || 0) - (cache[accountKey(b.accounts[0])]?.checkedAt || 0));
   const updates = [];
   let retryAt = 0;
+  let blockedStatus = 0;
   const seen = new Set();
   for (const player of candidates) {
     const account = player.accounts[0], key = accountKey(account);
@@ -45,9 +56,10 @@ async function loadBatch(riot, players, { cache = {}, accountCache = {}, priorit
       const rank = solo ? { tier: solo.tier, rank: solo.rank, leaguePoints: solo.leaguePoints } : null;
       cache[key] = { rank, status: solo ? "ranked" : "unranked", checkedAt: now, nextCheck: now + TTL };
     } catch (error) {
-      cache[key] = { ...cache[key], status: "error", error: String(error.message || error), nextCheck: now + RETRY };
+      const delay = error.status === 429 && Number.isFinite(error.retryAfterMs) && error.retryAfterMs > 0 ? error.retryAfterMs : RETRY;
+      cache[key] = { ...cache[key], status: "error", error: String(error.message || error), nextCheck: now + delay };
       if (error.status === 404) delete accountCache[key];
-      if ([429, 401, 403].includes(error.status)) retryAt = now + RETRY;
+      if ([429, 401, 403].includes(error.status)) { retryAt = now + delay; blockedStatus = error.status; }
     }
     for (const linked of players.filter(p => p.accounts?.[0] && accountKey(p.accounts[0]) === key)) {
       const entry = cache[key];
@@ -55,7 +67,7 @@ async function loadBatch(riot, players, { cache = {}, accountCache = {}, priorit
     }
     if (retryAt) break;
   }
-  return { updates, checked: seen.size, total: players.length, retryAt, cache, accountCache };
+  return { updates, checked: seen.size, total: players.length, retryAt, blockedStatus, cache, accountCache };
 }
 
-module.exports = { accountKey, hydrate, loadBatch };
+module.exports = { accountKey, hydrate, resetErrors, loadBatch };

@@ -1,9 +1,10 @@
 const{net}=require("electron");
+const {retryAfterMs}=require("./retry-after");
 
-function friendly(status,raw=""){
+function friendly(status,raw="",delay=0){
   const t=String(raw||"");
   if(status===401||status===403||/unknown apikey|api key/i.test(t))return new Error("Clé Riot invalide ou expirée. Génère une nouvelle clé sur le Riot Developer Portal puis remplace-la dans Settings.");
-  if(status===429)return new Error("Limite Riot API atteinte. Réessaie dans quelques secondes.");
+  if(status===429)return new Error(`Limite Riot API atteinte. Reprise dans ${Math.max(1,Math.ceil(delay/1000))} s.`);
   return new Error(t||`Riot API ${status}`);
 }
 async function json(url,key){
@@ -11,9 +12,9 @@ async function json(url,key){
   try{
     const r=await net.fetch(url,{headers:{"X-Riot-Token":key,"User-Agent":"MidWatch/2.1"},signal:c.signal});
     let d={};try{d=await r.json()}catch(_){}
-    if(!r.ok){const e=friendly(r.status,d?.status?.message);e.status=r.status;throw e}
+    if(!r.ok){const delay=retryAfterMs(r.headers.get("retry-after")),e=friendly(r.status,d?.status?.message,delay);e.status=r.status;e.retryAfterMs=delay;throw e}
     return d;
-  }finally{clearTimeout(t)}
+  }catch(e){if(e?.name==="AbortError")throw new Error("Riot API n’a pas répondu dans les 12 secondes.");throw e}finally{clearTimeout(t)}
 }
 function routeForPlatform(p=""){p=p.toUpperCase();if(["EUW1","EUN1","TR1","RU"].includes(p))return"europe";if(["KR","JP1"].includes(p))return"asia";if(["NA1","BR1","LA1","LA2"].includes(p))return"americas";if(["SG2","TW2","VN2","PH2","TH2"].includes(p))return"sea";return"europe"}
 class Riot{

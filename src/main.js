@@ -18,7 +18,8 @@ async function playerStats(a){
 }
 
 async function rankBatch(priorityIds=[]){
-  if(!key()||Date.now()<rankRetryAt)return{updates:[],checked:0};
+  if(!key())return{updates:[],checked:0};
+  if(Date.now()<rankRetryAt)return{updates:[],checked:0,retryAt:rankRetryAt};
   if(rankInFlight)return rankInFlight;
   rankInFlight=(async()=>{
     const saved=store.get("ouat",{}),o=saved.players?.length?saved:bundledOuat;
@@ -26,7 +27,7 @@ async function rankBatch(priorityIds=[]){
     const result=await ranks.loadBatch(new Riot(key()),players,{cache:store.get("rankCache",{}),accountCache:store.get("riotAccountCache",{}),priorityIds:Array.isArray(priorityIds)?priorityIds.slice(0,100):[]});
     store.set("rankCache",result.cache);store.set("riotAccountCache",result.accountCache);
     rankRetryAt=result.retryAt;
-    return{updates:result.updates,checked:result.checked,total:result.total,retryAt:result.retryAt};
+    return{updates:result.updates,checked:result.checked,total:result.total,retryAt:result.retryAt,blockedStatus:result.blockedStatus};
   })();
   try{return await rankInFlight}finally{rankInFlight=null}
 }
@@ -60,7 +61,7 @@ async function liveBatch(){
 function data(){const saved=store.get("ouat",{}),o=(Array.isArray(saved.players)&&saved.players.length)?saved:bundledOuat;return{version:app.getVersion(),players:ranks.hydrate(currentPros(),store.get("rankCache",{})),ouatPlayers:ranks.hydrate(applyOverrides(o.players||[]),store.get("rankCache",{})),ouat:{url:o.url||"",season:o.season||"",status:o.status||"",start:o.start||"",end:o.end||"",teams:o.teams||0,warning:o.warning||"",updatedAt:o.updatedAt||0,source:o.source||""},favorites:store.get("favorites",[]),hasKey:!!key(),leaguePath:spectate.detect(store.get("leaguePath","")),proCacheAt:store.get("proCacheAt",0)}}
 ipcMain.handle("app:data",()=>data());
 ipcMain.handle("favorite:toggle",(_e,id)=>{let f=store.get("favorites",[]);f=f.includes(id)?f.filter(x=>x!==id):[...f,id];store.set("favorites",f);return f});
-ipcMain.handle("settings:key",async(_e,v)=>{const next=String(v||"").trim();if(!next){store.set("riotKey","");return false}await new Riot(next).validate();store.set("riotKey",next);return true});ipcMain.handle("riot:keycheck",async()=>{if(!key())return false;try{await new Riot(key()).validate();return true}catch(_){return false}});
+ipcMain.handle("settings:key",async(_e,v)=>{const next=String(v||"").trim();if(!next){store.set("riotKey","");return false}await new Riot(next).validate();store.set("riotKey",next);rankRetryAt=0;store.set("rankCache",ranks.resetErrors(store.get("rankCache",{})));return true});ipcMain.handle("riot:keycheck",async()=>{if(!key())return false;try{await new Riot(key()).validate();return true}catch(_){return false}});
 ipcMain.handle("account:override",(_e,id,a)=>{const all=store.get("accountOverrides",{}),gameName=String(a?.gameName||"").trim(),tagLine=String(a?.tagLine||"").trim(),platform=String(a?.platform||"EUW1").toUpperCase();if(!gameName||!tagLine)throw new Error("Riot ID incomplet.");all[id]={gameName,tagLine,platform,manual:true};store.set("accountOverrides",all);return all[id]});ipcMain.handle("account:overrideClear",(_e,id)=>{const all=store.get("accountOverrides",{});delete all[id];store.set("accountOverrides",all);return true});
 ipcMain.handle("settings:pickLeague",async()=>{const r=await dialog.showOpenDialog(mainWindow,{title:"Choisis le dossier League of Legends",properties:["openDirectory"]});if(r.canceled||!r.filePaths[0])return store.get("leaguePath","");let root=r.filePaths[0];if(path.basename(root).toLowerCase()==="game")root=path.dirname(root);if(!spectate.detect(root))throw new Error("Ce dossier ne contient pas Game\\League of Legends.exe");store.set("leaguePath",root);return root});
 ipcMain.handle("pros:refresh",async()=>{const r=await pros.refreshPros();if(r.players.length){store.set("proCache",r.players);store.set("proCacheAt",Date.now())}return{...r,at:Date.now()}});

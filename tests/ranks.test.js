@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { loadBatch, hydrate, accountKey } = require("../src/services/ranks");
+const { loadBatch, hydrate, resetErrors, accountKey } = require("../src/services/ranks");
 const player = (id, region = "OUAT") => ({ id, region, accounts: [{ gameName: id, tagLine: "EUW", platform: "EUW1" }] });
 const solo = { queueType: "RANKED_SOLO_5x5", tier: "DIAMOND", rank: "II", leaguePoints: 0 };
 function mock(entries = [solo]) {
@@ -43,6 +43,27 @@ test("rate limits stop the batch and retain the last known rank", async () => {
   assert.equal(result.checked, 1);
   assert.equal(result.retryAt, 121000);
   assert.equal(result.updates[0].rank.tier, "DIAMOND");
+});
+test("rate limits honor Riot Retry-After instead of a fixed cooldown", async () => {
+  const p = player("limited"), riot = mock();
+  riot.ranked = async () => { throw Object.assign(new Error("Rate limited"), { status: 429, retryAfterMs: 17000 }); };
+  const result = await loadBatch(riot, [p, player("other")], { now: 1000 });
+  assert.equal(result.retryAt, 18000);
+  assert.equal(result.blockedStatus, 429);
+  assert.equal(result.cache[accountKey(p.accounts[0])].nextCheck, 18000);
+  assert.equal(result.checked, 1);
+});
+test("a validated replacement key makes failed ranks immediately eligible again", () => {
+  const ranked = { rank: solo, status: "error", error: "expired", nextCheck: 999999 };
+  const unknown = { status: "error", error: "expired", nextCheck: 999999 };
+  const healthy = { rank: solo, status: "ranked", nextCheck: 999999 };
+  const cache = resetErrors({ ranked, unknown, healthy });
+  assert.equal(cache.ranked.status, "ranked");
+  assert.equal(cache.unknown.status, "pending");
+  assert.equal(cache.ranked.nextCheck, 0);
+  assert.equal(cache.unknown.nextCheck, 0);
+  assert.equal(cache.healthy.nextCheck, 999999);
+  assert.equal(cache.ranked.error, undefined);
 });
 test("invalid account IDs are retried later without keeping a stale PUUID", async () => {
   const p = player("renamed"), key = accountKey(p.accounts[0]), riot = mock();

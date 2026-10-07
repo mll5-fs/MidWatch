@@ -19,6 +19,13 @@ test("rank labels distinguish pending, missing credentials, error and confirmed 
   assert.equal(context.rankPlaceholder({ accounts: [] }), "COMPTE NON RELIÉ");
 });
 
+test("rank refresh prioritizes the current view and reacts to Riot cooldowns", () => {
+  assert.match(app, /listForView\(\)\.slice\(0,20\)/);
+  assert.match(app, /rankCooldownAt=Number\(r\.retryAt\)\|\|0/);
+  assert.match(app, /\[401,403\]\.includes\(r\.blockedStatus\)/);
+  assert.match(app, /Rechargement des rangs lancé/);
+});
+
 test("scouting panel explains unavailable data and only loads with credentials", () => {
   const source = app.slice(app.indexOf("function scoutingPanel("), app.indexOf("function drawPlayer("));
   const context = vm.createContext({ S: { hasKey: false }, esc: value => String(value) });
