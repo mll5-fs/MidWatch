@@ -56,6 +56,14 @@ test("renders a separate lane-at-five sample without causal gameplay claims", ()
   assert.match(app, /ces valeurs sont descriptives et n’expliquent pas la cause de l’écart/);
 });
 
+test("renders paired five-to-ten lane progression with its own sample limit", () => {
+  assert.match(app, /ÉVOLUTION DE LANE 5 → 10/);
+  assert.match(app, /partie\$\{t\.games>1\?"s":""\} appariée/);
+  assert.match(app, /ÉCART D’OR AMÉLIORÉ/);
+  assert.match(app, /ne prouve ni la cause ni la qualité du micro-gameplay/);
+  assert.match(app, /laneTransitionReport\(e\.laneTransition\)/);
+});
+
 test("renders early timeline habits with their own sample and non-causal limit", () => {
   assert.match(app, /function earlyReport\(e=\{\}\)/);
   assert.match(app, /HABITUDES AVANT 10 MINUTES/);
