@@ -91,7 +91,9 @@ async function loadBatch(riot, players, { cache = {}, accountCache = {}, priorit
     const state = playerRankState(player, cache);
     updates.push({ id: player.id, rank: state.rank, status: state.status, checkedAt: state.checkedAt, error: state.error });
   }
-  return { updates, checked: seen.size, total: players.length, retryAt, blockedStatus, cache, accountCache };
+  const candidateAccounts = new Set(candidates.map(({ account }) => accountKey(account))).size;
+  return { updates, checked: seen.size, remaining: Math.max(0, candidateAccounts - seen.size),
+    total: players.length, retryAt, blockedStatus, cache, accountCache };
 }
 
 module.exports = { accountKey, playerRankState, hydrate, resetErrors, loadBatch };

@@ -26,6 +26,12 @@ test("rank refresh prioritizes the current view and reacts to Riot cooldowns", (
   assert.match(app, /Rechargement des rangs lancé/);
 });
 
+test("rank loading quickly drains remaining batches without bypassing Riot cooldowns", () => {
+  assert.match(app, /rankFollowup=setTimeout\(refreshRanks,r\.deferred\?2000:4000\)/);
+  assert.match(app, /!r\.retryAt&&\(r\.deferred\|\|r\.remaining>0\)/);
+  assert.match(app, /clearTimeout\(rankFollowup\)/);
+});
+
 test("scouting reports expose collection coverage and weak lane samples", () => {
   assert.match(app, /function coverageReport\(c=\{\}\)/);
   assert.match(app, /ÉCHANTILLON PARTIEL/);

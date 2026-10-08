@@ -38,7 +38,7 @@ async function rankBatch(priorityIds=[]){
     const result=await ranks.loadBatch(new Riot(key()),players,{cache:store.get("rankCache",{}),accountCache:store.get("riotAccountCache",{}),priorityIds:Array.isArray(priorityIds)?priorityIds.slice(0,100):[]});
     store.set("rankCache",result.cache);store.set("riotAccountCache",result.accountCache);
     rankRetryAt=result.retryAt;
-    return{updates:result.updates,checked:result.checked,total:result.total,retryAt:result.retryAt,blockedStatus:result.blockedStatus};
+    return{updates:result.updates,checked:result.checked,remaining:result.remaining,total:result.total,retryAt:result.retryAt,blockedStatus:result.blockedStatus};
   })();
   try{return await rankInFlight}finally{rankInFlight=null}
 }
