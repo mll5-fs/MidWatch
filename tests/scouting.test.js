@@ -194,8 +194,10 @@ test("compares ranked mid performance by normalized game patch", () => {
     { ...sample().match, info: { ...sample().match.info, gameVersion: "26.20.999", participants: sample().match.info.participants.map((p, i) => i ? p : { ...p, win: false, kills: 1, deaths: 1, assists: 4 }) } }
   ];
   assert.deepEqual(patchBreakdown(matches, "player"), [
-    { patch: "26.20", games: 2, winrate: 50, interval: { low: 9, high: 91 }, kda: 5.67, limited: true },
-    { patch: "26.19", games: 1, winrate: 0, interval: { low: 0, high: 79 }, kda: 1, limited: true }
+    { patch: "26.20", games: 2, winrate: 50, interval: { low: 9, high: 91 }, kda: 5.67, limited: true,
+      champions: [{ name: "Ahri", games: 2 }] },
+    { patch: "26.19", games: 1, winrate: 0, interval: { low: 0, high: 79 }, kda: 1, limited: true,
+      champions: [{ name: "Ahri", games: 1 }] }
   ]);
 });
 
@@ -207,7 +209,19 @@ test("excludes malformed patches, off-role games and incomplete combat data", ()
   assert.deepEqual(patchBreakdown([
     make("26.20.1"), make("unknown"), make("26.20.2", { kills: undefined }),
     make("26.20.3", { teamPosition: "TOP" })
-  ], "player"), [{ patch: "26.20", games: 1, winrate: 100, interval: { low: 21, high: 100 }, kda: 4, limited: true }]);
+  ], "player"), [{ patch: "26.20", games: 1, winrate: 100, interval: { low: 21, high: 100 }, kda: 4, limited: true,
+    champions: [{ name: "Ahri", games: 1 }] }]);
+});
+
+test("patch comparison exposes the leading champion mix with deterministic limits", () => {
+  const base = sample().match;
+  const make = championName => ({ info: { ...base.info, gameVersion: "26.20.1",
+    participants: [{ ...base.info.participants[0], championName, win: true, kills: 2, deaths: 1, assists: 3 }, base.info.participants[1]] } });
+  assert.deepEqual(patchBreakdown([
+    make("Ahri"), make("Syndra"), make("Ahri"), make("Orianna"), make("Viktor")
+  ], "player")[0].champions, [
+    { name: "Ahri", games: 2 }, { name: "Orianna", games: 1 }, { name: "Syndra", games: 1 }
+  ]);
 });
 
 test("summarizes results against each identified mid champion", () => {

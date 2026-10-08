@@ -110,7 +110,7 @@ function renderPatchSection(){
   if(!players.length){$("#grid").innerHTML='<div class="panel" style="grid-column:1/-1"><p>Aucun joueur OUAT avec un compte relié ne correspond à la recherche.</p></div>';return;}
   $("#grid").innerHTML=`<div class="panel" style="grid-column:1/-1"><label for="patchPlayer">Joueur OUAT</label><select id="patchPlayer" class="fullinput">${players.map(p=>`<option value="${esc(p.id)}" ${p.id===patchPlayerId?"selected":""}>${esc(p.name)} · ${esc(p.team)} · ${esc(p.accounts[0].gameName)}#${esc(p.accounts[0].tagLine)}</option>`).join("")}</select><button id="analyzePatch" class="action primary" ${patchLoading||!S.hasKey||!players.length?"disabled":""}>${patchLoading?"Analyse en cours…":"Analyser les patchs"}</button><div id="patchResults">${!S.hasKey?'<p>Configure une clé Riot valide dans Réglages.</p>':patchError?`<p>${esc(patchError)}</p>`:patchStats?coverageReport(patchStats.coverage)+sampleWindowReport(patchStats.window)+patchReport(patchStats.patches)+(!patchStats.patches?.length?'<p>Aucune partie mid avec un patch exploitable dans l’historique disponible.</p>':""):"<p>Sélectionne un joueur puis lance l’analyse. Les groupes affichent le nombre de parties, le winrate avec IC95 et le KDA.</p>"}</div></div>`;
   $("#patchPlayer").onchange=()=>{patchRequest++;patchLoading=false;patchPlayerId=$("#patchPlayer").value;patchStats=null;patchError="";render()};
-  $("#analyzePatch").onclick=async()=>{const player=allPlayers().find(p=>p.id===patchPlayerId);if(!player||!S.hasKey||patchLoading)return;const request=++patchRequest;patchLoading=true;patchError="";render();try{const stats=await window.mw.stats(player.accounts[0]);if(request!==patchRequest||view!=="PATCHES")return;patchStats=stats;}catch(e){if(request!==patchRequest||view!=="PATCHES")return;patchError=String(e.message||e);}finally{if(request===patchRequest&&view==="PATCHES"){patchLoading=false;render()}}};
+  $("#analyzePatch").onclick=async()=>{const player=allPlayers().find(p=>p.id===patchPlayerId);if(!player||!S.hasKey||patchLoading)return;const request=++patchRequest;patchLoading=true;patchError="";render();try{const stats=await window.mw.patchStats(player.accounts[0]);if(request!==patchRequest||view!=="PATCHES")return;patchStats=stats;}catch(e){if(request!==patchRequest||view!=="PATCHES")return;patchError=String(e.message||e);}finally{if(request===patchRequest&&view==="PATCHES"){patchLoading=false;render()}}};
 }
 
 function render(){
@@ -158,7 +158,7 @@ async function openPlayer(id){
 }
 function patchReport(patches=[]){
   if(!patches.length)return"";
-  return`<div class="panel"><div class="panel-title">PERFORMANCE PAR PATCH</div><div class="champions">${patches.map(p=>`<span class="champ"><b>PATCH ${esc(p.patch)}</b> · ${esc(p.games)}G · ${esc(p.winrate)}% WR${confidenceLabel(p.interval)} · ${esc(p.kda)} KDA${p.limited?" · ÉCHANTILLON FAIBLE":""}</span>`).join("")}</div><p class="sample-note">Chaque version utilise son propre échantillon de parties SoloQ au rôle mid. Les écarts sont descriptifs et ne prouvent pas un effet du patch.</p></div>`;
+  return`<div class="panel"><div class="panel-title">PERFORMANCE PAR PATCH</div><div class="champions">${patches.map(p=>{const pool=(p.champions||[]).map(c=>`${esc(c.name)} ${esc(c.games)}G`).join(" · ");return`<span class="champ"><b>PATCH ${esc(p.patch)}</b> · ${esc(p.games)}G · ${esc(p.winrate)}% WR${confidenceLabel(p.interval)} · ${esc(p.kda)} KDA${pool?`<small>CHAMPIONS · ${pool}</small>`:""}${p.limited?" · ÉCHANTILLON FAIBLE":""}</span>`}).join("")}</div><p class="sample-note">Chaque version utilise son propre échantillon de parties SoloQ au rôle mid. Le pool de champions aide à repérer un changement de contexte ; les écarts restent descriptifs et ne prouvent pas un effet du patch.</p></div>`;
 }
 function championLaneReport(rows=[]){
   if(!rows.length)return"";const signed=n=>`${n>0?"+":""}${n}`;
@@ -178,7 +178,7 @@ function accountHtml(a,i){
 }
 function coverageReport(c={}){
   if(!c.requested)return"";
-  const reason=c.stop==="rate_limit"?" · collecte arrêtée par la limite Riot":c.stop==="auth"?" · clé Riot refusée":c.targetReached?" · objectif de 12 parties mid atteint":"";
+  const reason=c.stop==="rate_limit"?" · collecte arrêtée par la limite Riot":c.stop==="auth"?" · clé Riot refusée":c.targetReached?` · objectif de ${esc(c.target)} parties mid atteint`:"";
   const timelines=c.timelineAttempts?` · timelines ${c.timelinesLoaded}/${c.timelineAttempts}`:"";
   return`<p class="sample-note"><b>${c.partial?"ÉCHANTILLON PARTIEL":"COUVERTURE CONTRÔLÉE"}</b> · historique chargé ${c.matchesLoaded}/${c.requested} · parties mid ${c.midGames}${timelines}${reason}</p>`;
 }

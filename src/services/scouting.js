@@ -173,12 +173,14 @@ function patchBreakdown(matches, puuid) {
     const values = [player.kills, player.deaths, player.assists];
     if (!values.every(value => Number.isFinite(value) && value >= 0) || typeof player.win !== "boolean") continue;
     const patch = `${Number(version[1])}.${Number(version[2])}`;
-    const group = groups.get(patch) || { patch, games: 0, wins: 0, kills: 0, deaths: 0, assists: 0 };
+    const group = groups.get(patch) || { patch, games: 0, wins: 0, kills: 0, deaths: 0, assists: 0, champions: new Map() };
     group.games++;
     group.wins += player.win ? 1 : 0;
     group.kills += player.kills;
     group.deaths += player.deaths;
     group.assists += player.assists;
+    const champion = String(player.championName || "").trim();
+    if (champion) group.champions.set(champion, (group.champions.get(champion) || 0) + 1);
     groups.set(patch, group);
   }
   return [...groups.values()].sort((a, b) => {
@@ -190,7 +192,9 @@ function patchBreakdown(matches, puuid) {
     winrate: Math.round(100 * group.wins / group.games),
     interval: winrateInterval(group.wins, group.games),
     kda: +((group.kills + group.assists) / Math.max(1, group.deaths)).toFixed(2),
-    limited: group.games < 3
+    limited: group.games < 3,
+    champions: [...group.champions].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, 3).map(([name, games]) => ({ name, games }))
   }));
 }
 

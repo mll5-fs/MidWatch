@@ -98,8 +98,14 @@ test("ignores stale profile and statistics responses after drawer navigation", (
 test("renders patch samples and their statistical limits", () => {
   assert.match(app, /function patchReport\(patches=\[\]\)/);
   assert.match(app, /patchReport\(stats\.patches\)/);
+  assert.match(app, /CHAMPIONS ·/);
   assert.match(app, /ÉCHANTILLON FAIBLE/);
-  assert.match(app, /Les écarts sont descriptifs et ne prouvent pas un effet du patch/);
+  assert.match(app, /les écarts restent descriptifs et ne prouvent pas un effet du patch/);
+});
+
+test("coverage target label reflects the actual collection target", () => {
+  assert.match(app, /objectif de \$\{esc\(c\.target\)\} parties mid atteint/);
+  assert.doesNotMatch(app, /objectif de 12 parties mid atteint/);
 });
 
 test("renders opposing mid champion samples without causal claims", () => {

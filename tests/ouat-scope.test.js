@@ -16,7 +16,7 @@ test('patch section loads selected OUAT account and renders measured patch group
  const nodes={};const $=id=>nodes[id]??={hidden:false,value:'',innerHTML:'',textContent:''};
  const p={id:'ouat',name:'Mid',team:'Team',accounts:[{gameName:'Riot',tagLine:'EUW'}]};let calls=0;
  const context=vm.createContext({$,S:{hasKey:true},allPlayers:()=>[p],queryMatch:()=>true,esc:String,
- window:{mw:{stats:async account=>{calls++;assert.equal(account.gameName,'Riot');return {patches:[{patch:'26.20',games:3}]};},open:()=>{}}},
+ window:{mw:{patchStats:async account=>{calls++;assert.equal(account.gameName,'Riot');return {patches:[{patch:'26.20',games:3}]};},open:()=>{}}},
  coverageReport:()=>'',sampleWindowReport:()=>'',patchReport:rows=>'PATCH '+rows[0].patch,render:()=>context.renderPatchSection()});
  vm.runInContext('let patchRequest=0,patchPlayerId="",patchStats=null,patchError="",patchLoading=false,view="PATCHES";'+app.slice(app.indexOf('function renderPatchSection('),app.indexOf('\nfunction render(){')),context);
  context.renderPatchSection();
@@ -31,7 +31,7 @@ function patchHarness(){
  const pending=[];
  const context=vm.createContext({$,S:{hasKey:true},allPlayers:()=>players,
  queryMatch:(p,q)=>p.name.includes(q),esc:String,
- window:{mw:{stats:account=>new Promise((resolve,reject)=>pending.push({account,resolve,reject})),open:()=>{}}},
+ window:{mw:{patchStats:account=>new Promise((resolve,reject)=>pending.push({account,resolve,reject})),open:()=>{}}},
  coverageReport:()=>'',sampleWindowReport:()=>'',patchReport:rows=>'PATCH '+rows[0].patch,
  render:()=>context.renderPatchSection()});
  vm.runInContext('let patchRequest=0,patchPlayerId="",patchStats=null,patchError="",patchLoading=false,view="PATCHES";'+app.slice(app.indexOf('function renderPatchSection('),app.indexOf('\nfunction render(){')),context);

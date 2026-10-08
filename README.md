@@ -3,7 +3,7 @@
 Windows desktop scouting for OUATventure midlaners only. Professional rosters and professional background requests have been removed. Existing professional cache entries are ignored.
 
 - OUAT players, teams, divisions, SoloQ ranks, favorites and spectator requests.
-- Analyse de patchs: choose an OUAT player, load their recent ranked-mid report, compare patch samples with game counts, win rates, IC95 and KDA, and open official Riot patch notes.
+- Analyse de patchs: choose an OUAT player, load a dedicated sample of up to 30 ranked-mid games without timelines, compare patch samples with game counts, win rates, IC95, KDA and champion mix, and open official Riot patch notes.
 - Riot API credentials remain local. The patch section requires a valid key for player statistics; official notes open without a key.
 - Version is displayed from Electron app.getVersion().
 

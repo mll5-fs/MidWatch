@@ -18,6 +18,15 @@ async function playerStats(a){
  store.set("statsCache",statsCache.write(store.get("statsCache",{}),a,report,report.sampledAt));return report;
 }
 
+async function playerPatchStats(a){
+ if(!key())throw new Error("Ajoute ta clé Riot dans Settings.");
+ const cached=statsCache.read(store.get("patchStatsCache",{}),a);if(cached)return cached;
+ const riot=new Riot(key()),acc=await riot.resolveAccount(a),ids=await riot.matchIds(acc.platform,acc.puuid,60,420),recent=(ids||[]).slice(0,60),matches=[],tracking={requested:recent.length,target:30,matchAttempts:0,matchesLoaded:0,midGames:0,timelineAttempts:0,timelinesLoaded:0,matchErrors:0,timelineErrors:0,stop:"complete"};
+ for(const id of recent){tracking.matchAttempts++;try{const match=await riot.match(acc.platform,id);tracking.matchesLoaded++;if(participantForScouting(match,acc.puuid)){matches.push(match);tracking.midGames++;if(matches.length>=30){tracking.stop="target";break}}}catch(e){tracking.matchErrors++;if([401,403].includes(e.status)){tracking.stop="auth";break}if(e.status===429){tracking.stop="rate_limit";break}}}
+ const sampledAt=Date.now(),report={games:matches.length,patches:patchBreakdown(matches,acc.puuid),window:sampleWindow(matches,sampledAt),coverage:buildCoverage(tracking),sampledAt,scope:"SoloQ classée · rôle mid · analyse par patch"};
+ store.set("patchStatsCache",statsCache.write(store.get("patchStatsCache",{}),a,report,sampledAt));return report;
+}
+
 async function rankBatch(priorityIds=[]){
   if(!key())return{updates:[],checked:0};
   if(Date.now()<rankRetryAt)return{updates:[],checked:0,retryAt:rankRetryAt};
@@ -68,6 +77,7 @@ ipcMain.handle("settings:pickLeague",async()=>{const r=await dialog.showOpenDial
 ipcMain.handle("ouat:refresh",async(_e,url)=>{try{const r=await ouat.refresh(String(url||store.get("ouat",{}).url||""));if(r.players?.length)store.set("ouat",r);return r}catch(e){const saved=store.get("ouat",{});const fallback=(saved.players?.length?saved:bundledOuat);if(fallback.players?.length)return{...fallback,warning:`LEA live indisponible : ${e.message}. Snapshot local conservé.`};throw e}});
 ipcMain.handle("ouat:url",(_e,url)=>{const o=store.get("ouat",{});o.url=String(url||"").trim();store.set("ouat",o);return o.url});
 ipcMain.handle("riot:stats",(_e,a)=>playerStats(a));
+ipcMain.handle("riot:patchStats",(_e,a)=>playerPatchStats(a));
 ipcMain.handle("riot:liveBatch",()=>liveBatch());
 ipcMain.handle("riot:rankBatch",(_e,ids)=>rankBatch(ids));
 ipcMain.handle("riot:check",async(_e,a)=>{if(!key())throw new Error("Ajoute ta clé Riot dans Settings.");const riot=new Riot(key()),acc=await riot.resolveAccount(a);let ranked=[];try{ranked=await riot.ranked(acc.platform,acc.puuid)}catch(_){}let active=null;try{active=await riot.active(acc.platform,acc.puuid)}catch(e){if(e.status!==404)throw e}return{account:acc,ranked,active}});
