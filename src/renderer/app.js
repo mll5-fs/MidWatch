@@ -149,7 +149,7 @@ async function openPlayer(id){
   if(p.accounts?.[0]&&S.hasKey){
     try{
       const stats=await window.mw.stats(p.accounts[0]);if(request!==drawerRequest)return;
-      const anchor=$("#scout-live");if(anchor)anchor.innerHTML=statReport(stats)+championLaneReport(stats.championLanes)+opponentLaneReport(stats.opponentLanes)+matchupReport(stats.matchups)+patchReport(stats.patches);
+      const anchor=$("#scout-live");if(anchor)anchor.innerHTML=statReport(stats)+championLaneReport(stats.championLanes)+championTransitionReport(stats.championTransitions)+opponentLaneReport(stats.opponentLanes)+matchupReport(stats.matchups)+patchReport(stats.patches);
     }catch(e){
       if(request!==drawerRequest)return;const anchor=$("#scout-live");
       if(anchor)anchor.innerHTML=`<div class="panel"><div class="panel-title">PERFORMANCE RÉCENTE</div><p class="helper">${esc(String(e.message||e).replace(/^Error invoking remote method [^:]+:\s*Error:\s*/,""))}</p></div>`;
@@ -163,6 +163,10 @@ function patchReport(patches=[]){
 function championLaneReport(rows=[]){
   if(!rows.length)return"";const signed=n=>`${n>0?"+":""}${n}`;
   return`<div class="panel"><div class="panel-title">LANE À 10 PAR CHAMPION JOUÉ</div><div class="champions">${rows.map(r=>`<span class="champ"><b>${esc(r.champion)} · ${esc(r.games)}G</b> · ΔCS ${esc(signed(r.csDiff))} · ΔOR ${esc(signed(r.goldDiff))} · ΔXP ${esc(signed(r.xpDiff))} · MORT ${esc(r.deathRate)}%${r.limited?" · ÉCHANTILLON FAIBLE":""}</span>`).join("")}</div><p class="sample-note">Comparaison descriptive des snapshots complets à 10:00 face au mid adverse identifié. Chaque champion a son propre échantillon ; ces écarts n’expliquent ni la cause ni la qualité du micro-gameplay.</p></div>`;
+}
+function championTransitionReport(rows=[]){
+  if(!rows.length)return"";const signed=n=>`${n>0?"+":""}${n}`;
+  return`<div class="panel"><div class="panel-title">PROGRESSION 5 → 10 PAR CHAMPION</div><div class="champions">${rows.map(r=>`<span class="champ"><b>${esc(r.champion)} · ${esc(r.games)}G</b> · VAR ΔCS ${esc(signed(r.csSwing))} · VAR ΔOR ${esc(signed(r.goldSwing))} · VAR ΔXP ${esc(signed(r.xpSwing))} · OR AMÉLIORÉ ${esc(r.goldImprovedRate)}%${r.limited?" · ÉCHANTILLON FAIBLE":""}</span>`).join("")}</div><p class="sample-note">Chaque champion utilise uniquement les parties avec snapshots complets appariés à 5:00 et 10:00. Une variation positive signifie que l’écart relatif face au mid adverse a augmenté ; elle ne prouve ni un effet du champion ni la qualité du micro-gameplay.</p></div>`;
 }
 function opponentLaneReport(rows=[]){
   if(!rows.length)return"";const signed=n=>`${n>0?"+":""}${n}`;

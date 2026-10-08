@@ -19,7 +19,7 @@ Every report records its collection coverage: recent match IDs requested, match 
 
 Early-habit summaries use timestamped timeline events through 10:00. They report the share of games with at least one kill/assist participation, average early takedowns, the share with a death, and the median first ward time. Each panel shows its timeline count and the ward-specific sample. These are event frequencies only: they do not infer movement, recalls, causes, positioning quality, or micro-gameplay.
 
-Lane-at-10 comparisons by the player's champion reuse only the same complete 10:00 snapshots with an identified opposing mid. Each champion row reports its own game count, average CS/gold/XP differential and share of games with an early death. Rows below three games are explicitly marked as weak; the values are descriptive and do not explain matchup causality or micro-gameplay quality.
+Lane-at-10 comparisons by the player's champion reuse only the same complete 10:00 snapshots with an identified opposing mid. Each champion row reports its own game count, average CS/gold/XP differential and share of games with an early death. The champion progression panel separately requires paired complete 5:00 and 10:00 snapshots, and reports the change in each relative gap plus the share of games where the gold gap improved. Rows below three games are explicitly marked as weak; the values are descriptive and do not explain champion causality or micro-gameplay quality.
 
 Lane-at-10 comparisons by opposing champion apply the same validation and expose a separate sample for each identified matchup. They report average CS/gold/XP differential and early-death frequency, but do not establish that the opposing champion caused the observed result or measure micro-gameplay quality.
 

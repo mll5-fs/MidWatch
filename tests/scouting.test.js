@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { winrateInterval, sampleWindow, laneAt5, laneAt10, laneTransition, championLaneBreakdown, opponentLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown } = require("../src/services/scouting");
+const { winrateInterval, sampleWindow, laneAt5, laneAt10, laneTransition, championTransitionBreakdown, championLaneBreakdown, opponentLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown } = require("../src/services/scouting");
 
 function sample({ mine = {}, theirs = {}, events = [], position = "MIDDLE", champion = "Ahri", opponentChampion = "Syndra" } = {}) {
   return { match: { info: { queueId: 420, participants: [
@@ -45,6 +45,23 @@ test("pairs five and ten minute snapshots when measuring lane progression", () =
   assert.deepEqual(laneTransition([paired, sample()], "player"), {
     games: 1, csSwing: 4, goldSwing: 50, xpSwing: 120, goldImprovedRate: 100, limited: true
   });
+});
+
+test("groups paired lane progression by played champion with independent samples", () => {
+  const paired = (champion, mineGold, theirGold) => {
+    const row = sample({ champion });
+    row.timeline.info.frames.unshift({ timestamp: 300000, participantFrames: {
+      1: { minionsKilled: 31, jungleMinionsKilled: 0, totalGold: mineGold, xp: 2400 },
+      6: { minionsKilled: 28, jungleMinionsKilled: 0, totalGold: theirGold, xp: 2320 }
+    }, events: [] });
+    return row;
+  };
+  assert.deepEqual(championTransitionBreakdown([
+    paired("Ahri", 2200, 2050), paired("Ahri", 2400, 2050), paired("Syndra", 2300, 2100), sample({ champion: "Orianna" })
+  ], "player"), [
+    { champion: "Ahri", games: 2, csSwing: 4, goldSwing: -50, xpSwing: 120, goldImprovedRate: 50, limited: true },
+    { champion: "Syndra", games: 1, csSwing: 4, goldSwing: 0, xpSwing: 120, goldImprovedRate: 0, limited: true }
+  ]);
 });
 
 test("reports lane consistency without letting one extreme game define the median", () => {
