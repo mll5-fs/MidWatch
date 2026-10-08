@@ -33,6 +33,8 @@ OUATventure rosters are imported from LEA with a bundled build-time snapshot fal
 
 Rank loading prioritizes the current view, caches successful results for 15 minutes, and follows Riot's `Retry-After` delay after an HTTP 429. Replacing an expired API key immediately retries previously failed ranks while retaining the last verified value. Riot documents personal-key limits of 20 requests per second and 100 every two minutes; limits remain enforced per region: https://developer.riotgames.com/docs/portal (checked 2026-10-07).
 
+Foreground Riot actions (scouting reports, patch analysis, account checks and spectate verification) are serialized. Automatic rank and live batches wait while one is active, reducing avoidable competition for the same API-key quota.
+
 When a player has several linked Riot accounts, rank loading checks every unique account within the existing five-account batch budget and displays the highest verified SoloQ rank. A successful unranked response for one account no longer hides a ranked secondary account or marks the player unranked while another account is still pending.
 
 LPL players may use Chinese servers that are not exposed through the global Riot API; live detection and spectating can therefore be unavailable for those accounts.

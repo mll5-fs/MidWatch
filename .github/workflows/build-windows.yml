@@ -55,6 +55,6 @@ jobs:
           if ($exists) {
             Write-Host "Release $tag already exists. Preserving its installer; bump package.json to publish changes."
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Scouting SoloQ pour tous les comptes publics : Lane a 10 min, matchups mid et comparaisons par patch. Version visible et configuration Riot explicite. Source commit: ${{ github.sha }}."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Scouting OUATventure : rangs SoloQ, lane a 10 minutes, habitudes de debut de partie, matchups mid et analyses par patch avec taille d'echantillon. Source commit: ${{ github.sha }}."
             if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           }

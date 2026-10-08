@@ -1,4 +1,4 @@
-const{app,BrowserWindow,ipcMain,shell,dialog}=require("electron");const path=require("path");const store=require("./store"),bundledOuat=require("./data/ouat-current.json"),{Riot}=require("./services/riot"),{winrateInterval,sampleWindow,laneAt10,championLaneBreakdown,opponentLaneBreakdown,earlyHabits,participantForScouting,patchBreakdown,matchupBreakdown}=require("./services/scouting"),{buildCoverage}=require("./services/sample-coverage"),statsCache=require("./services/stats-cache"),spectate=require("./services/spectate"),ouat=require("./services/ouat");let mainWindow;const ranks=require("./services/ranks");let rankInFlight=null,rankRetryAt=0;
+const{app,BrowserWindow,ipcMain,shell,dialog}=require("electron");const path=require("path");const store=require("./store"),bundledOuat=require("./data/ouat-current.json"),{Riot}=require("./services/riot"),{winrateInterval,sampleWindow,laneAt10,championLaneBreakdown,opponentLaneBreakdown,earlyHabits,participantForScouting,patchBreakdown,matchupBreakdown}=require("./services/scouting"),{buildCoverage}=require("./services/sample-coverage"),statsCache=require("./services/stats-cache"),spectate=require("./services/spectate"),ouat=require("./services/ouat"),{RiotScheduler}=require("./services/riot-scheduler");let mainWindow;const ranks=require("./services/ranks"),riotScheduler=new RiotScheduler();let rankInFlight=null,liveInFlight=null,rankRetryAt=0;
 let liveCursor=0,rankCursor=0;function applyOverrides(list){const o=store.get("accountOverrides",{});return(list||[]).map(p=>o[p.id]?{...p,accounts:[o[p.id]],accountOverride:true}:p)}function key(){return String(store.get("riotKey","")||"").trim()}
 function create(){store.init();const found=spectate.detect(store.get("leaguePath",""));if(found&&found!==store.get("leaguePath",""))store.set("leaguePath",found);mainWindow=new BrowserWindow({width:1460,height:920,minWidth:1040,minHeight:700,show:false,backgroundColor:"#070a0f",title:"MidPulse",autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,"preload.js"),contextIsolation:true,nodeIntegration:false,sandbox:false}});mainWindow.loadFile(path.join(__dirname,"renderer/index.html"));mainWindow.once("ready-to-show",()=>mainWindow.show())}
 
@@ -29,6 +29,7 @@ async function playerPatchStats(a){
 
 async function rankBatch(priorityIds=[]){
   if(!key())return{updates:[],checked:0};
+  if(riotScheduler.shouldDeferBackground())return{updates:[],checked:0,deferred:"foreground_request"};
   if(Date.now()<rankRetryAt)return{updates:[],checked:0,retryAt:rankRetryAt};
   if(rankInFlight)return rankInFlight;
   rankInFlight=(async()=>{
@@ -41,7 +42,7 @@ async function rankBatch(priorityIds=[]){
   })();
   try{return await rankInFlight}finally{rankInFlight=null}
 }
-async function liveBatch(){
+async function liveBatchWork(){
   if(!key())return{updates:[],checked:0};
   const saved=store.get("ouat",{}),o=(Array.isArray(saved.players)&&saved.players.length)?saved:bundledOuat;
   const fav=new Set(store.get("favorites",[]));
@@ -67,6 +68,13 @@ async function liveBatch(){
   store.set("riotAccountCache",cache);
   return{updates,checked:batch.length,total:withAccounts.length};
 }
+function liveBatch(){
+  if(riotScheduler.shouldDeferBackground())return Promise.resolve({updates:[],checked:0,deferred:"foreground_request"});
+  if(liveInFlight)return liveInFlight;
+  liveInFlight=liveBatchWork();
+  return liveInFlight.finally(()=>{liveInFlight=null});
+}
+const foregroundRiot=task=>riotScheduler.foreground(()=>[rankInFlight,liveInFlight],task);
 
 function data(){const saved=store.get("ouat",{}),o=(Array.isArray(saved.players)&&saved.players.length)?saved:bundledOuat;return{version:app.getVersion(),players:[],ouatPlayers:ranks.hydrate(applyOverrides(o.players||[]),store.get("rankCache",{})),ouat:{url:o.url||"",season:o.season||"",status:o.status||"",start:o.start||"",end:o.end||"",teams:o.teams||0,warning:o.warning||"",updatedAt:o.updatedAt||0,source:o.source||""},favorites:store.get("favorites",[]),hasKey:!!key(),leaguePath:spectate.detect(store.get("leaguePath","")),proCacheAt:store.get("proCacheAt",0)}}
 ipcMain.handle("app:data",()=>data());
@@ -76,11 +84,11 @@ ipcMain.handle("account:override",(_e,id,a)=>{const all=store.get("accountOverri
 ipcMain.handle("settings:pickLeague",async()=>{const r=await dialog.showOpenDialog(mainWindow,{title:"Choisis le dossier League of Legends",properties:["openDirectory"]});if(r.canceled||!r.filePaths[0])return store.get("leaguePath","");let root=r.filePaths[0];if(path.basename(root).toLowerCase()==="game")root=path.dirname(root);if(!spectate.detect(root))throw new Error("Ce dossier ne contient pas Game\\League of Legends.exe");store.set("leaguePath",root);return root});
 ipcMain.handle("ouat:refresh",async(_e,url)=>{try{const r=await ouat.refresh(String(url||store.get("ouat",{}).url||""));if(r.players?.length)store.set("ouat",r);return r}catch(e){const saved=store.get("ouat",{});const fallback=(saved.players?.length?saved:bundledOuat);if(fallback.players?.length)return{...fallback,warning:`LEA live indisponible : ${e.message}. Snapshot local conservé.`};throw e}});
 ipcMain.handle("ouat:url",(_e,url)=>{const o=store.get("ouat",{});o.url=String(url||"").trim();store.set("ouat",o);return o.url});
-ipcMain.handle("riot:stats",(_e,a)=>playerStats(a));
-ipcMain.handle("riot:patchStats",(_e,a)=>playerPatchStats(a));
+ipcMain.handle("riot:stats",(_e,a)=>foregroundRiot(()=>playerStats(a)));
+ipcMain.handle("riot:patchStats",(_e,a)=>foregroundRiot(()=>playerPatchStats(a)));
 ipcMain.handle("riot:liveBatch",()=>liveBatch());
 ipcMain.handle("riot:rankBatch",(_e,ids)=>rankBatch(ids));
-ipcMain.handle("riot:check",async(_e,a)=>{if(!key())throw new Error("Ajoute ta clé Riot dans Settings.");const riot=new Riot(key()),acc=await riot.resolveAccount(a);let ranked=[];try{ranked=await riot.ranked(acc.platform,acc.puuid)}catch(_){}let active=null;try{active=await riot.active(acc.platform,acc.puuid)}catch(e){if(e.status!==404)throw e}return{account:acc,ranked,active}});
-ipcMain.handle("spectate:launch",async(_e,a)=>{if(!key())throw new Error("Ajoute ta clé Riot dans Settings.");const riot=new Riot(key()),acc=await riot.resolveAccount(a);let game;try{game=await riot.active(acc.platform,acc.puuid)}catch(e){if(e.status===404)throw new Error("Ce joueur n’est plus en partie.");throw e}const launched=await spectate.launch(store.get("leaguePath",""),game,acc.puuid);store.set("leaguePath",launched.root);return{ok:true,accepted:launched.accepted,gameId:game.gameId}});
+ipcMain.handle("riot:check",(_e,a)=>foregroundRiot(async()=>{if(!key())throw new Error("Ajoute ta clé Riot dans Settings.");const riot=new Riot(key()),acc=await riot.resolveAccount(a);let ranked=[];try{ranked=await riot.ranked(acc.platform,acc.puuid)}catch(_){}let active=null;try{active=await riot.active(acc.platform,acc.puuid)}catch(e){if(e.status!==404)throw e}return{account:acc,ranked,active}}));
+ipcMain.handle("spectate:launch",(_e,a)=>foregroundRiot(async()=>{if(!key())throw new Error("Ajoute ta clé Riot dans Settings.");const riot=new Riot(key()),acc=await riot.resolveAccount(a);let game;try{game=await riot.active(acc.platform,acc.puuid)}catch(e){if(e.status===404)throw new Error("Ce joueur n’est plus en partie.");throw e}const launched=await spectate.launch(store.get("leaguePath",""),game,acc.puuid);store.set("leaguePath",launched.root);return{ok:true,accepted:launched.accepted,gameId:game.gameId}}));
 ipcMain.handle("external:open",(_e,url)=>{if(/^https?:\/\//i.test(String(url)))return shell.openExternal(String(url));return false});
 app.whenReady().then(create);app.on("activate",()=>BrowserWindow.getAllWindows().length===0&&create());app.on("window-all-closed",()=>process.platform!=="darwin"&&app.quit());
