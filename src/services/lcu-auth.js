@@ -12,10 +12,18 @@ function fromCommandLine(command = "") {
   return port && token ? credentials(port[1] || port[2], token[1] || token[2], "process") : null;
 }
 
+function fromProcessList(raw = "") {
+  for (const command of String(raw || "").split(/\r?\n/)) {
+    const auth = fromCommandLine(command.trim());
+    if (auth) return auth;
+  }
+  return null;
+}
+
 function fromLockfile(raw = "") {
   const fields = raw.trim().split(":");
   if (fields.length !== 5 || fields[4] !== "https") return null;
   return credentials(fields[2], fields[3], "lockfile");
 }
 
-module.exports = { fromCommandLine, fromLockfile };
+module.exports = { fromCommandLine, fromProcessList, fromLockfile };

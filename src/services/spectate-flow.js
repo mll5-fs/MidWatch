@@ -15,8 +15,9 @@ async function launchThroughClient(raw, root, body) {
   }
   for (const endpoint of endpoints) {
     try {
-      await raw(root, "POST", endpoint, body);
-      return { root, accepted: true, method: "LCU", endpoint, phase };
+      const response = await raw(root, "POST", endpoint, body);
+      return { root, accepted: true, method: "LCU", endpoint, phase,
+        status: response?.status, auth: response?.auth };
     } catch (error) {
       // Retry another endpoint only when this route does not exist, never after an ambiguous timeout.
       if (![404, 405].includes(error.status)) throw failure(error);

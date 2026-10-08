@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { fromCommandLine, fromLockfile } = require("../src/services/lcu-auth");
+const { fromCommandLine, fromProcessList, fromLockfile } = require("../src/services/lcu-auth");
 
 test("reads an actual Windows command line without swallowing following flags", () => {
   assert.deepEqual(fromCommandLine('"C:\\Riot Games\\League of Legends\\LeagueClientUx.exe" --app-port=54321 --remoting-auth-token=test-token --region=EUW'),
@@ -20,6 +20,13 @@ test("rejects missing, malformed and out-of-range process credentials", () => {
     "--other-app-port=1234 --remoting-auth-token=test"]) {
     assert.equal(fromCommandLine(cmd), null);
   }
+});
+
+test("finds valid credentials after a stale League client process", () => {
+  const stale = '"C:\\Riot Games\\LeagueClientUx.exe" --app-port=0 --remoting-auth-token=old';
+  const current = '"C:\\Riot Games\\LeagueClientUx.exe" --app-port=54321 --remoting-auth-token=current';
+  assert.deepEqual(fromProcessList(stale + "\r\n" + current),
+    { port: 54321, password: "current", source: "process" });
 });
 
 test("reads the standard HTTPS lockfile with Windows line endings", () => {
