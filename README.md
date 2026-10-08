@@ -11,7 +11,7 @@ Spectate inspects every running League client command line before using the loca
 
 ## Data notes
 
-Scouting reports use up to 12 mid-role games from the 20 most recent Ranked Solo/Duo matches. Lane-at-10 measurements require a timeline snapshot within one second of 10:00 and complete, finite, non-negative CS, gold and XP values for both midlaners. Short games and incomplete snapshots are excluded from the lane sample rather than treated as zero. This one-second window is an application validation rule, not a Riot API guarantee. The displayed lane sample can therefore be smaller than the overall report sample; these measurements do not establish the causes of lane outcomes.
+Scouting reports use up to 12 mid-role games from the 20 most recent Ranked Solo/Duo matches. Lane-at-5 and Lane-at-10 measurements require a timeline snapshot within one second of 5:00 or 10:00 and complete, finite, non-negative CS, gold and XP values for both midlaners. Short games and incomplete snapshots are excluded from each lane sample rather than treated as zero. This one-second window is an application validation rule, not a Riot API guarantee. The two displayed lane samples can therefore differ and be smaller than the overall report sample; these measurements do not establish the causes of lane outcomes.
 
 The overall Lane-at-10 panel reports both the mean and median gold differential, plus the share of comparable games with a strictly positive gold differential. The median reduces the influence of one extreme game; ties are not counted as being ahead. All three measures reuse the same validated timeline sample and remain descriptive rather than causal.
 

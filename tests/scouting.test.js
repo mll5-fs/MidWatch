@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { winrateInterval, sampleWindow, laneAt10, championLaneBreakdown, opponentLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown } = require("../src/services/scouting");
+const { winrateInterval, sampleWindow, laneAt5, laneAt10, championLaneBreakdown, opponentLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown } = require("../src/services/scouting");
 
 function sample({ mine = {}, theirs = {}, events = [], position = "MIDDLE", champion = "Ahri", opponentChampion = "Syndra" } = {}) {
   return { match: { info: { queueId: 420, participants: [
@@ -21,6 +21,19 @@ test("calculates lane values and matchup deltas at 10 minutes", () => {
     games: 1, cs: 72, gold: 4100, xp: 4800, csDiff: 7, goldDiff: 200, xpDiff: 200,
     medianGoldDiff: 200, goldAheadRate: 100, deathRate: 0
   });
+});
+
+test("calculates an independent complete lane snapshot at 5 minutes", () => {
+  const early = sample();
+  early.timeline.info.frames.unshift({ timestamp: 300000, participantFrames: {
+    1: { minionsKilled: 31, jungleMinionsKilled: 0, totalGold: 2200, xp: 2400 },
+    6: { minionsKilled: 28, jungleMinionsKilled: 0, totalGold: 2050, xp: 2320 }
+  }, events: [{ type: "CHAMPION_KILL", victimId: 1, timestamp: 300000 }] });
+  assert.deepEqual(laneAt5([early], "player"), {
+    games: 1, cs: 31, gold: 2200, xp: 2400, csDiff: 3, goldDiff: 150, xpDiff: 80,
+    medianGoldDiff: 150, goldAheadRate: 100, deathRate: 100
+  });
+  assert.equal(laneAt10([early], "player").deathRate, 100);
 });
 
 test("reports lane consistency without letting one extreme game define the median", () => {
