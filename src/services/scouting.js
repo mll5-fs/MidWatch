@@ -88,6 +88,20 @@ function laneAt(samples, puuid, minute) {
 const laneAt5 = (samples, puuid) => laneAt(samples, puuid, 5);
 const laneAt10 = (samples, puuid) => laneAt(samples, puuid, 10);
 
+function laneTransition(samples, puuid) {
+  const rows = (samples || []).map(sample => {
+    const at5 = laneRowAt(sample, puuid, 5), at10 = laneRowAt(sample, puuid, 10);
+    if (!at5 || !at10) return null;
+    return { csSwing: at10.csDiff - at5.csDiff, goldSwing: at10.goldDiff - at5.goldDiff,
+      xpSwing: at10.xpDiff - at5.xpDiff };
+  }).filter(Boolean);
+  if (!rows.length) return { games: 0 };
+  const avg = key => Math.round(rows.reduce((sum, row) => sum + row[key], 0) / rows.length);
+  return { games: rows.length, csSwing: avg("csSwing"), goldSwing: avg("goldSwing"),
+    xpSwing: avg("xpSwing"), goldImprovedRate: Math.round(100 * rows.filter(row => row.goldSwing > 0).length / rows.length),
+    limited: rows.length < 3 };
+}
+
 function championLaneBreakdown(samples, puuid) {
   const groups = new Map();
   for (const sample of samples || []) {
@@ -231,4 +245,4 @@ function matchupBreakdown(matches, puuid) {
     }));
 }
 
-module.exports = { winrateInterval, sampleWindow, laneAt5, laneAt10, championLaneBreakdown, opponentLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown };
+module.exports = { winrateInterval, sampleWindow, laneAt5, laneAt10, laneTransition, championLaneBreakdown, opponentLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown };

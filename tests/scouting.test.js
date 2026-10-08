@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { winrateInterval, sampleWindow, laneAt5, laneAt10, championLaneBreakdown, opponentLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown } = require("../src/services/scouting");
+const { winrateInterval, sampleWindow, laneAt5, laneAt10, laneTransition, championLaneBreakdown, opponentLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown } = require("../src/services/scouting");
 
 function sample({ mine = {}, theirs = {}, events = [], position = "MIDDLE", champion = "Ahri", opponentChampion = "Syndra" } = {}) {
   return { match: { info: { queueId: 420, participants: [
@@ -34,6 +34,17 @@ test("calculates an independent complete lane snapshot at 5 minutes", () => {
     medianGoldDiff: 150, goldAheadRate: 100, deathRate: 100
   });
   assert.equal(laneAt10([early], "player").deathRate, 100);
+});
+
+test("pairs five and ten minute snapshots when measuring lane progression", () => {
+  const paired = sample();
+  paired.timeline.info.frames.unshift({ timestamp: 300000, participantFrames: {
+    1: { minionsKilled: 31, jungleMinionsKilled: 0, totalGold: 2200, xp: 2400 },
+    6: { minionsKilled: 28, jungleMinionsKilled: 0, totalGold: 2050, xp: 2320 }
+  }, events: [] });
+  assert.deepEqual(laneTransition([paired, sample()], "player"), {
+    games: 1, csSwing: 4, goldSwing: 50, xpSwing: 120, goldImprovedRate: 100, limited: true
+  });
 });
 
 test("reports lane consistency without letting one extreme game define the median", () => {
