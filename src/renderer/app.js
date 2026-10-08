@@ -1,5 +1,5 @@
 let S={players:[],ouatPlayers:[],ouat:{},favorites:[],hasKey:false,leaguePath:"",proCacheAt:0};
-let view="OUAT",liveOnly=false,busy=false,ouatDivision="ALL",liveState={},rankState={},rankMeta={},rankBusy=false,rankCooldownAt=0,drawerRequest=0;
+let view="OUAT",liveOnly=false,busy=false,ouatDivision="ALL",liveState={},rankState={},rankMeta={},rankBusy=false,rankCooldownAt=0,rankFollowup=null,drawerRequest=0;
 const $=q=>document.querySelector(q);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let patchRequest=0,patchPlayerId="",patchStats=null,patchError="",patchLoading=false;
@@ -238,6 +238,7 @@ function settings(){
 }
 async function refreshRanks(){
   if(!S.hasKey||rankBusy||Date.now()<rankCooldownAt)return;
+  if(rankFollowup){clearTimeout(rankFollowup);rankFollowup=null}
   rankBusy=true;
   try{
     const onScreen=[...document.querySelectorAll(".player-card,.scout-row")].filter(node=>{
@@ -249,6 +250,7 @@ async function refreshRanks(){
     if([401,403].includes(r.blockedStatus))S.hasKey=false;
     for(const u of r.updates||[]){if(u.rank!==undefined)rankState[u.id]=u.rank;rankMeta[u.id]={rankStatus:u.status,rankCheckedAt:u.checkedAt,rankError:u.error}}
     render();
+    if(S.hasKey&&!r.retryAt&&(r.deferred||r.remaining>0))rankFollowup=setTimeout(refreshRanks,r.deferred?2000:4000);
   }catch(_){}finally{rankBusy=false}
 }
 async function refreshLive(){

@@ -14,6 +14,7 @@ test("visible OUAT players are checked before background pros with a five-accoun
   const result = await loadBatch(riot, players, { priorityIds: ["visible"], now: 1000 });
   assert.equal(riot.calls[0], "visible");
   assert.equal(result.checked, 5);
+  assert.equal(result.remaining, 4);
   assert.equal(result.updates[0].rank.leaguePoints, 0);
 });
 test("fresh ranks survive restart and are not fetched again during the cache lifetime", async () => {
@@ -21,6 +22,7 @@ test("fresh ranks survive restart and are not fetched again during the cache lif
   const first = await loadBatch(riot, [p], { now: 1000 });
   const second = await loadBatch(riot, [p], { cache: first.cache, now: 2000 });
   assert.equal(second.checked, 0);
+  assert.equal(second.remaining, 0);
   assert.equal(hydrate([p], first.cache)[0].bestRank.tier, "DIAMOND");
   assert.equal(hydrate([p], first.cache)[0].rankStatus, "ranked");
 });
@@ -41,6 +43,7 @@ test("rate limits stop the batch and retain the last known rank", async () => {
   const result = await loadBatch(riot, [p, player("other")], { now: 1000,
     cache: { [key]: { rank: solo, nextCheck: 0, checkedAt: 1 } }, priorityIds: [p.id] });
   assert.equal(result.checked, 1);
+  assert.equal(result.remaining, 1);
   assert.equal(result.retryAt, 121000);
   assert.equal(result.updates[0].rank.tier, "DIAMOND");
 });
