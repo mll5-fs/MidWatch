@@ -81,6 +81,15 @@ test("renders lane-at-ten comparisons per played champion with sample limits", (
   assert.match(app, /n’expliquent ni la cause ni la qualité du micro-gameplay/);
 });
 
+test("renders paired five-to-ten progression per played champion", () => {
+  assert.match(app, /function championTransitionReport\(rows=\[\]\)/);
+  assert.match(app, /championTransitionReport\(stats\.championTransitions\)/);
+  assert.match(app, /PROGRESSION 5 → 10 PAR CHAMPION/);
+  assert.match(app, /OR AMÉLIORÉ/);
+  assert.match(app, /snapshots complets appariés à 5:00 et 10:00/);
+  assert.match(app, /ne prouve ni un effet du champion ni la qualité du micro-gameplay/);
+});
+
 test("renders lane-at-ten comparisons per opposing champion with sample limits", () => {
   assert.match(app, /function opponentLaneReport\(rows=\[\]\)/);
   assert.match(app, /opponentLaneReport\(stats\.opponentLanes\)/);
