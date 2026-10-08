@@ -26,4 +26,19 @@ async function launchThroughClient(raw, root, body) {
   throw new Error("Les routes Spectate ne sont pas disponibles dans ce client League. Essaie depuis League et vérifie que le client est à jour.");
 }
 
-module.exports = { launchThroughClient };
+async function diagnoseClient(raw, root) {
+  try {
+    const response = await raw(root, "GET", "/lol-gameflow/v1/gameflow-phase");
+    return {
+      root,
+      connected: true,
+      phase: String(response?.data || "inconnue"),
+      status: response?.status,
+      auth: response?.auth
+    };
+  } catch (error) {
+    throw failure(error);
+  }
+}
+
+module.exports = { launchThroughClient, diagnoseClient };
