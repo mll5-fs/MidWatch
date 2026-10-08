@@ -49,12 +49,12 @@ function completeFrame(frame) {
     .every(key => Number.isFinite(frame[key]) && frame[key] >= 0);
 }
 
-function laneRowAt10(sample, puuid) {
+function laneRowAt(sample, puuid, minute) {
     const { match, timeline } = sample || {};
     const participants = match?.info?.participants || [];
     const player = participants.find(x => x.puuid === puuid);
     const opponent = isMid(player) && midOpponent(participants, player);
-    const frame = frameAt(timeline, 10);
+    const frame = frameAt(timeline, minute);
     const mine = frame?.participantFrames?.[player?.participantId];
     const theirs = frame?.participantFrames?.[opponent?.participantId];
     if (!player || !opponent || !completeFrame(mine) || !completeFrame(theirs)) return null;
@@ -62,15 +62,17 @@ function laneRowAt10(sample, puuid) {
     const oppCs = (theirs.minionsKilled || 0) + (theirs.jungleMinionsKilled || 0);
     const earlyDeaths = (timeline.info?.frames || []).flatMap(x => x.events || [])
       .filter(e => e.type === "CHAMPION_KILL" && e.victimId === player.participantId &&
-        Number.isFinite(e.timestamp) && e.timestamp >= 0 && e.timestamp <= 600000).length;
+        Number.isFinite(e.timestamp) && e.timestamp >= 0 && e.timestamp <= minute * 60000).length;
     return { champion: String(player.championName || "").trim(),
       opponentChampion: String(opponent.championName || "").trim(), cs, gold: mine.totalGold || 0, xp: mine.xp || 0,
       csDiff: cs - oppCs, goldDiff: (mine.totalGold || 0) - (theirs.totalGold || 0),
       xpDiff: (mine.xp || 0) - (theirs.xp || 0), earlyDeaths };
 }
 
-function laneAt10(samples, puuid) {
-  const rows = (samples || []).map(sample => laneRowAt10(sample, puuid)).filter(Boolean);
+const laneRowAt10 = (sample, puuid) => laneRowAt(sample, puuid, 10);
+
+function laneAt(samples, puuid, minute) {
+  const rows = (samples || []).map(sample => laneRowAt(sample, puuid, minute)).filter(Boolean);
   if (!rows.length) return { games: 0 };
   const avg = key => Math.round(rows.reduce((sum, row) => sum + row[key], 0) / rows.length);
   const median = key => {
@@ -82,6 +84,9 @@ function laneAt10(samples, puuid) {
     medianGoldDiff: median("goldDiff"), goldAheadRate: Math.round(100 * rows.filter(x => x.goldDiff > 0).length / rows.length),
     deathRate: Math.round(100 * rows.filter(x => x.earlyDeaths > 0).length / rows.length) };
 }
+
+const laneAt5 = (samples, puuid) => laneAt(samples, puuid, 5);
+const laneAt10 = (samples, puuid) => laneAt(samples, puuid, 10);
 
 function championLaneBreakdown(samples, puuid) {
   const groups = new Map();
@@ -226,4 +231,4 @@ function matchupBreakdown(matches, puuid) {
     }));
 }
 
-module.exports = { winrateInterval, sampleWindow, laneAt10, championLaneBreakdown, opponentLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown };
+module.exports = { winrateInterval, sampleWindow, laneAt5, laneAt10, championLaneBreakdown, opponentLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown };

@@ -49,6 +49,13 @@ test("renders lane-at-ten median and gold-ahead frequency with a strict definiti
   assert.match(app, /l\.goldAheadRate/);
 });
 
+test("renders a separate lane-at-five sample without causal gameplay claims", () => {
+  assert.match(app, /LANE À 5 MINUTES/);
+  assert.match(app, /CS@5/);
+  assert.match(app, /Lane@5 indisponible/);
+  assert.match(app, /ces valeurs sont descriptives et n’expliquent pas la cause de l’écart/);
+});
+
 test("renders early timeline habits with their own sample and non-causal limit", () => {
   assert.match(app, /function earlyReport\(e=\{\}\)/);
   assert.match(app, /HABITUDES AVANT 10 MINUTES/);
