@@ -91,7 +91,7 @@ const laneAt10 = (samples, puuid) => laneAt(samples, puuid, 10);
 function laneTransitionRow(sample, puuid) {
   const at5 = laneRowAt(sample, puuid, 5), at10 = laneRowAt(sample, puuid, 10);
   if (!at5 || !at10) return null;
-  return { champion: at10.champion, csSwing: at10.csDiff - at5.csDiff,
+  return { champion: at10.champion, opponentChampion: at10.opponentChampion, csSwing: at10.csDiff - at5.csDiff,
     goldSwing: at10.goldDiff - at5.goldDiff, xpSwing: at10.xpDiff - at5.xpDiff };
 }
 
@@ -104,18 +104,19 @@ function laneTransition(samples, puuid) {
     limited: rows.length < 3 };
 }
 
-function championTransitionBreakdown(samples, puuid) {
+function transitionBreakdown(samples, puuid, groupKey) {
   const groups = new Map();
   for (const sample of samples || []) {
     const row = laneTransitionRow(sample, puuid);
-    if (!row?.champion) continue;
-    const group = groups.get(row.champion) || { champion: row.champion, games: 0, csSwing: 0, goldSwing: 0, xpSwing: 0, goldImproved: 0 };
+    const champion = row?.[groupKey];
+    if (!champion) continue;
+    const group = groups.get(champion) || { champion, games: 0, csSwing: 0, goldSwing: 0, xpSwing: 0, goldImproved: 0 };
     group.games++;
     group.csSwing += row.csSwing;
     group.goldSwing += row.goldSwing;
     group.xpSwing += row.xpSwing;
     group.goldImproved += row.goldSwing > 0 ? 1 : 0;
-    groups.set(row.champion, group);
+    groups.set(champion, group);
   }
   return [...groups.values()].sort((a, b) => b.games - a.games || a.champion.localeCompare(b.champion))
     .slice(0, 6).map(group => ({ champion: group.champion, games: group.games,
@@ -123,6 +124,9 @@ function championTransitionBreakdown(samples, puuid) {
       xpSwing: Math.round(group.xpSwing / group.games),
       goldImprovedRate: Math.round(100 * group.goldImproved / group.games), limited: group.games < 3 }));
 }
+
+const championTransitionBreakdown = (samples, puuid) => transitionBreakdown(samples, puuid, "champion");
+const opponentTransitionBreakdown = (samples, puuid) => transitionBreakdown(samples, puuid, "opponentChampion");
 
 function championLaneBreakdown(samples, puuid) {
   const groups = new Map();
@@ -267,4 +271,4 @@ function matchupBreakdown(matches, puuid) {
     }));
 }
 
-module.exports = { winrateInterval, sampleWindow, laneAt5, laneAt10, laneTransition, championTransitionBreakdown, championLaneBreakdown, opponentLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown };
+module.exports = { winrateInterval, sampleWindow, laneAt5, laneAt10, laneTransition, championTransitionBreakdown, opponentTransitionBreakdown, championLaneBreakdown, opponentLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown };

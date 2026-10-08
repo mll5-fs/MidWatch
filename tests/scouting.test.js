@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { winrateInterval, sampleWindow, laneAt5, laneAt10, laneTransition, championTransitionBreakdown, championLaneBreakdown, opponentLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown } = require("../src/services/scouting");
+const { winrateInterval, sampleWindow, laneAt5, laneAt10, laneTransition, championTransitionBreakdown, opponentTransitionBreakdown, championLaneBreakdown, opponentLaneBreakdown, earlyHabits, participantForScouting, patchBreakdown, matchupBreakdown } = require("../src/services/scouting");
 
 function sample({ mine = {}, theirs = {}, events = [], position = "MIDDLE", champion = "Ahri", opponentChampion = "Syndra" } = {}) {
   return { match: { info: { queueId: 420, participants: [
@@ -61,6 +61,23 @@ test("groups paired lane progression by played champion with independent samples
   ], "player"), [
     { champion: "Ahri", games: 2, csSwing: 4, goldSwing: -50, xpSwing: 120, goldImprovedRate: 50, limited: true },
     { champion: "Syndra", games: 1, csSwing: 4, goldSwing: 0, xpSwing: 120, goldImprovedRate: 0, limited: true }
+  ]);
+});
+
+test("groups paired lane progression by opposing champion without diluting missing pairs", () => {
+  const paired = (opponentChampion, mineGold, theirGold) => {
+    const row = sample({ opponentChampion });
+    row.timeline.info.frames.unshift({ timestamp: 300000, participantFrames: {
+      1: { minionsKilled: 31, jungleMinionsKilled: 0, totalGold: mineGold, xp: 2400 },
+      6: { minionsKilled: 28, jungleMinionsKilled: 0, totalGold: theirGold, xp: 2320 }
+    }, events: [] });
+    return row;
+  };
+  assert.deepEqual(opponentTransitionBreakdown([
+    paired("Syndra", 2200, 2050), paired("Syndra", 2400, 2050), paired("Orianna", 2300, 2100), sample({ opponentChampion: "Viktor" })
+  ], "player"), [
+    { champion: "Syndra", games: 2, csSwing: 4, goldSwing: -50, xpSwing: 120, goldImprovedRate: 50, limited: true },
+    { champion: "Orianna", games: 1, csSwing: 4, goldSwing: 0, xpSwing: 120, goldImprovedRate: 0, limited: true }
   ]);
 });
 
