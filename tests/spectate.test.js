@@ -3,14 +3,23 @@ const assert = require("node:assert/strict");
 const { EventEmitter } = require("node:events");
 const { launchThroughClient } = require("../src/services/spectate-flow");
 const { requestLocal } = require("../src/services/lcu-http");
+const fs = require("node:fs");
 const httpError = status => Object.assign(new Error("HTTP " + status), { status });
 
-test("spectate acceptance does not assert that the game executable launched", async () => {
+test("Windows discovery inspects all League client processes", () => {
+  const source = fs.readFileSync("src/services/spectate.js", "utf8");
+  assert.match(source, /fromProcessList\(commands\)/);
+  assert.doesNotMatch(source, /Select-Object -First 1/);
+});
+
+test("spectate acceptance exposes diagnostics without asserting that the game executable launched", async () => {
   const calls = [];
-  const result = await launchThroughClient(async (...args) => { calls.push(args); return { data: "Lobby" }; }, "root", { puuid: "player" });
+  const result = await launchThroughClient(async (...args) => { calls.push(args);return args[1]==="POST"?{status:204,auth:"process"}:{data:"Lobby"}; }, "root", { puuid: "player" });
   assert.equal(result.accepted, true);
   assert.equal(result.verified, undefined);
   assert.equal(result.phase, "Lobby");
+  assert.equal(result.status, 204);
+  assert.equal(result.auth, "process");
   assert.equal(calls.length, 2);
 });
 

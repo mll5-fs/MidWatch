@@ -7,6 +7,8 @@ Windows desktop scouting for OUATventure midlaners only. Professional rosters an
 - Riot API credentials remain local. The patch section requires a valid key for player statistics; official notes open without a key.
 - Version is displayed from Electron app.getVersion().
 
+Spectate inspects every running League client command line before using the local lockfile fallback, so a stale Windows process cannot mask a later valid client instance. An accepted local request reports the observed client phase and LCU route for diagnosis; it still does not prove that the game window opened.
+
 ## Data notes
 
 Scouting reports use up to 12 mid-role games from the 20 most recent Ranked Solo/Duo matches. Lane-at-10 measurements require a timeline snapshot within one second of 10:00 and complete, finite, non-negative CS, gold and XP values for both midlaners. Short games and incomplete snapshots are excluded from the lane sample rather than treated as zero. This one-second window is an application validation rule, not a Riot API guarantee. The displayed lane sample can therefore be smaller than the overall report sample; these measurements do not establish the causes of lane outcomes.

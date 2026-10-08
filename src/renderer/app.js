@@ -223,7 +223,7 @@ async function checkAccount(p,i){
 }
 async function spectateAccount(p,i){
   const a=p.accounts[i],box=$(`#res-${i}`);if(!box)return;box.className="result";box.textContent="Recherche de la partie…";
-  try{await window.mw.spectate(a);box.className="result live";box.textContent="✓ Demande Spectate acceptée par League. Vérifie le lancement dans le client."}catch(e){box.textContent=String(e.message||e).replace(/^Error invoking remote method [^:]+:\s*Error:\s*/,"")}
+  try{const r=await window.mw.spectate(a),route=String(r.endpoint||"").split("/").filter(Boolean).slice(0,1).join("")||"LCU",phase=r.phase||"inconnue";box.className="result live";box.textContent=`✓ Demande acceptée · phase ${phase} · route ${route}. Vérifie le lancement dans le client.`}catch(e){box.textContent=String(e.message||e).replace(/^Error invoking remote method [^:]+:\s*Error:\s*/,"")}
 }
 function settings(){
   drawerRequest++;
