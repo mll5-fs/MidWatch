@@ -21,7 +21,7 @@ Early-habit summaries use timestamped timeline events through 10:00. They report
 
 Lane-at-10 comparisons by the player's champion reuse only the same complete 10:00 snapshots with an identified opposing mid. Each champion row reports its own game count, average CS/gold/XP differential and share of games with an early death. The champion progression panel separately requires paired complete 5:00 and 10:00 snapshots, and reports the change in each relative gap plus the share of games where the gold gap improved. Rows below three games are explicitly marked as weak; the values are descriptive and do not explain champion causality or micro-gameplay quality.
 
-Lane-at-10 comparisons by opposing champion apply the same validation and expose a separate sample for each identified matchup. They report average CS/gold/XP differential and early-death frequency, but do not establish that the opposing champion caused the observed result or measure micro-gameplay quality.
+Lane-at-10 comparisons by opposing champion apply the same validation and expose a separate sample for each identified matchup. The opposing-champion progression panel additionally requires paired complete 5:00 and 10:00 snapshots, and reports changes in the relative CS/gold/XP gaps plus the share where the gold gap improved. These measurements do not establish that the opposing champion caused the observed result or measure micro-gameplay quality.
 
 Patch comparisons normalize Riot's full `gameVersion` to its major/minor patch and show their own game count. Samples below three games are explicitly marked as limited; differences remain descriptive and do not establish that a patch caused a performance change.
 

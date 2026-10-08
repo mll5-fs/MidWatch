@@ -149,7 +149,7 @@ async function openPlayer(id){
   if(p.accounts?.[0]&&S.hasKey){
     try{
       const stats=await window.mw.stats(p.accounts[0]);if(request!==drawerRequest)return;
-      const anchor=$("#scout-live");if(anchor)anchor.innerHTML=statReport(stats)+championLaneReport(stats.championLanes)+championTransitionReport(stats.championTransitions)+opponentLaneReport(stats.opponentLanes)+matchupReport(stats.matchups)+patchReport(stats.patches);
+      const anchor=$("#scout-live");if(anchor)anchor.innerHTML=statReport(stats)+championLaneReport(stats.championLanes)+championTransitionReport(stats.championTransitions)+opponentLaneReport(stats.opponentLanes)+opponentTransitionReport(stats.opponentTransitions)+matchupReport(stats.matchups)+patchReport(stats.patches);
     }catch(e){
       if(request!==drawerRequest)return;const anchor=$("#scout-live");
       if(anchor)anchor.innerHTML=`<div class="panel"><div class="panel-title">PERFORMANCE RÉCENTE</div><p class="helper">${esc(String(e.message||e).replace(/^Error invoking remote method [^:]+:\s*Error:\s*/,""))}</p></div>`;
@@ -171,6 +171,10 @@ function championTransitionReport(rows=[]){
 function opponentLaneReport(rows=[]){
   if(!rows.length)return"";const signed=n=>`${n>0?"+":""}${n}`;
   return`<div class="panel"><div class="panel-title">LANE À 10 PAR CHAMPION ADVERSE</div><div class="champions">${rows.map(r=>`<span class="champ"><b>VS ${esc(r.champion)} · ${esc(r.games)}G</b> · ΔCS ${esc(signed(r.csDiff))} · ΔOR ${esc(signed(r.goldDiff))} · ΔXP ${esc(signed(r.xpDiff))} · MORT ${esc(r.deathRate)}%${r.limited?" · ÉCHANTILLON FAIBLE":""}</span>`).join("")}</div><p class="sample-note">Snapshots complets à 10:00 face au mid adverse identifié. Chaque champion adverse a son propre échantillon ; ces écarts décrivent les parties observées et ne prouvent ni la cause du matchup ni la qualité du micro-gameplay.</p></div>`;
+}
+function opponentTransitionReport(rows=[]){
+  if(!rows.length)return"";const signed=n=>`${n>0?"+":""}${n}`;
+  return`<div class="panel"><div class="panel-title">PROGRESSION 5 → 10 PAR CHAMPION ADVERSE</div><div class="champions">${rows.map(r=>`<span class="champ"><b>VS ${esc(r.champion)} · ${esc(r.games)}G</b> · VAR ΔCS ${esc(signed(r.csSwing))} · VAR ΔOR ${esc(signed(r.goldSwing))} · VAR ΔXP ${esc(signed(r.xpSwing))} · OR AMÉLIORÉ ${esc(r.goldImprovedRate)}%${r.limited?" · ÉCHANTILLON FAIBLE":""}</span>`).join("")}</div><p class="sample-note">Chaque champion adverse utilise uniquement les parties avec snapshots complets appariés à 5:00 et 10:00. Ces variations décrivent l’échantillon observé et ne prouvent ni la cause du matchup ni la qualité du micro-gameplay.</p></div>`;
 }
 function matchupReport(matchups=[]){
   if(!matchups.length)return"";
