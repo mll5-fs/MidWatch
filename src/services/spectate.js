@@ -1,7 +1,7 @@
 const fs=require("fs"),path=require("path"),{execFile}=require("child_process");
 const {fromProcessList,fromLockfile}=require("./lcu-auth");
 const {requestLocal}=require("./lcu-http");
-const {launchThroughClient}=require("./spectate-flow");
+const {launchThroughClient,diagnoseClient}=require("./spectate-flow");
 const valid=r=>r&&fs.existsSync(path.join(r,"Game","League of Legends.exe"));
 function detect(saved=""){const drives=["C","D","E","F","G"],c=[saved,...drives.flatMap(d=>[`${d}:\\Riot Games\\League of Legends`,`${d}:\\Games\\Riot Games\\League of Legends`]),"C:\\Program Files\\Riot Games\\League of Legends"];return c.find(valid)||""}
 function ps(script){return new Promise((resolve,reject)=>execFile("powershell.exe",["-NoProfile","-NonInteractive","-Command",script],{windowsHide:true},(e,out)=>e?reject(e):resolve(String(out||"").trim())))}
@@ -21,4 +21,8 @@ async function launch(root,game,puuid){
  const body={dropInSpectateGameId:id,gameQueueType:String(game?.gameQueueConfigId||""),allowObserveMode:"ALL",puuid:String(puuid),spectatorKey:key};
  return launchThroughClient(raw,root,body);
 }
-module.exports={detect,launch};
+async function diagnose(root){
+ root=detect(root);if(!root)throw new Error("Installation de League of Legends introuvable. Choisis son dossier dans Réglages.");
+ return diagnoseClient(raw,root);
+}
+module.exports={detect,launch,diagnose};

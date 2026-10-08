@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { EventEmitter } = require("node:events");
-const { launchThroughClient } = require("../src/services/spectate-flow");
+const { launchThroughClient, diagnoseClient } = require("../src/services/spectate-flow");
 const { requestLocal } = require("../src/services/lcu-http");
 const fs = require("node:fs");
 const httpError = status => Object.assign(new Error("HTTP " + status), { status });
@@ -63,6 +63,33 @@ test("spectate does not resubmit an ambiguous timed out launch", async () => {
 
 test("missing phase and launch routes report client incompatibility", async () => {
   await assert.rejects(launchThroughClient(async () => { throw httpError(404); }, "root", {}), /routes Spectate ne sont pas disponibles/);
+});
+
+test("client diagnostic reports the observed phase and authentication source", async () => {
+  const calls = [];
+  const result = await diagnoseClient(async (...args) => {
+    calls.push(args);
+    return { data: "ChampSelect", status: 200, auth: "lockfile" };
+  }, "C:\\Riot Games\\League of Legends");
+  assert.deepEqual(calls, [["C:\\Riot Games\\League of Legends", "GET", "/lol-gameflow/v1/gameflow-phase"]]);
+  assert.equal(result.connected, true);
+  assert.equal(result.phase, "ChampSelect");
+  assert.equal(result.status, 200);
+  assert.equal(result.auth, "lockfile");
+});
+
+test("client diagnostic explains local authentication refusal", async () => {
+  await assert.rejects(diagnoseClient(async () => { throw httpError(401); }, "root"), /Session League locale refusée/);
+});
+
+test("settings exposes the key-free League client diagnostic end to end", () => {
+  const main = fs.readFileSync("src/main.js", "utf8");
+  const preload = fs.readFileSync("src/preload.js", "utf8");
+  const renderer = fs.readFileSync("src/renderer/app.js", "utf8");
+  assert.match(main, /settings:diagnoseLeague/);
+  assert.match(preload, /diagnoseLeague/);
+  assert.match(renderer, /Tester le client ouvert/);
+  assert.match(renderer, /ne nécessite pas de clé Riot/);
 });
 
 function fakeRequest(respond) {

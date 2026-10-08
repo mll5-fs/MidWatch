@@ -7,7 +7,7 @@ Windows desktop scouting for OUATventure midlaners only. Professional rosters an
 - Riot API credentials remain local. The patch section requires a valid key for player statistics; official notes open without a key.
 - Version is displayed from Electron app.getVersion().
 
-Spectate inspects every running League client command line before using the local lockfile fallback, so a stale Windows process cannot mask a later valid client instance. An accepted local request reports the observed client phase and LCU route for diagnosis; it still does not prove that the game window opened.
+Spectate inspects every running League client command line before using the local lockfile fallback, so a stale Windows process cannot mask a later valid client instance. Settings includes a key-free local client diagnostic that reports the observed phase and authentication source, separating client connection failures from Riot spectator-data failures. An accepted local request reports the observed client phase and LCU route for diagnosis; it still does not prove that the game window opened.
 
 ## Data notes
 
