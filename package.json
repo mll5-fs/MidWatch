@@ -1,6 +1,6 @@
 {
   "name": "midpulse",
-  "version": "5.2.14",
+  "version": "5.2.15",
   "private": true,
   "description": "OUATventure scouting and patch analysis",
   "main": "src/main.js",
