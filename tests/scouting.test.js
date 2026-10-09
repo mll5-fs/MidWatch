@@ -222,7 +222,9 @@ test("summarizes measurable takedown, death and first-ward habits before ten min
   ] });
   assert.deepEqual(earlyHabits([first, second], "player"), {
     games: 2, earlyTakedowns: 1, takedownRate: 50, deathRate: 50,
-    wardGames: 2, firstWardSeconds: 120, limited: true
+    wardGames: 2, firstWardSeconds: 120,
+    before5: { takedowns: 1, takedownRate: 50, deathRate: 50 },
+    fiveToTen: { takedowns: 0, takedownRate: 0, deathRate: 0 }, limited: true
   });
 });
 
@@ -234,8 +236,22 @@ test("early habits include the ten-minute boundary and expose missing ward sampl
   ] });
   assert.deepEqual(earlyHabits([valid], "player"), {
     games: 1, earlyTakedowns: 1, takedownRate: 100, deathRate: 0,
-    wardGames: 0, firstWardSeconds: null, limited: true
+    wardGames: 0, firstWardSeconds: null,
+    before5: { takedowns: 0, takedownRate: 0, deathRate: 0 },
+    fiveToTen: { takedowns: 1, takedownRate: 100, deathRate: 0 }, limited: true
   });
+});
+
+test("early habit phases assign the five-minute boundary once", () => {
+  const timeline = sample({ events: [
+    { type: "CHAMPION_KILL", killerId: 1, victimId: 6, timestamp: 300000 },
+    { type: "CHAMPION_KILL", killerId: 2, assistingParticipantIds: [1], victimId: 6, timestamp: 300001 },
+    { type: "CHAMPION_KILL", killerId: 6, victimId: 1, timestamp: 600000 }
+  ] });
+  const result = earlyHabits([timeline], "player");
+  assert.deepEqual(result.before5, { takedowns: 1, takedownRate: 100, deathRate: 0 });
+  assert.deepEqual(result.fiveToTen, { takedowns: 1, takedownRate: 100, deathRate: 100 });
+  assert.equal(result.earlyTakedowns, 2);
 });
 
 test("early habits exclude off-role games and require an identified opposing mid", () => {
