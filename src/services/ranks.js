@@ -68,11 +68,21 @@ async function loadBatch(riot, players, { cache = {}, accountCache = {}, priorit
     seen.add(key);
     try {
       let puuid = accountCache[key];
+      const cachedPuuid = Boolean(puuid);
       if (!puuid) {
         puuid = (await riot.resolveAccount(account)).puuid;
         accountCache[key] = puuid;
       }
-      const ranked = await riot.ranked(account.platform || "EUW1", puuid);
+      let ranked;
+      try {
+        ranked = await riot.ranked(account.platform || "EUW1", puuid);
+      } catch (error) {
+        if (error.status !== 404 || !cachedPuuid) throw error;
+        delete accountCache[key];
+        puuid = (await riot.resolveAccount(account)).puuid;
+        accountCache[key] = puuid;
+        ranked = await riot.ranked(account.platform || "EUW1", puuid);
+      }
       if (!Array.isArray(ranked)) throw new Error("Réponse Riot de classement invalide.");
       const solo = ranked.find(rank => rank.queueType === "RANKED_SOLO_5x5");
       if (solo && (!solo.tier || !Number.isFinite(solo.leaguePoints))) throw new Error("Rang SoloQ incomplet.");

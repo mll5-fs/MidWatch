@@ -68,12 +68,29 @@ test("a validated replacement key makes failed ranks immediately eligible again"
   assert.equal(cache.healthy.nextCheck, 999999);
   assert.equal(cache.ranked.error, undefined);
 });
-test("invalid account IDs are retried later without keeping a stale PUUID", async () => {
+test("a stale cached PUUID is resolved again and ranked in the same batch", async () => {
   const p = player("renamed"), key = accountKey(p.accounts[0]), riot = mock();
-  riot.ranked = async () => { throw Object.assign(new Error("Not found"), { status: 404 }); };
+  riot.resolveAccount = async () => ({ puuid: "current" });
+  riot.ranked = async (_platform, puuid) => {
+    if (puuid === "old") throw Object.assign(new Error("Not found"), { status: 404 });
+    return [solo];
+  };
   const result = await loadBatch(riot, [p], { now: 1000, accountCache: { [key]: "old" } });
+  assert.equal(result.accountCache[key], "current");
+  assert.equal(result.cache[key].status, "ranked");
+  assert.equal(result.updates[0].rank.tier, "DIAMOND");
+});
+
+test("a 404 after a fresh account resolution remains unavailable without a loop", async () => {
+  const p = player("missing"), key = accountKey(p.accounts[0]), riot = mock();
+  let resolveCalls = 0, rankCalls = 0;
+  riot.resolveAccount = async () => { resolveCalls++; return { puuid: "missing" }; };
+  riot.ranked = async () => { rankCalls++; throw Object.assign(new Error("Not found"), { status: 404 }); };
+  const result = await loadBatch(riot, [p], { now: 1000 });
   assert.equal(result.accountCache[key], undefined);
   assert.equal(result.cache[key].status, "error");
+  assert.equal(resolveCalls, 1);
+  assert.equal(rankCalls, 1);
 });
 test("shared Riot accounts are fetched once and update all linked players", async () => {
   const p = player("same"), duplicate = { ...p, id: "duplicate" }, riot = mock();
