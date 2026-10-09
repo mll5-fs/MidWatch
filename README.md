@@ -3,7 +3,7 @@
 Windows desktop scouting for OUATventure midlaners only. Professional rosters and professional background requests have been removed. Existing professional cache entries are ignored.
 
 - OUAT players, teams, divisions, SoloQ ranks, favorites and spectator requests.
-- Analyse de patchs: choose an OUAT player, load a dedicated sample of up to 30 ranked-mid games without timelines, compare patch samples with game counts, win rates, IC95, KDA and champion mix, and open official Riot patch notes.
+- Analyse de patchs: choose an OUAT player, load a dedicated sample of up to 30 ranked-mid games without timelines, compare each observed patch with the previous observed sample using explicit game counts, win-rate-point and KDA deltas, IC95, champion mix and sample warnings, and open official Riot patch notes.
 - Riot API credentials remain local. The patch section requires a valid key for player statistics; official notes open without a key.
 - Version is displayed from Electron app.getVersion().
 
@@ -23,7 +23,7 @@ Lane-at-10 comparisons by the player's champion reuse only the same complete 10:
 
 Lane-at-10 comparisons by opposing champion apply the same validation and expose a separate sample for each identified matchup. The opposing-champion progression panel additionally requires paired complete 5:00 and 10:00 snapshots, and reports changes in the relative CS/gold/XP gaps plus the share where the gold gap improved. These measurements do not establish that the opposing champion caused the observed result or measure micro-gameplay quality.
 
-Patch comparisons normalize Riot's full `gameVersion` to its major/minor patch and show their own game count. Samples below three games are explicitly marked as limited; differences remain descriptive and do not establish that a patch caused a performance change.
+Patch comparisons normalize Riot's full `gameVersion` to its major/minor patch and show their own game count. Each patch is compared only with the previous patch actually observed in the available history, which may skip Riot versions. Both sample sizes and signed win-rate-point/KDA deltas are shown. Samples below three games are explicitly marked as limited; champion pools and context may differ, so differences remain descriptive and do not establish that a patch caused a performance change.
 
 Matchup summaries group results by the opposing player assigned to mid and display their own sample size. They describe results against a champion; they do not measure matchup causality or micro-gameplay quality.
 

@@ -246,7 +246,7 @@ function patchBreakdown(matches, puuid) {
     if (champion) group.champions.set(champion, (group.champions.get(champion) || 0) + 1);
     groups.set(patch, group);
   }
-  return [...groups.values()].sort((a, b) => {
+  const rows = [...groups.values()].sort((a, b) => {
     const [am, an] = a.patch.split(".").map(Number), [bm, bn] = b.patch.split(".").map(Number);
     return bm - am || bn - an;
   }).map(group => ({
@@ -259,6 +259,18 @@ function patchBreakdown(matches, puuid) {
     champions: [...group.champions].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
       .slice(0, 3).map(([name, games]) => ({ name, games }))
   }));
+  return rows.map((row, index) => {
+    const previous = rows[index + 1];
+    if (!previous) return row;
+    return { ...row, comparison: {
+      previousPatch: previous.patch,
+      currentGames: row.games,
+      previousGames: previous.games,
+      winrateDelta: row.winrate - previous.winrate,
+      kdaDelta: +(row.kda - previous.kda).toFixed(2),
+      limited: row.games < 3 || previous.games < 3
+    } };
+  });
 }
 
 function matchupBreakdown(matches, puuid) {

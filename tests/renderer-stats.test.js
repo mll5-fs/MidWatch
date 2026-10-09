@@ -144,6 +144,10 @@ test("renders patch samples and their statistical limits", () => {
   assert.match(app, /function patchReport\(patches=\[\]\)/);
   assert.match(app, /patchReport\(stats\.patches\)/);
   assert.match(app, /CHAMPIONS ·/);
+  assert.match(app, /VS PATCH OBSERVÉ/);
+  assert.match(app, /Δ WR/);
+  assert.match(app, /c\.currentGames/);
+  assert.match(app, /n’est pas forcément la version Riot immédiatement précédente/);
   assert.match(app, /ÉCHANTILLON FAIBLE/);
   assert.match(app, /les écarts restent descriptifs et ne prouvent pas un effet du patch/);
 });
