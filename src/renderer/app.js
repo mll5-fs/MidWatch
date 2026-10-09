@@ -5,7 +5,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 let patchRequest=0,patchPlayerId="",patchStats=null,patchError="",patchLoading=false;
 
 function rankClass(r={}){return String(r.tier||"unranked").toLowerCase()}function rankLabel(r={}){const tier=String(r.tier||"").toUpperCase();if(!tier)return"";return `${tier}${r.rank&&r.rank!=="I"?" "+r.rank:""} · ${r.leaguePoints??r.lp??0} LP`}
-function playerRankLabel(p={}){const label=rankLabel(p.bestRank);return label+(label&&p.rankStatus==="partial"?" · PARTIEL":"")}
+function playerRankLabel(p={}){const label=rankLabel(p.bestRank);if(!label)return"";if(p.rankStatus==="error")return label+" · À REVÉRIFIER";return label+(p.rankStatus==="partial"?" · PARTIEL":"")}
 function rankScore(p){const o={CHALLENGER:10,GRANDMASTER:9,MASTER:8,DIAMOND:7,EMERALD:6,PLATINUM:5,GOLD:4,SILVER:3,BRONZE:2,IRON:1};const r=p.bestRank||{};return(o[String(r.tier||"").toUpperCase()]||0)*100000+(+r.leaguePoints||+r.lp||0)}
 function applyLive(list){return(list||[]).map(original=>{const p={...original,...rankMeta[original.id]};const x=liveState[p.id]===undefined?p:{...p,live:liveState[p.id]};return rankState[p.id]===undefined?x:{...x,bestRank:rankState[p.id]||{}}})}function allPlayers(){return applyLive(S.ouatPlayers)}
 function rankPlaceholder(p){
