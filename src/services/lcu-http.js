@@ -11,7 +11,8 @@ function requestLocal(auth, method, endpoint, body, { request = https.request, t
       error ? reject(error) : resolve(value);
     };
     const timer = setTimeout(() => {
-      finish(new Error("Le client League n'a pas répondu dans les 12 secondes. Vérifie son état avant de réessayer."));
+      const timeoutSeconds = String(timeoutMs / 1000).replace(".", ",");
+      finish(new Error(`Le client League n'a pas répondu dans le délai imparti (${timeoutSeconds} s). Vérifie son état avant de réessayer.`));
       req?.destroy();
     }, timeoutMs);
     const data = body === undefined ? "" : JSON.stringify(body);
@@ -39,7 +40,7 @@ function requestLocal(auth, method, endpoint, body, { request = https.request, t
   });
 }
 
-function createLocalRequester(loadCandidates, request = requestLocal) {
+function createLocalRequester(loadCandidates, request = requestLocal, { probeTimeoutMs = 2500 } = {}) {
   let active = null;
   return async (root, method, endpoint, body) => {
     if (active) return request(active, method, endpoint, body);
@@ -47,7 +48,10 @@ function createLocalRequester(loadCandidates, request = requestLocal) {
     let lastError;
     for (const auth of candidates || []) {
       try {
-        const response = await request(auth, method, endpoint, body);
+        // A stale process or lockfile must not consume the full launch deadline.
+        // Only the initial read-only phase probe receives this shorter timeout.
+        const options = method === "GET" ? { timeoutMs: probeTimeoutMs } : undefined;
+        const response = await request(auth, method, endpoint, body, options);
         active = auth;
         return response;
       } catch (error) {
