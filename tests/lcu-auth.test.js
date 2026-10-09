@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { fromCommandLine, fromProcessList, fromLockfile } = require("../src/services/lcu-auth");
+const { fromCommandLine, fromProcessList, fromProcessListAll, fromLockfile } = require("../src/services/lcu-auth");
 
 test("reads an actual Windows command line without swallowing following flags", () => {
   assert.deepEqual(fromCommandLine('"C:\\Riot Games\\League of Legends\\LeagueClientUx.exe" --app-port=54321 --remoting-auth-token=test-token --region=EUW'),
@@ -27,6 +27,16 @@ test("finds valid credentials after a stale League client process", () => {
   const current = '"C:\\Riot Games\\LeagueClientUx.exe" --app-port=54321 --remoting-auth-token=current';
   assert.deepEqual(fromProcessList(stale + "\r\n" + current),
     { port: 54321, password: "current", source: "process" });
+});
+
+test("retains every distinct valid process session for connection probing", () => {
+  const first = '"LeagueClientUx.exe" --app-port=1111 --remoting-auth-token=old';
+  const duplicate = '--app-port=1111 --remoting-auth-token=old';
+  const current = '"LeagueClientUx.exe" --app-port=2222 --remoting-auth-token=current';
+  assert.deepEqual(fromProcessListAll([first, duplicate, "invalid", current].join("\r\n")), [
+    { port: 1111, password: "old", source: "process" },
+    { port: 2222, password: "current", source: "process" }
+  ]);
 });
 
 test("reads the standard HTTPS lockfile with Windows line endings", () => {

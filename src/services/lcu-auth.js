@@ -12,13 +12,17 @@ function fromCommandLine(command = "") {
   return port && token ? credentials(port[1] || port[2], token[1] || token[2], "process") : null;
 }
 
-function fromProcessList(raw = "") {
+function fromProcessListAll(raw = "") {
+  const seen = new Set(), result = [];
   for (const command of String(raw || "").split(/\r?\n/)) {
     const auth = fromCommandLine(command.trim());
-    if (auth) return auth;
+    const key = auth && `${auth.port}:${auth.password}`;
+    if (auth && !seen.has(key)) { seen.add(key); result.push(auth); }
   }
-  return null;
+  return result;
 }
+
+function fromProcessList(raw = "") { return fromProcessListAll(raw)[0] || null; }
 
 function fromLockfile(raw = "") {
   const fields = raw.trim().split(":");
@@ -26,4 +30,4 @@ function fromLockfile(raw = "") {
   return credentials(fields[2], fields[3], "lockfile");
 }
 
-module.exports = { fromCommandLine, fromProcessList, fromLockfile };
+module.exports = { fromCommandLine, fromProcessList, fromProcessListAll, fromLockfile };
