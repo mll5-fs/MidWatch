@@ -121,7 +121,7 @@ function fakeRequest(respond) {
 test("local request deadline aborts a silent connection", async () => {
   const req = fakeRequest();
   await assert.rejects(requestLocal({ port: 1234, password: "secret" }, "GET", "/test", undefined,
-    { request: () => req, timeoutMs: 5 }), /n'a pas répondu/);
+    { request: () => req, timeoutMs: 5 }), /délai imparti \(0,005 s\)/);
   assert.equal(req.destroyed, true);
 });
 
@@ -152,6 +152,24 @@ test("local client probing skips stale sessions then pins the responsive credent
     [1111, "GET", "/lol-gameflow/v1/gameflow-phase"],
     [2222, "GET", "/lol-gameflow/v1/gameflow-phase"],
     [2222, "POST", "/lol-gameflow/v1/spectate/launch"]
+  ]);
+});
+
+test("local client probing uses a short deadline only until credentials are pinned", async () => {
+  const stale = { port: 1111, password: "old" };
+  const current = { port: 2222, password: "current" };
+  const calls = [];
+  const raw = createLocalRequester(async () => [stale, current], async (auth, method, endpoint, body, options) => {
+    calls.push({ port: auth.port, method, timeoutMs: options?.timeoutMs });
+    if (auth === stale) throw new Error("Connexion impossible");
+    return method === "GET" ? { data: "Lobby" } : { status: 204 };
+  });
+  const result = await launchThroughClient(raw, "root", {});
+  assert.equal(result.accepted, true);
+  assert.deepEqual(calls, [
+    { port: 1111, method: "GET", timeoutMs: 2500 },
+    { port: 2222, method: "GET", timeoutMs: 2500 },
+    { port: 2222, method: "POST", timeoutMs: undefined }
   ]);
 });
 
