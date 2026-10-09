@@ -66,10 +66,12 @@ test("renders paired five-to-ten lane progression with its own sample limit", ()
 
 test("renders early timeline habits with their own sample and non-causal limit", () => {
   assert.match(app, /function earlyReport\(e=\{\}\)/);
-  assert.match(app, /HABITUDES AVANT 10 MINUTES/);
-  assert.match(app, /PARTIES AVEC TAKEDOWN/);
+  assert.match(app, /HABITUDES 0 → 5 \/ 5 → 10/);
+  assert.match(app, /0→5 · PARTIES AVEC TAKEDOWN/);
+  assert.match(app, /5→10 · PARTIES AVEC MORT/);
   assert.match(app, /1ER WARD/);
-  assert.match(app, /pas la position, la cause ni la qualité du micro-gameplay/);
+  assert.match(app, /sans double comptage/);
+  assert.match(app, /ni la position, ni la cause, ni la qualité du micro-gameplay/);
   assert.match(app, /earlyReport\(s\.early\)/);
 });
 
