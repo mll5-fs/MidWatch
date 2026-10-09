@@ -5,6 +5,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 let patchRequest=0,patchPlayerId="",patchStats=null,patchError="",patchLoading=false;
 
 function rankClass(r={}){return String(r.tier||"unranked").toLowerCase()}function rankLabel(r={}){const tier=String(r.tier||"").toUpperCase();if(!tier)return"";return `${tier}${r.rank&&r.rank!=="I"?" "+r.rank:""} · ${r.leaguePoints??r.lp??0} LP`}
+function playerRankLabel(p={}){const label=rankLabel(p.bestRank);return label+(label&&p.rankStatus==="partial"?" · PARTIEL":"")}
 function rankScore(p){const o={CHALLENGER:10,GRANDMASTER:9,MASTER:8,DIAMOND:7,EMERALD:6,PLATINUM:5,GOLD:4,SILVER:3,BRONZE:2,IRON:1};const r=p.bestRank||{};return(o[String(r.tier||"").toUpperCase()]||0)*100000+(+r.leaguePoints||+r.lp||0)}
 function applyLive(list){return(list||[]).map(original=>{const p={...original,...rankMeta[original.id]};const x=liveState[p.id]===undefined?p:{...p,live:liveState[p.id]};return rankState[p.id]===undefined?x:{...x,bestRank:rankState[p.id]||{}}})}function allPlayers(){return applyLive(S.ouatPlayers)}
 function rankPlaceholder(p){
@@ -50,7 +51,7 @@ function listForView(){
 
 function avatar(p,cls="avatar"){const pic=p.avatar||"";const initials=String(p.name||"?").slice(0,2).toUpperCase();return`<div class="${cls}">${pic?`<img src="${esc(pic)}" alt="">`:esc(initials)}</div>`}
 function card(p){
-  const state=stateOf(p),rank=rankLabel(p.bestRank),fav=S.favorites.includes(p.id);
+  const state=stateOf(p),rank=playerRankLabel(p),fav=S.favorites.includes(p.id);
   const status=state==="live"?"● EN GAME":state==="offline"?"○ HORS LIGNE":p.accounts?.length?"◌ COMPTE LIÉ":"◌ NON SUIVI";
   return`<article class="player-card ${state}" data-id="${esc(p.id)}">
     <div class="card-top"><span class="card-scope">${esc(p.region)}${p.division?" · "+esc(p.division):""}</span><button class="star-btn ${fav?"on":""}" data-star="${esc(p.id)}">★</button></div>
@@ -66,7 +67,7 @@ function bindCards(){
 function ouatBrowser(players){
  const rows=[...players].sort((a,b)=>rankScore(b)-rankScore(a)||String(a.team||"").localeCompare(String(b.team||"")));
  return `<section class="scout-board"><div class="scout-board-head"><span>JOUEUR</span><span>ÉQUIPE</span><span>DIVISION</span><span>SOLOQ</span><span>RIOT ID</span><span>STATUT</span></div>
- ${rows.map((p,i)=>{const a=(p.accounts||[])[0],state=stateOf(p),rank=rankLabel(p.bestRank);return`<button class="scout-row" data-id="${esc(p.id)}"><span class="scout-player"><em>${String(i+1).padStart(2,"0")}</em>${avatar(p,"ouat-avatar")}<strong>${esc(p.name)}</strong></span><span class="scout-team">${esc(p.team||"—")}</span><span><i>${esc(p.division||"—")}</i></span><span>${rank?`<b class="elo-badge ${rankClass(p.bestRank)}">${esc(rank)}</b>`:`<b class="elo-badge unranked">${esc(rankPlaceholder(p))}</b>`}</span><span class="scout-riot">${a?.gameName?`${esc(a.gameName)}#${esc(a.tagLine||"")}`:"Non relié"}</span><span class="scout-status ${state}">${state==="live"?"● EN GAME":a?.gameName?"● SUIVI":"○ INCOMPLET"}</span></button>`}).join("")}</section>`;
+ ${rows.map((p,i)=>{const a=(p.accounts||[])[0],state=stateOf(p),rank=playerRankLabel(p);return`<button class="scout-row" data-id="${esc(p.id)}"><span class="scout-player"><em>${String(i+1).padStart(2,"0")}</em>${avatar(p,"ouat-avatar")}<strong>${esc(p.name)}</strong></span><span class="scout-team">${esc(p.team||"—")}</span><span><i>${esc(p.division||"—")}</i></span><span>${rank?`<b class="elo-badge ${rankClass(p.bestRank)}">${esc(rank)}</b>`:`<b class="elo-badge unranked">${esc(rankPlaceholder(p))}</b>`}</span><span class="scout-riot">${a?.gameName?`${esc(a.gameName)}#${esc(a.tagLine||"")}`:"Non relié"}</span><span class="scout-status ${state}">${state==="live"?"● EN GAME":a?.gameName?"● SUIVI":"○ INCOMPLET"}</span></button>`}).join("")}</section>`;
 }
 
 function hero(){

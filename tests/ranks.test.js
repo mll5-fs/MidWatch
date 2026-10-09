@@ -124,6 +124,31 @@ test("does not call a multi-account player unranked while another account is pen
   assert.equal(hydrate([p], cache)[0].rankStatus, "pending");
 });
 
+test("shows a known multi-account rank as partial until every account is checked", () => {
+  const p = { ...player("multi"), accounts: [
+    { gameName: "known", tagLine: "EUW", platform: "EUW1" },
+    { gameName: "pending", tagLine: "EUW", platform: "EUW1" }
+  ] };
+  const cache = { [accountKey(p.accounts[0])]: { rank: solo, status: "ranked", checkedAt: 1000 } };
+  assert.deepEqual(playerRankState(p, cache), { rank: solo, status: "partial", checkedAt: 1000, error: undefined });
+  const hydrated = hydrate([p], cache)[0];
+  assert.equal(hydrated.bestRank.tier, "DIAMOND");
+  assert.equal(hydrated.rankStatus, "partial");
+});
+
+test("keeps a verified rank visible but partial when another linked account failed", () => {
+  const p = { ...player("multi"), accounts: [
+    { gameName: "known", tagLine: "EUW", platform: "EUW1" },
+    { gameName: "failed", tagLine: "EUW", platform: "EUW1" }
+  ] };
+  const cache = {
+    [accountKey(p.accounts[0])]: { rank: solo, status: "ranked", checkedAt: 1000 },
+    [accountKey(p.accounts[1])]: { status: "error", checkedAt: 2000, error: "Riot indisponible" }
+  };
+  assert.deepEqual(playerRankState(p, cache), { rank: solo, status: "partial", checkedAt: 2000,
+    error: "Riot indisponible" });
+});
+
 test("selects the strongest rank across cached accounts regardless of account order", () => {
   const p = { ...player("multi"), accounts: [
     { gameName: "diamond", tagLine: "EUW", platform: "EUW1" },

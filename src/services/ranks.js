@@ -19,8 +19,10 @@ function playerRankState(player, cache = {}) {
   const checkedAt = entries.reduce((latest, entry) => Math.max(latest, Number(entry.checkedAt) || 0), 0) || undefined;
   if (ranked.length) {
     const stale = ranked[0].status === "error";
-    return { rank: ranked[0].rank, status: stale ? "error" : "ranked", checkedAt,
-      error: stale ? ranked[0].error : undefined };
+    const failed = entries.find(entry => entry.status === "error");
+    const partial = entries.length < accounts.length || entries.some(entry => entry.status === "pending" || entry.status === "error");
+    return { rank: ranked[0].rank, status: stale ? "error" : partial ? "partial" : "ranked", checkedAt,
+      error: stale ? ranked[0].error : failed?.error };
   }
   if (entries.length < accounts.length) return { status: "pending", checkedAt };
   if (entries.every(entry => entry.status === "unranked")) return { rank: null, status: "unranked", checkedAt };
