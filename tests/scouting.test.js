@@ -272,10 +272,25 @@ test("compares ranked mid performance by normalized game patch", () => {
   ];
   assert.deepEqual(patchBreakdown(matches, "player"), [
     { patch: "26.20", games: 2, winrate: 50, interval: { low: 9, high: 91 }, kda: 5.67, limited: true,
-      champions: [{ name: "Ahri", games: 2 }] },
+      champions: [{ name: "Ahri", games: 2 }], comparison: { previousPatch: "26.19", currentGames: 2,
+        previousGames: 1, winrateDelta: 50, kdaDelta: 4.67, limited: true } },
     { patch: "26.19", games: 1, winrate: 0, interval: { low: 0, high: 79 }, kda: 1, limited: true,
       champions: [{ name: "Ahri", games: 1 }] }
   ]);
+});
+
+test("compares only adjacent observed patch samples with signed descriptive deltas", () => {
+  const base = sample().match;
+  const make = (gameVersion, win, kills, deaths, assists) => ({ info: { ...base.info, gameVersion,
+    participants: [{ ...base.info.participants[0], win, kills, deaths, assists }, base.info.participants[1]] } });
+  const rows = patchBreakdown([
+    make("26.20.1", true, 4, 2, 4), make("26.18.1", false, 1, 2, 1), make("26.17.1", true, 3, 1, 2)
+  ], "player");
+  assert.deepEqual(rows[0].comparison, { previousPatch: "26.18", currentGames: 1, previousGames: 1,
+    winrateDelta: 100, kdaDelta: 3, limited: true });
+  assert.deepEqual(rows[1].comparison, { previousPatch: "26.17", currentGames: 1, previousGames: 1,
+    winrateDelta: -100, kdaDelta: -4, limited: true });
+  assert.equal(rows[2].comparison, undefined);
 });
 
 test("excludes malformed patches, off-role games and incomplete combat data", () => {
