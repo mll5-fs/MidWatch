@@ -255,6 +255,9 @@ function patchBreakdown(matches, puuid) {
     winrate: Math.round(100 * group.wins / group.games),
     interval: winrateInterval(group.wins, group.games),
     kda: +((group.kills + group.assists) / Math.max(1, group.deaths)).toFixed(2),
+    avgKills: +(group.kills / group.games).toFixed(1),
+    avgDeaths: +(group.deaths / group.games).toFixed(1),
+    avgAssists: +(group.assists / group.games).toFixed(1),
     limited: group.games < 3,
     champions: [...group.champions].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
       .slice(0, 3).map(([name, games]) => ({ name, games }))
