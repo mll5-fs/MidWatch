@@ -2,13 +2,14 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { EventEmitter } = require("node:events");
 const { launchThroughClient, diagnoseClient } = require("../src/services/spectate-flow");
-const { requestLocal } = require("../src/services/lcu-http");
+const { requestLocal, createLocalRequester } = require("../src/services/lcu-http");
 const fs = require("node:fs");
 const httpError = status => Object.assign(new Error("HTTP " + status), { status });
 
 test("Windows discovery inspects all League client processes", () => {
   const source = fs.readFileSync("src/services/spectate.js", "utf8");
-  assert.match(source, /fromProcessList\(commands\)/);
+  assert.match(source, /fromProcessListAll\(commands\)/);
+  assert.match(source, /createLocalRequester\(lcu\)/);
   assert.doesNotMatch(source, /Select-Object -First 1/);
 });
 
@@ -134,4 +135,33 @@ test("local HTTP parses success and keeps credentials out of errors", async () =
     if (status === 200) assert.equal((await result).data, "Lobby");
     else await assert.rejects(result, error => error.status === 401 && !JSON.stringify(error).includes("secret"));
   }
+});
+
+test("local client probing skips stale sessions then pins the responsive credentials", async () => {
+  const stale = { port: 1111, password: "old", source: "process" };
+  const current = { port: 2222, password: "current", source: "process" };
+  const calls = [];
+  const raw = createLocalRequester(async () => [stale, current], async (auth, method, endpoint) => {
+    calls.push([auth.port, method, endpoint]);
+    if (auth === stale) throw new Error("Connexion impossible");
+    return method === "GET" ? { data: "Lobby" } : { status: 204, auth: auth.source };
+  });
+  const result = await launchThroughClient(raw, "root", {});
+  assert.equal(result.accepted, true);
+  assert.deepEqual(calls, [
+    [1111, "GET", "/lol-gameflow/v1/gameflow-phase"],
+    [2222, "GET", "/lol-gameflow/v1/gameflow-phase"],
+    [2222, "POST", "/lol-gameflow/v1/spectate/launch"]
+  ]);
+});
+
+test("local client requester never switches credentials after a POST failure", async () => {
+  const first = { port: 1111, password: "first" }, second = { port: 2222, password: "second" };
+  const calls = [], raw = createLocalRequester(async () => [first, second], async (auth, method) => {
+    calls.push([auth.port, method]);
+    if (method === "POST") throw new Error("Délai dépassé");
+    return { data: "Lobby" };
+  });
+  await assert.rejects(launchThroughClient(raw, "root", {}), /Délai dépassé/);
+  assert.deepEqual(calls, [[1111, "GET"], [1111, "POST"]]);
 });

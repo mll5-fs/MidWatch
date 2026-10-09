@@ -39,4 +39,28 @@ function requestLocal(auth, method, endpoint, body, { request = https.request, t
   });
 }
 
-module.exports = { requestLocal };
+function createLocalRequester(loadCandidates, request = requestLocal) {
+  let active = null;
+  return async (root, method, endpoint, body) => {
+    if (active) return request(active, method, endpoint, body);
+    const candidates = await loadCandidates(root);
+    let lastError;
+    for (const auth of candidates || []) {
+      try {
+        const response = await request(auth, method, endpoint, body);
+        active = auth;
+        return response;
+      } catch (error) {
+        lastError = error;
+        // Only the initial read-only probe may safely try another discovered session.
+        if (method !== "GET" || (error.status && ![401, 403].includes(error.status))) {
+          active = auth;
+          throw error;
+        }
+      }
+    }
+    throw lastError || new Error("MidPulse ne trouve aucune session locale du client League.");
+  };
+}
+
+module.exports = { requestLocal, createLocalRequester };
