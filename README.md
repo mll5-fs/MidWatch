@@ -43,6 +43,8 @@ Rank collection caches Riot PUUIDs per linked account. If League-V4 rejects a ca
 
 For players with several linked Riot accounts, a verified SoloQ rank remains visible while the other accounts load, but is labelled `PARTIEL` until every account has a conclusive result. This avoids presenting an interim rank as the player's confirmed best rank.
 
+When a previously verified rank is retained after a Riot refresh error, the UI labels it `À REVÉRIFIER`. The cached value remains useful for scouting, but is no longer presented as current until a later League-V4 request succeeds.
+
 When a player has several linked Riot accounts, rank loading checks every unique account within the existing five-account batch budget and displays the highest verified SoloQ rank. A successful unranked response for one account no longer hides a ranked secondary account or marks the player unranked while another account is still pending.
 
 LPL players may use Chinese servers that are not exposed through the global Riot API; live detection and spectating can therefore be unavailable for those accounts.

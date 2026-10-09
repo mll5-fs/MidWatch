@@ -28,6 +28,15 @@ test("marks a known rank as partial while another linked account remains unresol
   assert.match(app, /rank=playerRankLabel\(p\)/);
 });
 
+test("keeps a cached rank visible but marks it for verification after a refresh error", () => {
+  const source = app.slice(app.indexOf("function rankClass("), app.indexOf("function rankScore("));
+  const context = vm.createContext({});
+  vm.runInContext(source, context);
+  const player = { bestRank: { tier: "MASTER", rank: "I", leaguePoints: 120 }, rankStatus: "error" };
+  assert.equal(context.playerRankLabel(player), "MASTER · 120 LP · À REVÉRIFIER");
+  assert.equal(context.playerRankLabel({ ...player, bestRank: {} }), "");
+});
+
 test("rank refresh prioritizes the current view and reacts to Riot cooldowns", () => {
   assert.match(app, /listForView\(\)\.slice\(0,20\)/);
   assert.match(app, /rankCooldownAt=Number\(r\.retryAt\)\|\|0/);
