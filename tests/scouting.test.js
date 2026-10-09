@@ -271,10 +271,12 @@ test("compares ranked mid performance by normalized game patch", () => {
     { ...sample().match, info: { ...sample().match.info, gameVersion: "26.20.999", participants: sample().match.info.participants.map((p, i) => i ? p : { ...p, win: false, kills: 1, deaths: 1, assists: 4 }) } }
   ];
   assert.deepEqual(patchBreakdown(matches, "player"), [
-    { patch: "26.20", games: 2, winrate: 50, interval: { low: 9, high: 91 }, kda: 5.67, limited: true,
+    { patch: "26.20", games: 2, winrate: 50, interval: { low: 9, high: 91 }, kda: 5.67,
+      avgKills: 3, avgDeaths: 1.5, avgAssists: 5.5, limited: true,
       champions: [{ name: "Ahri", games: 2 }], comparison: { previousPatch: "26.19", currentGames: 2,
         previousGames: 1, winrateDelta: 50, kdaDelta: 4.67, limited: true } },
-    { patch: "26.19", games: 1, winrate: 0, interval: { low: 0, high: 79 }, kda: 1, limited: true,
+    { patch: "26.19", games: 1, winrate: 0, interval: { low: 0, high: 79 }, kda: 1,
+      avgKills: 2, avgDeaths: 4, avgAssists: 2, limited: true,
       champions: [{ name: "Ahri", games: 1 }] }
   ]);
 });
@@ -301,7 +303,8 @@ test("excludes malformed patches, off-role games and incomplete combat data", ()
   assert.deepEqual(patchBreakdown([
     make("26.20.1"), make("unknown"), make("26.20.2", { kills: undefined }),
     make("26.20.3", { teamPosition: "TOP" })
-  ], "player"), [{ patch: "26.20", games: 1, winrate: 100, interval: { low: 21, high: 100 }, kda: 4, limited: true,
+  ], "player"), [{ patch: "26.20", games: 1, winrate: 100, interval: { low: 21, high: 100 }, kda: 4,
+    avgKills: 1, avgDeaths: 0, avgAssists: 3, limited: true,
     champions: [{ name: "Ahri", games: 1 }] }]);
 });
 

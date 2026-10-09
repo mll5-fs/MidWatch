@@ -161,6 +161,10 @@ test("ignores stale profile and statistics responses after drawer navigation", (
 test("renders patch samples and their statistical limits", () => {
   assert.match(app, /function patchReport\(patches=\[\]\)/);
   assert.match(app, /patchReport\(stats\.patches\)/);
+  assert.match(app, /K\/D\/A MOYEN/);
+  assert.match(app, /p\.avgKills/);
+  assert.match(app, /p\.avgDeaths/);
+  assert.match(app, /p\.avgAssists/);
   assert.match(app, /CHAMPIONS ·/);
   assert.match(app, /VS PATCH OBSERVÉ/);
   assert.match(app, /Δ WR/);
