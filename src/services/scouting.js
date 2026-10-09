@@ -79,10 +79,13 @@ function laneAt(samples, puuid, minute) {
     const values = rows.map(row => row[key]).sort((a, b) => a - b), middle = Math.floor(values.length / 2);
     return Math.round(values.length % 2 ? values[middle] : (values[middle - 1] + values[middle]) / 2);
   };
+  const goldAheadGames = rows.filter(x => x.goldDiff > 0).length;
+  const deathGames = rows.filter(x => x.earlyDeaths > 0).length;
   return { games: rows.length, cs: avg("cs"), gold: avg("gold"), xp: avg("xp"),
     csDiff: avg("csDiff"), goldDiff: avg("goldDiff"), xpDiff: avg("xpDiff"),
-    medianGoldDiff: median("goldDiff"), goldAheadRate: Math.round(100 * rows.filter(x => x.goldDiff > 0).length / rows.length),
-    deathRate: Math.round(100 * rows.filter(x => x.earlyDeaths > 0).length / rows.length) };
+    medianGoldDiff: median("goldDiff"), goldAheadRate: Math.round(100 * goldAheadGames / rows.length),
+    goldAheadInterval: winrateInterval(goldAheadGames, rows.length),
+    deathRate: Math.round(100 * deathGames / rows.length), deathInterval: winrateInterval(deathGames, rows.length) };
 }
 
 const laneAt5 = (samples, puuid) => laneAt(samples, puuid, 5);

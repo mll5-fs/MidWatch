@@ -47,13 +47,18 @@ test("renders lane-at-ten median and gold-ahead frequency with a strict definiti
   assert.match(app, /strictement plus d’or que le mid adverse à 10:00/);
   assert.match(app, /l\.medianGoldDiff/);
   assert.match(app, /l\.goldAheadRate/);
+  assert.match(app, /confidenceLabel\(l\.goldAheadInterval\)/);
+  assert.match(app, /confidenceLabel\(l\.deathInterval\)/);
+  assert.match(app, /IC95 de Wilson montrent l’incertitude des fréquences/);
 });
 
 test("renders a separate lane-at-five sample without causal gameplay claims", () => {
   assert.match(app, /LANE À 5 MINUTES/);
   assert.match(app, /CS@5/);
   assert.match(app, /Lane@5 indisponible/);
-  assert.match(app, /ces valeurs sont descriptives et n’expliquent pas la cause de l’écart/);
+  assert.match(app, /MORT AVANT 5\$\{confidenceLabel\(l\.deathInterval\)\}/);
+  assert.match(app, /les IC95 de Wilson montrent l’incertitude des fréquences/);
+  assert.match(app, /Ces valeurs sont descriptives et n’expliquent pas la cause de l’écart/);
 });
 
 test("renders paired five-to-ten lane progression with its own sample limit", () => {

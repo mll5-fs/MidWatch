@@ -19,7 +19,8 @@ function sample({ mine = {}, theirs = {}, events = [], position = "MIDDLE", cham
 test("calculates lane values and matchup deltas at 10 minutes", () => {
   assert.deepEqual(laneAt10([sample()], "player"), {
     games: 1, cs: 72, gold: 4100, xp: 4800, csDiff: 7, goldDiff: 200, xpDiff: 200,
-    medianGoldDiff: 200, goldAheadRate: 100, deathRate: 0
+    medianGoldDiff: 200, goldAheadRate: 100, goldAheadInterval: { low: 21, high: 100 },
+    deathRate: 0, deathInterval: { low: 0, high: 79 }
   });
 });
 
@@ -31,7 +32,8 @@ test("calculates an independent complete lane snapshot at 5 minutes", () => {
   }, events: [{ type: "CHAMPION_KILL", victimId: 1, timestamp: 300000 }] });
   assert.deepEqual(laneAt5([early], "player"), {
     games: 1, cs: 31, gold: 2200, xp: 2400, csDiff: 3, goldDiff: 150, xpDiff: 80,
-    medianGoldDiff: 150, goldAheadRate: 100, deathRate: 100
+    medianGoldDiff: 150, goldAheadRate: 100, goldAheadInterval: { low: 21, high: 100 },
+    deathRate: 100, deathInterval: { low: 21, high: 100 }
   });
   assert.equal(laneAt10([early], "player").deathRate, 100);
 });
@@ -86,7 +88,8 @@ test("reports lane consistency without letting one extreme game define the media
   const outlier = sample({ mine: { totalGold: 5900 } });
   assert.deepEqual(laneAt10([sample(), sample(), behind, outlier], "player"), {
     games: 4, cs: 72, gold: 4400, xp: 4800, csDiff: 7, goldDiff: 500, xpDiff: 200,
-    medianGoldDiff: 200, goldAheadRate: 75, deathRate: 0
+    medianGoldDiff: 200, goldAheadRate: 75, goldAheadInterval: { low: 30, high: 95 },
+    deathRate: 0, deathInterval: { low: 0, high: 49 }
   });
 });
 
