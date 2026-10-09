@@ -41,6 +41,8 @@ Foreground Riot actions (scouting reports, patch analysis, account checks and sp
 
 Rank collection caches Riot PUUIDs per linked account. If League-V4 rejects a cached PUUID with a 404, MidPulse now resolves the Riot ID again through Account-V1 and retries the rank once in the same batch. Fresh 404s, authentication failures and rate limits are not looped.
 
+For players with several linked Riot accounts, a verified SoloQ rank remains visible while the other accounts load, but is labelled `PARTIEL` until every account has a conclusive result. This avoids presenting an interim rank as the player's confirmed best rank.
+
 When a player has several linked Riot accounts, rank loading checks every unique account within the existing five-account batch budget and displays the highest verified SoloQ rank. A successful unranked response for one account no longer hides a ranked secondary account or marks the player unranked while another account is still pending.
 
 LPL players may use Chinese servers that are not exposed through the global Riot API; live detection and spectating can therefore be unavailable for those accounts.

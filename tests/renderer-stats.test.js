@@ -19,6 +19,15 @@ test("rank labels distinguish pending, missing credentials, error and confirmed 
   assert.equal(context.rankPlaceholder({ accounts: [] }), "COMPTE NON RELIÉ");
 });
 
+test("marks a known rank as partial while another linked account remains unresolved", () => {
+  const source = app.slice(app.indexOf("function rankClass("), app.indexOf("function rankScore("));
+  const context = vm.createContext({});
+  vm.runInContext(source, context);
+  const player = { bestRank: { tier: "DIAMOND", rank: "II", leaguePoints: 50 }, rankStatus: "partial" };
+  assert.equal(context.playerRankLabel(player), "DIAMOND II · 50 LP · PARTIEL");
+  assert.match(app, /rank=playerRankLabel\(p\)/);
+});
+
 test("rank refresh prioritizes the current view and reacts to Riot cooldowns", () => {
   assert.match(app, /listForView\(\)\.slice\(0,20\)/);
   assert.match(app, /rankCooldownAt=Number\(r\.retryAt\)\|\|0/);
