@@ -45,6 +45,8 @@ For players with several linked Riot accounts, a verified SoloQ rank remains vis
 
 When a previously verified rank is retained after a Riot refresh error, the UI labels it `À REVÉRIFIER`. The cached value remains useful for scouting, but is no longer presented as current until a later League-V4 request succeeds.
 
+Live status now distinguishes a successful Spectator-V5 `404` for a resolved account (confirmed outside a game) from account-resolution, authentication, rate-limit and network failures (status unavailable). An unavailable refresh also clears a stale in-game badge. The manual account check likewise reports League-V4 failures instead of presenting them as an unranked result.
+
 When a player has several linked Riot accounts, rank loading checks every unique account within the existing five-account batch budget and displays the highest verified SoloQ rank. A successful unranked response for one account no longer hides a ranked secondary account or marks the player unranked while another account is still pending.
 
 LPL players may use Chinese servers that are not exposed through the global Riot API; live detection and spectating can therefore be unavailable for those accounts.

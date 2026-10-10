@@ -1,4 +1,4 @@
-const{app,BrowserWindow,ipcMain,shell,dialog}=require("electron");const path=require("path");const store=require("./store"),bundledOuat=require("./data/ouat-current.json"),{Riot}=require("./services/riot"),{winrateInterval,sampleWindow,laneAt5,laneAt10,laneTransition,championTransitionBreakdown,opponentTransitionBreakdown,championLaneBreakdown,opponentLaneBreakdown,earlyHabits,participantForScouting,patchBreakdown,matchupBreakdown}=require("./services/scouting"),{buildCoverage}=require("./services/sample-coverage"),statsCache=require("./services/stats-cache"),spectate=require("./services/spectate"),ouat=require("./services/ouat"),{RiotScheduler}=require("./services/riot-scheduler");let mainWindow;const ranks=require("./services/ranks"),riotScheduler=new RiotScheduler();let rankInFlight=null,liveInFlight=null,rankRetryAt=0;
+const{app,BrowserWindow,ipcMain,shell,dialog}=require("electron");const path=require("path");const store=require("./store"),bundledOuat=require("./data/ouat-current.json"),{Riot}=require("./services/riot"),{winrateInterval,sampleWindow,laneAt5,laneAt10,laneTransition,championTransitionBreakdown,opponentTransitionBreakdown,championLaneBreakdown,opponentLaneBreakdown,earlyHabits,participantForScouting,patchBreakdown,matchupBreakdown}=require("./services/scouting"),{buildCoverage}=require("./services/sample-coverage"),statsCache=require("./services/stats-cache"),spectate=require("./services/spectate"),ouat=require("./services/ouat"),{RiotScheduler}=require("./services/riot-scheduler"),{checkLiveAccount}=require("./services/live-status");let mainWindow;const ranks=require("./services/ranks"),riotScheduler=new RiotScheduler();let rankInFlight=null,liveInFlight=null,rankRetryAt=0;
 let liveCursor=0,rankCursor=0;function applyOverrides(list){const o=store.get("accountOverrides",{});return(list||[]).map(p=>o[p.id]?{...p,accounts:[o[p.id]],accountOverride:true}:p)}function key(){return String(store.get("riotKey","")||"").trim()}
 function create(){store.init();const found=spectate.detect(store.get("leaguePath",""));if(found&&found!==store.get("leaguePath",""))store.set("leaguePath",found);mainWindow=new BrowserWindow({width:1460,height:920,minWidth:1040,minHeight:700,show:false,backgroundColor:"#070a0f",title:"MidPulse",autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,"preload.js"),contextIsolation:true,nodeIntegration:false,sandbox:false}});mainWindow.loadFile(path.join(__dirname,"renderer/index.html"));mainWindow.once("ready-to-show",()=>mainWindow.show())}
 
@@ -55,15 +55,12 @@ async function liveBatchWork(){
   for(let i=0;i<8&&i<withAccounts.length;i++)batch.push(withAccounts[(liveCursor+i)%withAccounts.length]);
   liveCursor=(liveCursor+batch.length)%withAccounts.length;
   for(const p of batch){
-    const a=p.accounts[0],ck=`${String(a.platform||"EUW1").toUpperCase()}|${a.gameName}#${a.tagLine}`.toLowerCase();
-    let puuid=cache[ck];
+    const a=p.accounts[0];
     try{
-      if(!puuid){const resolved=await riot.resolveAccount(a);puuid=resolved.puuid;cache[ck]=puuid}
-      let game=null;try{game=await riot.active(a.platform||"EUW1",puuid)}catch(e){if(e.status!==404)throw e}
-      updates.push({id:p.id,live:!!game,checkedAt:Date.now(),gameId:game?.gameId||null});
+      const status=await checkLiveAccount(riot,a,{accountCache:cache});
+      updates.push({id:p.id,live:status.live,checkedAt:status.checkedAt,gameId:status.gameId});
     }catch(e){
-      if(e.status===404)updates.push({id:p.id,live:false,checkedAt:Date.now()});
-      else updates.push({id:p.id,live:null,checkedAt:Date.now(),error:String(e.message||e)});
+      updates.push({id:p.id,live:null,checkedAt:Date.now(),error:String(e.message||e)});
     }
   }
   store.set("riotAccountCache",cache);
@@ -90,7 +87,7 @@ ipcMain.handle("riot:stats",(_e,a)=>foregroundRiot(()=>playerStats(a)));
 ipcMain.handle("riot:patchStats",(_e,a)=>foregroundRiot(()=>playerPatchStats(a)));
 ipcMain.handle("riot:liveBatch",()=>liveBatch());
 ipcMain.handle("riot:rankBatch",(_e,ids)=>rankBatch(ids));
-ipcMain.handle("riot:check",(_e,a)=>foregroundRiot(async()=>{if(!key())throw new Error("Ajoute ta clé Riot dans Settings.");const riot=new Riot(key()),acc=await riot.resolveAccount(a);let ranked=[];try{ranked=await riot.ranked(acc.platform,acc.puuid)}catch(_){}let active=null;try{active=await riot.active(acc.platform,acc.puuid)}catch(e){if(e.status!==404)throw e}return{account:acc,ranked,active}}));
+ipcMain.handle("riot:check",(_e,a)=>foregroundRiot(async()=>{if(!key())throw new Error("Ajoute ta clé Riot dans Settings.");const riot=new Riot(key()),acc=await riot.resolveAccount(a),ranked=await riot.ranked(acc.platform,acc.puuid);let active=null;try{active=await riot.active(acc.platform,acc.puuid)}catch(e){if(e.status!==404)throw e}return{account:acc,ranked,active}}));
 ipcMain.handle("spectate:launch",(_e,a)=>foregroundRiot(async()=>{if(!key())throw new Error("Ajoute ta clé Riot dans Settings.");const riot=new Riot(key()),acc=await riot.resolveAccount(a);let game;try{game=await riot.active(acc.platform,acc.puuid)}catch(e){if(e.status===404)throw new Error("Ce joueur n’est plus en partie.");throw e}const launched=await spectate.launch(store.get("leaguePath",""),game,acc.puuid);store.set("leaguePath",launched.root);return{ok:true,accepted:launched.accepted,gameId:game.gameId,phase:launched.phase,endpoint:launched.endpoint,auth:launched.auth,status:launched.status}}));
 ipcMain.handle("external:open",(_e,url)=>{if(/^https?:\/\//i.test(String(url)))return shell.openExternal(String(url));return false});
 app.whenReady().then(create);app.on("activate",()=>BrowserWindow.getAllWindows().length===0&&create());app.on("window-all-closed",()=>process.platform!=="darwin"&&app.quit());

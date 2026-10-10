@@ -50,6 +50,24 @@ test("rank loading quickly drains remaining batches without bypassing Riot coold
   assert.match(app, /clearTimeout\(rankFollowup\)/);
 });
 
+test("live status distinguishes confirmed offline from unavailable and clears stale live state", () => {
+  const source = app.slice(app.indexOf("function tracked("), app.indexOf("function dpmUrl("));
+  const context = vm.createContext({});
+  vm.runInContext(source, context);
+  assert.equal(context.stateOf({ live: true, accounts: [{}] }), "live");
+  assert.equal(context.stateOf({ live: false, accounts: [{}] }), "offline");
+  assert.equal(context.stateOf({ live: null, accounts: [{}] }), "unknown");
+  assert.match(app, /hasOwnProperty\.call\(u,"live"\)/);
+  assert.doesNotMatch(app, /if\(u\.live===true\|\|u\.live===false\)liveState/);
+});
+
+test("manual account check never converts a Riot rank failure to unranked", () => {
+  const main = fs.readFileSync(path.join(__dirname, "../src/main.js"), "utf8");
+  const handler = main.slice(main.indexOf('ipcMain.handle("riot:check"'), main.indexOf('ipcMain.handle("spectate:launch"'));
+  assert.match(handler, /ranked=await riot\.ranked/);
+  assert.doesNotMatch(handler, /try\{ranked=await riot\.ranked/);
+});
+
 test("scouting reports expose collection coverage and weak lane samples", () => {
   assert.match(app, /function coverageReport\(c=\{\}\)/);
   assert.match(app, /ÉCHANTILLON PARTIEL/);
