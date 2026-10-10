@@ -110,8 +110,10 @@ test("checks every linked account and keeps the highest verified SoloQ rank", as
   const result = await loadBatch(riot, [p], { now: 1000 });
   assert.equal(result.checked, 2);
   assert.deepEqual(result.updates, [{ id: "multi", rank: { tier: "DIAMOND", rank: "II", leaguePoints: 0 },
-    status: "ranked", checkedAt: 1000, error: undefined }]);
-  assert.equal(hydrate([p], result.cache)[0].bestRank.tier, "DIAMOND");
+    rankAccount: p.accounts[1], status: "ranked", checkedAt: 1000, error: undefined }]);
+  const hydrated = hydrate([p], result.cache)[0];
+  assert.equal(hydrated.bestRank.tier, "DIAMOND");
+  assert.equal(hydrated.bestRankAccount.gameName, "active");
 });
 
 test("does not call a multi-account player unranked while another account is pending", () => {
@@ -130,7 +132,7 @@ test("shows a known multi-account rank as partial until every account is checked
     { gameName: "pending", tagLine: "EUW", platform: "EUW1" }
   ] };
   const cache = { [accountKey(p.accounts[0])]: { rank: solo, status: "ranked", checkedAt: 1000 } };
-  assert.deepEqual(playerRankState(p, cache), { rank: solo, status: "partial", checkedAt: 1000, error: undefined });
+  assert.deepEqual(playerRankState(p, cache), { rank: solo, rankAccount: p.accounts[0], status: "partial", checkedAt: 1000, error: undefined });
   const hydrated = hydrate([p], cache)[0];
   assert.equal(hydrated.bestRank.tier, "DIAMOND");
   assert.equal(hydrated.rankStatus, "partial");
@@ -145,7 +147,7 @@ test("keeps a verified rank visible but partial when another linked account fail
     [accountKey(p.accounts[0])]: { rank: solo, status: "ranked", checkedAt: 1000 },
     [accountKey(p.accounts[1])]: { status: "error", checkedAt: 2000, error: "Riot indisponible" }
   };
-  assert.deepEqual(playerRankState(p, cache), { rank: solo, status: "partial", checkedAt: 2000,
+  assert.deepEqual(playerRankState(p, cache), { rank: solo, rankAccount: p.accounts[0], status: "partial", checkedAt: 2000,
     error: "Riot indisponible" });
 });
 
@@ -160,6 +162,7 @@ test("selects the strongest rank across cached accounts regardless of account or
   };
   const state = playerRankState(p, cache);
   assert.equal(state.rank.tier, "MASTER");
+  assert.equal(state.rankAccount.gameName, "master");
   assert.equal(state.checkedAt, 2000);
 });
 
@@ -174,8 +177,11 @@ test("best linked account respects divisions before LP and keeps the selected ac
   };
   const state = playerRankState(p, cache);
   assert.equal(state.rank.rank, "I");
+  assert.equal(state.rankAccount.gameName, "high");
   assert.equal(state.status, "error");
-  assert.equal(hydrate([p], cache)[0].bestRank.rank, "I");
+  const hydrated = hydrate([p], cache)[0];
+  assert.equal(hydrated.bestRank.rank, "I");
+  assert.equal(hydrated.bestRankAccount.gameName, "high");
   cache[accountKey(p.accounts[1])].status = "ranked";
   assert.equal(playerRankState(p, cache).status, "ranked");
 });

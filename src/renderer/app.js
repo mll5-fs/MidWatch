@@ -7,6 +7,8 @@ let patchRequest=0,patchPlayerId="",patchStats=null,patchError="",patchLoading=f
 function rankClass(r={}){return String(r.tier||"unranked").toLowerCase()}function rankLabel(r={}){const tier=String(r.tier||"").toUpperCase();if(!tier)return"";return `${tier}${r.rank&&!["MASTER","GRANDMASTER","CHALLENGER"].includes(tier)?" "+r.rank:""} · ${r.leaguePoints??r.lp??0} LP`}
 function playerRankLabel(p={}){const label=rankLabel(p.bestRank);if(!label)return"";if(p.rankStatus==="error")return label+" · À REVÉRIFIER";return label+(p.rankStatus==="partial"?" · PARTIEL":"")}
 function rankScore(p){const o={CHALLENGER:10,GRANDMASTER:9,MASTER:8,DIAMOND:7,EMERALD:6,PLATINUM:5,GOLD:4,SILVER:3,BRONZE:2,IRON:1};const r=p.bestRank||{};const tier=o[String(r.tier||"").toUpperCase()]||0;if(!tier)return 0;const apex=tier>=8,division=apex?0:({IV:0,III:1,II:2,I:3}[r.rank]||0),rawLp=Number(r.leaguePoints??r.lp??0),lp=Number.isFinite(rawLp)?Math.max(0,Math.min(rawLp,apex?99999:999)):0;return tier*100000+division*1000+lp}
+function sameRiotAccount(a={},b={}){return String(a.gameName||"").trim().toLowerCase()===String(b.gameName||"").trim().toLowerCase()&&String(a.tagLine||"").trim().toLowerCase()===String(b.tagLine||"").trim().toLowerCase()&&String(a.platform||"EUW1").toUpperCase()===String(b.platform||"EUW1").toUpperCase()}
+function scoutingAccount(p={}){const accounts=p.accounts||[],preferred=p.bestRankAccount;return(preferred&&accounts.find(a=>sameRiotAccount(a,preferred)))||accounts[0]}
 function applyLive(list){return(list||[]).map(original=>{const p={...original,...rankMeta[original.id]};const x=liveState[p.id]===undefined?p:{...p,live:liveState[p.id]};return rankState[p.id]===undefined?x:{...x,bestRank:rankState[p.id]||{}}})}function allPlayers(){return applyLive(S.ouatPlayers)}
 function rankPlaceholder(p){
   if(!p.accounts?.[0]?.gameName||!p.accounts?.[0]?.tagLine)return"COMPTE NON RELIÉ";
@@ -16,7 +18,7 @@ function rankPlaceholder(p){
 }
 function tracked(p){return p.source==="DPM public data"||p.source==="live"||p.live===true}
 function stateOf(p){if(p.live===true)return"live";if(p.live===false)return"offline";return tracked(p)?"offline":"unknown"}
-function dpmUrl(p){const a=(p.accounts||[])[0];if(p.region==="OUAT"){if(a?.gameName&&a?.tagLine)return`https://dpm.lol/${encodeURIComponent(a.gameName)}-${encodeURIComponent(a.tagLine)}`;return"https://dpm.lol/"}return`https://dpm.lol/pro/${encodeURIComponent(p.name)}`}
+function dpmUrl(p){const a=scoutingAccount(p);if(p.region==="OUAT"){if(a?.gameName&&a?.tagLine)return`https://dpm.lol/${encodeURIComponent(a.gameName)}-${encodeURIComponent(a.tagLine)}`;return"https://dpm.lol/"}return`https://dpm.lol/pro/${encodeURIComponent(p.name)}`}
 
 function setView(next){patchRequest++;patchLoading=false;view=next;liveOnly=false;$("#qTop").value="";renderNav();render();refreshRanks()}
 function renderNav(){
@@ -67,7 +69,7 @@ function bindCards(){
 function ouatBrowser(players){
  const rows=[...players].sort((a,b)=>rankScore(b)-rankScore(a)||String(a.team||"").localeCompare(String(b.team||"")));
  return `<section class="scout-board"><div class="scout-board-head"><span>JOUEUR</span><span>ÉQUIPE</span><span>DIVISION</span><span>SOLOQ</span><span>RIOT ID</span><span>STATUT</span></div>
- ${rows.map((p,i)=>{const a=(p.accounts||[])[0],state=stateOf(p),rank=playerRankLabel(p);return`<button class="scout-row" data-id="${esc(p.id)}"><span class="scout-player"><em>${String(i+1).padStart(2,"0")}</em>${avatar(p,"ouat-avatar")}<strong>${esc(p.name)}</strong></span><span class="scout-team">${esc(p.team||"—")}</span><span><i>${esc(p.division||"—")}</i></span><span>${rank?`<b class="elo-badge ${rankClass(p.bestRank)}">${esc(rank)}</b>`:`<b class="elo-badge unranked">${esc(rankPlaceholder(p))}</b>`}</span><span class="scout-riot">${a?.gameName?`${esc(a.gameName)}#${esc(a.tagLine||"")}`:"Non relié"}</span><span class="scout-status ${state}">${state==="live"?"● EN GAME":a?.gameName?"● SUIVI":"○ INCOMPLET"}</span></button>`}).join("")}</section>`;
+ ${rows.map((p,i)=>{const a=scoutingAccount(p),state=stateOf(p),rank=playerRankLabel(p);return`<button class="scout-row" data-id="${esc(p.id)}"><span class="scout-player"><em>${String(i+1).padStart(2,"0")}</em>${avatar(p,"ouat-avatar")}<strong>${esc(p.name)}</strong></span><span class="scout-team">${esc(p.team||"—")}</span><span><i>${esc(p.division||"—")}</i></span><span>${rank?`<b class="elo-badge ${rankClass(p.bestRank)}">${esc(rank)}</b>`:`<b class="elo-badge unranked">${esc(rankPlaceholder(p))}</b>`}</span><span class="scout-riot">${a?.gameName?`${esc(a.gameName)}#${esc(a.tagLine||"")}`:"Non relié"}</span><span class="scout-status ${state}">${state==="live"?"● EN GAME":a?.gameName?"● SUIVI":"○ INCOMPLET"}</span></button>`}).join("")}</section>`;
 }
 
 function hero(){
@@ -105,13 +107,13 @@ function renderPatchSection(){
   $("#sort").hidden=true;$("#liveOnly").hidden=true;
   $("#hero").innerHTML=`<div class="panel"><div class="panel-title">NOTES OFFICIELLES RIOT</div><p>Consulte les changements de champions, objets et systèmes dans les notes officielles, puis compare les résultats observés du joueur entre les patchs.</p><button id="riotPatchNotes" class="action">Ouvrir les notes de patch Riot</button><p class="sample-note">Les différences de résultats ne prouvent pas qu’un buff ou un nerf en est la cause. Les données ci-dessous sont limitées aux parties SoloQ mid disponibles du compte sélectionné.</p></div>`;
   $("#riotPatchNotes").onclick=()=>window.mw.open("https://www.leagueoflegends.com/fr-fr/news/tags/patch-notes/");
-  const players=allPlayers().filter(p=>p.accounts?.[0]?.gameName&&p.accounts?.[0]?.tagLine).filter(p=>queryMatch(p,$("#qTop").value.trim().toLowerCase()));
+  const players=allPlayers().filter(p=>scoutingAccount(p)?.gameName&&scoutingAccount(p)?.tagLine).filter(p=>queryMatch(p,$("#qTop").value.trim().toLowerCase()));
   $("#sectionTitle").textContent="PERFORMANCES OUAT PAR PATCH";$("#summary").textContent=`${players.length} joueurs avec un compte relié`;
   if(!players.some(p=>p.id===patchPlayerId)){patchRequest++;patchLoading=false;patchPlayerId=players[0]?.id||"";patchStats=null;patchError="";}
   if(!players.length){$("#grid").innerHTML='<div class="panel" style="grid-column:1/-1"><p>Aucun joueur OUAT avec un compte relié ne correspond à la recherche.</p></div>';return;}
-  $("#grid").innerHTML=`<div class="panel" style="grid-column:1/-1"><label for="patchPlayer">Joueur OUAT</label><select id="patchPlayer" class="fullinput">${players.map(p=>`<option value="${esc(p.id)}" ${p.id===patchPlayerId?"selected":""}>${esc(p.name)} · ${esc(p.team)} · ${esc(p.accounts[0].gameName)}#${esc(p.accounts[0].tagLine)}</option>`).join("")}</select><button id="analyzePatch" class="action primary" ${patchLoading||!S.hasKey||!players.length?"disabled":""}>${patchLoading?"Analyse en cours…":"Analyser les patchs"}</button><div id="patchResults">${!S.hasKey?'<p>Configure une clé Riot valide dans Réglages.</p>':patchError?`<p>${esc(patchError)}</p>`:patchStats?coverageReport(patchStats.coverage)+sampleWindowReport(patchStats.window)+patchReport(patchStats.patches)+(!patchStats.patches?.length?'<p>Aucune partie mid avec un patch exploitable dans l’historique disponible.</p>':""):"<p>Sélectionne un joueur puis lance l’analyse. Les groupes affichent le nombre de parties, le winrate avec IC95 et le KDA.</p>"}</div></div>`;
+  $("#grid").innerHTML=`<div class="panel" style="grid-column:1/-1"><label for="patchPlayer">Joueur OUAT</label><select id="patchPlayer" class="fullinput">${players.map(p=>{const a=scoutingAccount(p);return`<option value="${esc(p.id)}" ${p.id===patchPlayerId?"selected":""}>${esc(p.name)} · ${esc(p.team)} · ${esc(a.gameName)}#${esc(a.tagLine)}</option>`}).join("")}</select><button id="analyzePatch" class="action primary" ${patchLoading||!S.hasKey||!players.length?"disabled":""}>${patchLoading?"Analyse en cours…":"Analyser les patchs"}</button><div id="patchResults">${!S.hasKey?'<p>Configure une clé Riot valide dans Réglages.</p>':patchError?`<p>${esc(patchError)}</p>`:patchStats?coverageReport(patchStats.coverage)+sampleWindowReport(patchStats.window)+patchReport(patchStats.patches)+(!patchStats.patches?.length?'<p>Aucune partie mid avec un patch exploitable dans l’historique disponible.</p>':""):"<p>Sélectionne un joueur puis lance l’analyse. Les groupes affichent le nombre de parties, le winrate avec IC95 et le KDA.</p>"}</div></div>`;
   $("#patchPlayer").onchange=()=>{patchRequest++;patchLoading=false;patchPlayerId=$("#patchPlayer").value;patchStats=null;patchError="";render()};
-  $("#analyzePatch").onclick=async()=>{const player=allPlayers().find(p=>p.id===patchPlayerId);if(!player||!S.hasKey||patchLoading)return;const request=++patchRequest;patchLoading=true;patchError="";render();try{const stats=await window.mw.patchStats(player.accounts[0]);if(request!==patchRequest||view!=="PATCHES")return;patchStats=stats;}catch(e){if(request!==patchRequest||view!=="PATCHES")return;patchError=String(e.message||e);}finally{if(request===patchRequest&&view==="PATCHES"){patchLoading=false;render()}}};
+  $("#analyzePatch").onclick=async()=>{const player=allPlayers().find(p=>p.id===patchPlayerId);if(!player||!S.hasKey||patchLoading)return;const request=++patchRequest;patchLoading=true;patchError="";render();try{const stats=await window.mw.patchStats(scoutingAccount(player));if(request!==patchRequest||view!=="PATCHES")return;patchStats=stats;}catch(e){if(request!==patchRequest||view!=="PATCHES")return;patchError=String(e.message||e);}finally{if(request===patchRequest&&view==="PATCHES"){patchLoading=false;render()}}};
 }
 
 function render(){
@@ -147,9 +149,9 @@ async function openPlayer(id){
 
   if(request!==drawerRequest)return;
   drawPlayer(p);
-  if(p.accounts?.[0]&&S.hasKey){
+  if(scoutingAccount(p)&&S.hasKey){
     try{
-      const stats=await window.mw.stats(p.accounts[0]);if(request!==drawerRequest)return;
+      const stats=await window.mw.stats(scoutingAccount(p));if(request!==drawerRequest)return;
       const anchor=$("#scout-live");if(anchor)anchor.innerHTML=statReport(stats)+championLaneReport(stats.championLanes)+championTransitionReport(stats.championTransitions)+opponentLaneReport(stats.opponentLanes)+opponentTransitionReport(stats.opponentTransitions)+matchupReport(stats.matchups)+patchReport(stats.patches);
     }catch(e){
       if(request!==drawerRequest)return;const anchor=$("#scout-live");
@@ -270,7 +272,7 @@ async function refreshRanks(){
     const r=await window.mw.rankBatch(visible);
     rankCooldownAt=Number(r.retryAt)||0;
     if([401,403].includes(r.blockedStatus))S.hasKey=false;
-    for(const u of r.updates||[]){if(u.rank!==undefined)rankState[u.id]=u.rank;rankMeta[u.id]={rankStatus:u.status,rankCheckedAt:u.checkedAt,rankError:u.error}}
+    for(const u of r.updates||[]){if(u.rank!==undefined)rankState[u.id]=u.rank;rankMeta[u.id]={rankStatus:u.status,rankCheckedAt:u.checkedAt,rankError:u.error,...(u.rankAccount?{bestRankAccount:u.rankAccount}:{})}}
     render();
     if(S.hasKey&&!r.retryAt&&(r.deferred||r.remaining>0))rankFollowup=setTimeout(refreshRanks,r.deferred?2000:4000);
   }catch(_){}finally{rankBusy=false}

@@ -170,9 +170,23 @@ test("scouting panel explains unavailable data and only loads with credentials",
 });
 
 test("loads Riot scouting statistics for every linked player, not only OUAT", () => {
-  assert.match(app, /if\(p\.accounts\?\.\[0\]&&S\.hasKey\)[\s\S]*?const stats=await window\.mw\.stats/);
+  assert.match(app, /if\(scoutingAccount\(p\)&&S\.hasKey\)[\s\S]*?const stats=await window\.mw\.stats\(scoutingAccount\(p\)\)/);
   assert.doesNotMatch(app, /if\(p\.region==="OUAT"&&p\.accounts\?\.\[0\]&&S\.hasKey\)/);
   assert.match(app, /\$\{scoutingPanel\(p\)\}/);
+});
+
+test("scouting uses the account associated with the best verified rank", () => {
+  const source = app.slice(app.indexOf("function sameRiotAccount("), app.indexOf("function applyLive("));
+  const context = vm.createContext({});
+  vm.runInContext(source, context);
+  const first = { gameName: "First", tagLine: "EUW", platform: "EUW1" };
+  const best = { gameName: "Best", tagLine: "MID", platform: "EUW1" };
+  const player = { accounts: [first, best], bestRankAccount: { gameName: "best", tagLine: "mid" } };
+  assert.equal(context.scoutingAccount(player).gameName, "Best");
+  assert.equal(context.scoutingAccount({ ...player, bestRankAccount: { gameName: "missing", tagLine: "EUW" } }).gameName, "First");
+  assert.match(app, /window\.mw\.patchStats\(scoutingAccount\(player\)\)/);
+  assert.match(app, /function dpmUrl\(p\)\{const a=scoutingAccount\(p\)/);
+  assert.match(app, /const a=scoutingAccount\(p\),state=stateOf\(p\)/);
 });
 
 test("ignores stale profile and statistics responses after drawer navigation", () => {

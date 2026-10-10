@@ -51,6 +51,8 @@ Live status now distinguishes a successful Spectator-V5 `404` for a resolved acc
 
 When a player has several linked Riot accounts, rank loading checks every unique account within the existing five-account batch budget and displays the highest verified SoloQ rank. A successful unranked response for one account no longer hides a ranked secondary account or marks the player unranked while another account is still pending.
 
+Once that best verified account is known, the OUAT list, scouting statistics, patch analysis and DPM link all use the same Riot ID. Until a rank has been verified, they keep the first linked account as a deterministic fallback.
+
 LPL players may use Chinese servers that are not exposed through the global Riot API; live detection and spectating can therefore be unavailable for those accounts.
 
 MidWatch is an independent community project and is not endorsed by Riot Games, DPM, OUAT or LEA.

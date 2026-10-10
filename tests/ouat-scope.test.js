@@ -14,8 +14,9 @@ test('cached professional players cannot enter OUAT views or background batches'
 });
 test('patch section loads selected OUAT account and renders measured patch groups',async()=>{
  const nodes={};const $=id=>nodes[id]??={hidden:false,value:'',innerHTML:'',textContent:''};
- const p={id:'ouat',name:'Mid',team:'Team',accounts:[{gameName:'Riot',tagLine:'EUW'}]};let calls=0;
+ const p={id:'ouat',name:'Mid',team:'Team',accounts:[{gameName:'First',tagLine:'EUW'},{gameName:'Riot',tagLine:'EUW'}],bestRankAccount:{gameName:'Riot',tagLine:'EUW'}};let calls=0;
  const context=vm.createContext({$,S:{hasKey:true},allPlayers:()=>[p],queryMatch:()=>true,esc:String,
+ scoutingAccount:player=>player.accounts.find(account=>account.gameName===player.bestRankAccount?.gameName)||player.accounts[0],
  window:{mw:{patchStats:async account=>{calls++;assert.equal(account.gameName,'Riot');return {patches:[{patch:'26.20',games:3}]};},open:()=>{}}},
  coverageReport:()=>'',sampleWindowReport:()=>'',patchReport:rows=>'PATCH '+rows[0].patch,render:()=>context.renderPatchSection()});
  vm.runInContext('let patchRequest=0,patchPlayerId="",patchStats=null,patchError="",patchLoading=false,view="PATCHES";'+app.slice(app.indexOf('function renderPatchSection('),app.indexOf('\nfunction render(){')),context);
@@ -30,7 +31,7 @@ function patchHarness(){
  const players=['first','second'].map(id=>({id,name:id,team:'OUAT',accounts:[{gameName:id,tagLine:'EUW'}]}));
  const pending=[];
  const context=vm.createContext({$,S:{hasKey:true},allPlayers:()=>players,
- queryMatch:(p,q)=>p.name.includes(q),esc:String,
+ queryMatch:(p,q)=>p.name.includes(q),scoutingAccount:p=>p.accounts[0],esc:String,
  window:{mw:{patchStats:account=>new Promise((resolve,reject)=>pending.push({account,resolve,reject})),open:()=>{}}},
  coverageReport:()=>'',sampleWindowReport:()=>'',patchReport:rows=>'PATCH '+rows[0].patch,
  render:()=>context.renderPatchSection()});
