@@ -4,9 +4,9 @@ const $=q=>document.querySelector(q);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let patchRequest=0,patchPlayerId="",patchStats=null,patchError="",patchLoading=false;
 
-function rankClass(r={}){return String(r.tier||"unranked").toLowerCase()}function rankLabel(r={}){const tier=String(r.tier||"").toUpperCase();if(!tier)return"";return `${tier}${r.rank&&r.rank!=="I"?" "+r.rank:""} · ${r.leaguePoints??r.lp??0} LP`}
+function rankClass(r={}){return String(r.tier||"unranked").toLowerCase()}function rankLabel(r={}){const tier=String(r.tier||"").toUpperCase();if(!tier)return"";return `${tier}${r.rank&&!["MASTER","GRANDMASTER","CHALLENGER"].includes(tier)?" "+r.rank:""} · ${r.leaguePoints??r.lp??0} LP`}
 function playerRankLabel(p={}){const label=rankLabel(p.bestRank);if(!label)return"";if(p.rankStatus==="error")return label+" · À REVÉRIFIER";return label+(p.rankStatus==="partial"?" · PARTIEL":"")}
-function rankScore(p){const o={CHALLENGER:10,GRANDMASTER:9,MASTER:8,DIAMOND:7,EMERALD:6,PLATINUM:5,GOLD:4,SILVER:3,BRONZE:2,IRON:1};const r=p.bestRank||{};return(o[String(r.tier||"").toUpperCase()]||0)*100000+(+r.leaguePoints||+r.lp||0)}
+function rankScore(p){const o={CHALLENGER:10,GRANDMASTER:9,MASTER:8,DIAMOND:7,EMERALD:6,PLATINUM:5,GOLD:4,SILVER:3,BRONZE:2,IRON:1};const r=p.bestRank||{};const tier=o[String(r.tier||"").toUpperCase()]||0;if(!tier)return 0;const apex=tier>=8,division=apex?0:({IV:0,III:1,II:2,I:3}[r.rank]||0),rawLp=Number(r.leaguePoints??r.lp??0),lp=Number.isFinite(rawLp)?Math.max(0,Math.min(rawLp,apex?99999:999)):0;return tier*100000+division*1000+lp}
 function applyLive(list){return(list||[]).map(original=>{const p={...original,...rankMeta[original.id]};const x=liveState[p.id]===undefined?p:{...p,live:liveState[p.id]};return rankState[p.id]===undefined?x:{...x,bestRank:rankState[p.id]||{}}})}function allPlayers(){return applyLive(S.ouatPlayers)}
 function rankPlaceholder(p){
   if(!p.accounts?.[0]?.gameName||!p.accounts?.[0]?.tagLine)return"COMPTE NON RELIÉ";

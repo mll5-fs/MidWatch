@@ -8,7 +8,13 @@ function accountKey(account) {
 function rankPoints(rank = {}) {
   const tiers = { CHALLENGER: 10, GRANDMASTER: 9, MASTER: 8, DIAMOND: 7, EMERALD: 6,
     PLATINUM: 5, GOLD: 4, SILVER: 3, BRONZE: 2, IRON: 1 };
-  return (tiers[String(rank.tier || "").toUpperCase()] || 0) * 100000 + (Number(rank.leaguePoints) || 0);
+  const tier = tiers[String(rank.tier || "").toUpperCase()] || 0;
+  if (!tier) return 0;
+  const apex = tier >= 8;
+  const division = apex ? 0 : ({ IV: 0, III: 1, II: 2, I: 3 }[rank.rank] || 0);
+  const rawLp = Number(rank.leaguePoints ?? rank.lp ?? 0);
+  const lp = Number.isFinite(rawLp) ? Math.max(0, Math.min(rawLp, apex ? 99999 : 999)) : 0;
+  return tier * 100000 + division * 1000 + lp;
 }
 
 function playerRankState(player, cache = {}) {

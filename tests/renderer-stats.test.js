@@ -206,3 +206,40 @@ test("shows the real match period, timestamp coverage and stale-data warning", (
   assert.match(app, /datation partielle/);
   assert.match(app, /dernière partie il y a/);
 });
+
+
+test("rank sorting respects tier, division then LP including zero LP", () => {
+  const source = app.slice(app.indexOf("function rankScore("), app.indexOf("function applyLive("));
+  const context = vm.createContext({});
+  vm.runInContext(source, context);
+  const score = rank => context.rankScore({ bestRank: rank });
+  const ascending = [
+    { tier: "GOLD", rank: "IV", leaguePoints: 90 },
+    { tier: "GOLD", rank: "III", leaguePoints: 0, lp: 95 },
+    { tier: "GOLD", rank: "II", leaguePoints: 99 },
+    { tier: "GOLD", rank: "I", leaguePoints: 10 },
+    { tier: "GOLD", rank: "I", leaguePoints: 90 },
+    { tier: "PLATINUM", rank: "IV", leaguePoints: 0 },
+    { tier: "DIAMOND", rank: "I", leaguePoints: 99 },
+    { tier: "MASTER", rank: "I", leaguePoints: 0 },
+    { tier: "MASTER", leaguePoints: 2000 },
+    { tier: "GRANDMASTER", leaguePoints: 0 },
+    { tier: "CHALLENGER", leaguePoints: 0 }
+  ];
+  for (let i = 1; i < ascending.length; i++) assert.ok(score(ascending[i]) > score(ascending[i - 1]));
+  assert.equal(score({}), 0);
+  assert.equal(score({ tier: "UNKNOWN", leaguePoints: 100 }), 0);
+  assert.equal(score(ascending[1]), score({ tier: "GOLD", rank: "III", leaguePoints: 0 }));
+  assert.equal(score({ tier: "MASTER", rank: "IV", leaguePoints: 20 }), score({ tier: "MASTER", rank: "I", leaguePoints: 20 }));
+});
+
+test("division I remains visible below the apex tiers", () => {
+  const source = app.slice(app.indexOf("function rankClass("), app.indexOf("function rankScore("));
+  const context = vm.createContext({});
+  vm.runInContext(source, context);
+  assert.equal(context.rankLabel({ tier: "GOLD", rank: "I", leaguePoints: 10 }), "GOLD I · 10 LP");
+  assert.equal(context.rankLabel({ tier: "DIAMOND", rank: "I", leaguePoints: 0 }), "DIAMOND I · 0 LP");
+  for (const tier of ["MASTER", "GRANDMASTER", "CHALLENGER"]) {
+    assert.equal(context.rankLabel({ tier, rank: "I", leaguePoints: 120 }), `${tier} · 120 LP`);
+  }
+});
