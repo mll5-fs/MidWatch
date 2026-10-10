@@ -162,3 +162,38 @@ test("selects the strongest rank across cached accounts regardless of account or
   assert.equal(state.rank.tier, "MASTER");
   assert.equal(state.checkedAt, 2000);
 });
+
+
+test("best linked account respects divisions before LP and keeps the selected account status", () => {
+  const p = { id: "multi", accounts: [
+    { gameName: "low", tagLine: "EUW" }, { gameName: "high", tagLine: "EUW" }
+  ] };
+  const cache = {
+    [accountKey(p.accounts[0])]: { rank: { tier: "GOLD", rank: "IV", leaguePoints: 90 }, status: "ranked" },
+    [accountKey(p.accounts[1])]: { rank: { tier: "GOLD", rank: "I", leaguePoints: 10 }, status: "error", error: "Network failure" }
+  };
+  const state = playerRankState(p, cache);
+  assert.equal(state.rank.rank, "I");
+  assert.equal(state.status, "error");
+  assert.equal(hydrate([p], cache)[0].bestRank.rank, "I");
+  cache[accountKey(p.accounts[1])].status = "ranked";
+  assert.equal(playerRankState(p, cache).status, "ranked");
+});
+
+test("account selection and displayed sort use the same official rank order", () => {
+  const fs = require("node:fs"), path = require("node:path"), vm = require("node:vm");
+  const app = fs.readFileSync(path.join(__dirname, "../src/renderer/app.js"), "utf8");
+  const context = vm.createContext({});
+  vm.runInContext(app.slice(app.indexOf("function rankScore("), app.indexOf("function applyLive(")), context);
+  const samples = [ {}, { tier: "UNKNOWN", leaguePoints: 300 },
+    ...["IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM", "EMERALD", "DIAMOND"].flatMap(tier =>
+      ["IV", "III", "II", "I"].flatMap(rank => [0, 99].map(leaguePoints => ({ tier, rank, leaguePoints })))),
+    ...["MASTER", "GRANDMASTER", "CHALLENGER"].flatMap(tier => [0, 2000].map(leaguePoints => ({ tier, rank: "I", leaguePoints }))) ];
+  const p = { id: "pair", accounts: [{ gameName: "a", tagLine: "EUW" }, { gameName: "b", tagLine: "EUW" }] };
+  for (let i = 1; i < samples.length; i++) {
+    const ranks = [samples[i - 1], samples[i]];
+    const cache = Object.fromEntries(p.accounts.map((account, index) => [accountKey(account), { rank: ranks[index], status: "ranked" }]));
+    const expected = [...ranks].filter(rank => rank.tier).sort((a, b) => context.rankScore({ bestRank: b }) - context.rankScore({ bestRank: a }))[0];
+    assert.deepEqual(playerRankState(p, cache).rank, expected);
+  }
+});
