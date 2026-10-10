@@ -112,6 +112,11 @@ test("renders early timeline habits with their own sample and non-causal limit",
   assert.match(app, /5→10 · PARTIES AVEC MORT/);
   assert.match(app, /1ER WARD/);
   assert.match(app, /sans double comptage/);
+  assert.match(app, /confidenceLabel\(before\.takedownInterval\)/);
+  assert.match(app, /confidenceLabel\(before\.deathInterval\)/);
+  assert.match(app, /confidenceLabel\(after\.takedownInterval\)/);
+  assert.match(app, /confidenceLabel\(after\.deathInterval\)/);
+  assert.match(app, /IC95 de Wilson montrent l’incertitude de chaque fréquence/);
   assert.match(app, /ni la position, ni la cause, ni la qualité du micro-gameplay/);
   assert.match(app, /earlyReport\(s\.early\)/);
 });
