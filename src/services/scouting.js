@@ -211,11 +211,17 @@ function earlyHabits(samples, puuid) {
   const middle = Math.floor(wardTimes.length / 2);
   const medianWard = wardTimes.length ? (wardTimes.length % 2 ? wardTimes[middle] : (wardTimes[middle - 1] + wardTimes[middle]) / 2) : null;
   const totalTakedowns = rows.reduce((sum, row) => sum + row.takedowns, 0);
-  const summarizePhase = key => ({
-    takedowns: +(rows.reduce((sum, row) => sum + row[key].takedowns, 0) / rows.length).toFixed(1),
-    takedownRate: Math.round(100 * rows.filter(row => row[key].takedowns > 0).length / rows.length),
-    deathRate: Math.round(100 * rows.filter(row => row[key].deaths > 0).length / rows.length)
-  });
+  const summarizePhase = key => {
+    const takedownGames = rows.filter(row => row[key].takedowns > 0).length;
+    const deathGames = rows.filter(row => row[key].deaths > 0).length;
+    return {
+      takedowns: +(rows.reduce((sum, row) => sum + row[key].takedowns, 0) / rows.length).toFixed(1),
+      takedownRate: Math.round(100 * takedownGames / rows.length),
+      takedownInterval: winrateInterval(takedownGames, rows.length),
+      deathRate: Math.round(100 * deathGames / rows.length),
+      deathInterval: winrateInterval(deathGames, rows.length)
+    };
+  };
   return { games: rows.length,
     earlyTakedowns: +(totalTakedowns / rows.length).toFixed(1),
     takedownRate: Math.round(100 * rows.filter(row => row.takedowns > 0).length / rows.length),

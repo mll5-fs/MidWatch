@@ -226,8 +226,10 @@ test("summarizes measurable takedown, death and first-ward habits before ten min
   assert.deepEqual(earlyHabits([first, second], "player"), {
     games: 2, earlyTakedowns: 1, takedownRate: 50, deathRate: 50,
     wardGames: 2, firstWardSeconds: 120,
-    before5: { takedowns: 1, takedownRate: 50, deathRate: 50 },
-    fiveToTen: { takedowns: 0, takedownRate: 0, deathRate: 0 }, limited: true
+    before5: { takedowns: 1, takedownRate: 50, takedownInterval: { low: 9, high: 91 },
+      deathRate: 50, deathInterval: { low: 9, high: 91 } },
+    fiveToTen: { takedowns: 0, takedownRate: 0, takedownInterval: { low: 0, high: 66 },
+      deathRate: 0, deathInterval: { low: 0, high: 66 } }, limited: true
   });
 });
 
@@ -240,8 +242,10 @@ test("early habits include the ten-minute boundary and expose missing ward sampl
   assert.deepEqual(earlyHabits([valid], "player"), {
     games: 1, earlyTakedowns: 1, takedownRate: 100, deathRate: 0,
     wardGames: 0, firstWardSeconds: null,
-    before5: { takedowns: 0, takedownRate: 0, deathRate: 0 },
-    fiveToTen: { takedowns: 1, takedownRate: 100, deathRate: 0 }, limited: true
+    before5: { takedowns: 0, takedownRate: 0, takedownInterval: { low: 0, high: 79 },
+      deathRate: 0, deathInterval: { low: 0, high: 79 } },
+    fiveToTen: { takedowns: 1, takedownRate: 100, takedownInterval: { low: 21, high: 100 },
+      deathRate: 0, deathInterval: { low: 0, high: 79 } }, limited: true
   });
 });
 
@@ -252,8 +256,10 @@ test("early habit phases assign the five-minute boundary once", () => {
     { type: "CHAMPION_KILL", killerId: 6, victimId: 1, timestamp: 600000 }
   ] });
   const result = earlyHabits([timeline], "player");
-  assert.deepEqual(result.before5, { takedowns: 1, takedownRate: 100, deathRate: 0 });
-  assert.deepEqual(result.fiveToTen, { takedowns: 1, takedownRate: 100, deathRate: 100 });
+  assert.deepEqual(result.before5, { takedowns: 1, takedownRate: 100,
+    takedownInterval: { low: 21, high: 100 }, deathRate: 0, deathInterval: { low: 0, high: 79 } });
+  assert.deepEqual(result.fiveToTen, { takedowns: 1, takedownRate: 100,
+    takedownInterval: { low: 21, high: 100 }, deathRate: 100, deathInterval: { low: 21, high: 100 } });
   assert.equal(result.earlyTakedowns, 2);
 });
 
