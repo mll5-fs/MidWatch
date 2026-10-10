@@ -152,6 +152,7 @@ function championLaneBreakdown(samples, puuid) {
       goldDiff: Math.round(group.goldDiff / group.games),
       xpDiff: Math.round(group.xpDiff / group.games),
       deathRate: Math.round(100 * group.deaths / group.games),
+      deathInterval: winrateInterval(group.deaths, group.games),
       limited: group.games < 3
     }));
 }
@@ -178,6 +179,7 @@ function opponentLaneBreakdown(samples, puuid) {
       goldDiff: Math.round(group.goldDiff / group.games),
       xpDiff: Math.round(group.xpDiff / group.games),
       deathRate: Math.round(100 * group.deaths / group.games),
+      deathInterval: winrateInterval(group.deaths, group.games),
       limited: group.games < 3
     }));
 }

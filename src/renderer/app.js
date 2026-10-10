@@ -166,7 +166,7 @@ function patchReport(patches=[]){
 }
 function championLaneReport(rows=[]){
   if(!rows.length)return"";const signed=n=>`${n>0?"+":""}${n}`;
-  return`<div class="panel"><div class="panel-title">LANE À 10 PAR CHAMPION JOUÉ</div><div class="champions">${rows.map(r=>`<span class="champ"><b>${esc(r.champion)} · ${esc(r.games)}G</b> · ΔCS ${esc(signed(r.csDiff))} · ΔOR ${esc(signed(r.goldDiff))} · ΔXP ${esc(signed(r.xpDiff))} · MORT ${esc(r.deathRate)}%${r.limited?" · ÉCHANTILLON FAIBLE":""}</span>`).join("")}</div><p class="sample-note">Comparaison descriptive des snapshots complets à 10:00 face au mid adverse identifié. Chaque champion a son propre échantillon ; ces écarts n’expliquent ni la cause ni la qualité du micro-gameplay.</p></div>`;
+  return`<div class="panel"><div class="panel-title">LANE À 10 PAR CHAMPION JOUÉ</div><div class="champions">${rows.map(r=>`<span class="champ"><b>${esc(r.champion)} · ${esc(r.games)}G</b> · ΔCS ${esc(signed(r.csDiff))} · ΔOR ${esc(signed(r.goldDiff))} · ΔXP ${esc(signed(r.xpDiff))} · MORT ${esc(r.deathRate)}%${confidenceLabel(r.deathInterval)}${r.limited?" · ÉCHANTILLON FAIBLE":""}</span>`).join("")}</div><p class="sample-note">Comparaison descriptive des snapshots complets à 10:00 face au mid adverse identifié. Chaque champion a son propre échantillon ; l’IC95 de Wilson montre l’incertitude de sa fréquence de mort. Ces écarts n’expliquent ni la cause ni la qualité du micro-gameplay.</p></div>`;
 }
 function championTransitionReport(rows=[]){
   if(!rows.length)return"";const signed=n=>`${n>0?"+":""}${n}`;
@@ -174,7 +174,7 @@ function championTransitionReport(rows=[]){
 }
 function opponentLaneReport(rows=[]){
   if(!rows.length)return"";const signed=n=>`${n>0?"+":""}${n}`;
-  return`<div class="panel"><div class="panel-title">LANE À 10 PAR CHAMPION ADVERSE</div><div class="champions">${rows.map(r=>`<span class="champ"><b>VS ${esc(r.champion)} · ${esc(r.games)}G</b> · ΔCS ${esc(signed(r.csDiff))} · ΔOR ${esc(signed(r.goldDiff))} · ΔXP ${esc(signed(r.xpDiff))} · MORT ${esc(r.deathRate)}%${r.limited?" · ÉCHANTILLON FAIBLE":""}</span>`).join("")}</div><p class="sample-note">Snapshots complets à 10:00 face au mid adverse identifié. Chaque champion adverse a son propre échantillon ; ces écarts décrivent les parties observées et ne prouvent ni la cause du matchup ni la qualité du micro-gameplay.</p></div>`;
+  return`<div class="panel"><div class="panel-title">LANE À 10 PAR CHAMPION ADVERSE</div><div class="champions">${rows.map(r=>`<span class="champ"><b>VS ${esc(r.champion)} · ${esc(r.games)}G</b> · ΔCS ${esc(signed(r.csDiff))} · ΔOR ${esc(signed(r.goldDiff))} · ΔXP ${esc(signed(r.xpDiff))} · MORT ${esc(r.deathRate)}%${confidenceLabel(r.deathInterval)}${r.limited?" · ÉCHANTILLON FAIBLE":""}</span>`).join("")}</div><p class="sample-note">Snapshots complets à 10:00 face au mid adverse identifié. Chaque champion adverse a son propre échantillon ; l’IC95 de Wilson montre l’incertitude de sa fréquence de mort. Ces écarts décrivent les parties observées et ne prouvent ni la cause du matchup ni la qualité du micro-gameplay.</p></div>`;
 }
 function opponentTransitionReport(rows=[]){
   if(!rows.length)return"";const signed=n=>`${n>0?"+":""}${n}`;
