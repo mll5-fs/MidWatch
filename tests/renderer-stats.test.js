@@ -134,6 +134,8 @@ test("renders lane-at-ten comparisons per played champion with sample limits", (
   assert.match(app, /function championLaneReport\(rows=\[\]\)/);
   assert.match(app, /championLaneReport\(stats\.championLanes\)/);
   assert.match(app, /LANE À 10 PAR CHAMPION JOUÉ/);
+  assert.match(app, /confidenceLabel\(r\.deathInterval\)/);
+  assert.match(app, /l’IC95 de Wilson montre l’incertitude de sa fréquence de mort/);
   assert.match(app, /Chaque champion a son propre échantillon/);
   assert.match(app, /n’expliquent ni la cause ni la qualité du micro-gameplay/);
 });
@@ -151,6 +153,7 @@ test("renders lane-at-ten comparisons per opposing champion with sample limits",
   assert.match(app, /function opponentLaneReport\(rows=\[\]\)/);
   assert.match(app, /opponentLaneReport\(stats\.opponentLanes\)/);
   assert.match(app, /LANE À 10 PAR CHAMPION ADVERSE/);
+  assert.match(app, /confidenceLabel\(r\.deathInterval\)/);
   assert.match(app, /Chaque champion adverse a son propre échantillon/);
   assert.match(app, /ne prouvent ni la cause du matchup ni la qualité du micro-gameplay/);
 });

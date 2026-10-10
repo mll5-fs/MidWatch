@@ -180,8 +180,8 @@ test("compares lane-at-ten deltas by champion with explicit sample limits", () =
   const death = { type: "CHAMPION_KILL", victimId: 1, timestamp: 400000 };
   const weakAhri = sample({ mine: { minionsKilled: 60, jungleMinionsKilled: 2, totalGold: 3700, xp: 4400 }, events: [death] });
   assert.deepEqual(championLaneBreakdown([sample(), weakAhri, sample(), sample({ champion: "Syndra" })], "player"), [
-    { champion: "Ahri", games: 3, csDiff: 4, goldDiff: 67, xpDiff: 67, deathRate: 33, limited: false },
-    { champion: "Syndra", games: 1, csDiff: 7, goldDiff: 200, xpDiff: 200, deathRate: 0, limited: true }
+    { champion: "Ahri", games: 3, csDiff: 4, goldDiff: 67, xpDiff: 67, deathRate: 33, deathInterval: { low: 6, high: 79 }, limited: false },
+    { champion: "Syndra", games: 1, csDiff: 7, goldDiff: 200, xpDiff: 200, deathRate: 0, deathInterval: { low: 0, high: 79 }, limited: true }
   ]);
 });
 
@@ -190,7 +190,7 @@ test("champion lane comparison excludes malformed frames, off-role games and mis
   assert.deepEqual(championLaneBreakdown([
     sample({ champion: "" }), sample({ position: "TOP" }), malformed, sample({ champion: "Orianna" })
   ], "player"), [
-    { champion: "Orianna", games: 1, csDiff: 7, goldDiff: 200, xpDiff: 200, deathRate: 0, limited: true }
+    { champion: "Orianna", games: 1, csDiff: 7, goldDiff: 200, xpDiff: 200, deathRate: 0, deathInterval: { low: 0, high: 79 }, limited: true }
   ]);
 });
 
@@ -198,8 +198,8 @@ test("compares lane-at-ten deltas by opposing champion with explicit sample limi
   const death = { type: "CHAMPION_KILL", victimId: 1, timestamp: 400000 };
   const weakVsSyndra = sample({ mine: { minionsKilled: 60, jungleMinionsKilled: 2, totalGold: 3700, xp: 4400 }, events: [death] });
   assert.deepEqual(opponentLaneBreakdown([sample(), weakVsSyndra, sample(), sample({ opponentChampion: "Orianna" })], "player"), [
-    { champion: "Syndra", games: 3, csDiff: 4, goldDiff: 67, xpDiff: 67, deathRate: 33, limited: false },
-    { champion: "Orianna", games: 1, csDiff: 7, goldDiff: 200, xpDiff: 200, deathRate: 0, limited: true }
+    { champion: "Syndra", games: 3, csDiff: 4, goldDiff: 67, xpDiff: 67, deathRate: 33, deathInterval: { low: 6, high: 79 }, limited: false },
+    { champion: "Orianna", games: 1, csDiff: 7, goldDiff: 200, xpDiff: 200, deathRate: 0, deathInterval: { low: 0, high: 79 }, limited: true }
   ]);
 });
 
@@ -209,7 +209,7 @@ test("opponent lane comparison excludes malformed frames, off-role games and uni
     sample({ opponentChampion: "" }), sample({ position: "TOP" }), malformed,
     sample({ opponentChampion: "Ahri" })
   ], "player"), [
-    { champion: "Ahri", games: 1, csDiff: 7, goldDiff: 200, xpDiff: 200, deathRate: 0, limited: true }
+    { champion: "Ahri", games: 1, csDiff: 7, goldDiff: 200, xpDiff: 200, deathRate: 0, deathInterval: { low: 0, high: 79 }, limited: true }
   ]);
 });
 
