@@ -15,7 +15,7 @@ function rankPlaceholder(p){
   return S.hasKey?"RANG À CHARGER":"CLÉ RIOT REQUISE";
 }
 function tracked(p){return p.source==="DPM public data"||p.source==="live"||p.live===true}
-function stateOf(p){if(p.live===true)return"live";return tracked(p)?"offline":"unknown"}
+function stateOf(p){if(p.live===true)return"live";if(p.live===false)return"offline";return tracked(p)?"offline":"unknown"}
 function dpmUrl(p){const a=(p.accounts||[])[0];if(p.region==="OUAT"){if(a?.gameName&&a?.tagLine)return`https://dpm.lol/${encodeURIComponent(a.gameName)}-${encodeURIComponent(a.tagLine)}`;return"https://dpm.lol/"}return`https://dpm.lol/pro/${encodeURIComponent(p.name)}`}
 
 function setView(next){patchRequest++;patchLoading=false;view=next;liveOnly=false;$("#qTop").value="";renderNav();render();refreshRanks()}
@@ -279,7 +279,7 @@ async function refreshLive(){
   if(!S.hasKey)return;
   try{
     const r=await window.mw.liveBatch();
-    for(const u of r.updates||[]){if(u.live===true||u.live===false)liveState[u.id]=u.live}
+    for(const u of r.updates||[]){if(Object.prototype.hasOwnProperty.call(u,"live"))liveState[u.id]=u.live}
     renderNav();render();
   }catch(_){}
 }
