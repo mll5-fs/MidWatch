@@ -21,5 +21,5 @@ test("dedicated patch analysis requests a larger match-only mid sample", () => {
 test("patch analysis has an isolated IPC path from the regular scouting report", () => {
   assert.match(main, /ipcMain\.handle\("riot:patchStats"/);
   assert.match(preload, /patchStats:a=>ipcRenderer\.invoke\("riot:patchStats",a\)/);
-  assert.match(renderer, /window\.mw\.patchStats\(player\.accounts\[0\]\)/);
+  assert.match(renderer, /window\.mw\.patchStats\(scoutingAccount\(player\)\)/);
 });

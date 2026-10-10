@@ -20,20 +20,22 @@ function rankPoints(rank = {}) {
 function playerRankState(player, cache = {}) {
   const accounts = (player.accounts || []).filter(account => account?.gameName && account?.tagLine);
   if (!accounts.length) return {};
-  const entries = accounts.map(account => cache[accountKey(account)]).filter(Boolean);
-  const ranked = entries.filter(entry => entry.rank?.tier).sort((a, b) => rankPoints(b.rank) - rankPoints(a.rank));
-  const checkedAt = entries.reduce((latest, entry) => Math.max(latest, Number(entry.checkedAt) || 0), 0) || undefined;
+  const entries = accounts.map(account => ({ account, entry: cache[accountKey(account)] })).filter(item => item.entry);
+  const ranked = entries.filter(item => item.entry.rank?.tier)
+    .sort((a, b) => rankPoints(b.entry.rank) - rankPoints(a.entry.rank));
+  const checkedAt = entries.reduce((latest, item) => Math.max(latest, Number(item.entry.checkedAt) || 0), 0) || undefined;
   if (ranked.length) {
-    const stale = ranked[0].status === "error";
-    const failed = entries.find(entry => entry.status === "error");
-    const partial = entries.length < accounts.length || entries.some(entry => entry.status === "pending" || entry.status === "error");
-    return { rank: ranked[0].rank, status: stale ? "error" : partial ? "partial" : "ranked", checkedAt,
-      error: stale ? ranked[0].error : failed?.error };
+    const best = ranked[0], stale = best.entry.status === "error";
+    const failed = entries.find(item => item.entry.status === "error");
+    const partial = entries.length < accounts.length || entries.some(item => item.entry.status === "pending" || item.entry.status === "error");
+    return { rank: best.entry.rank, rankAccount: best.account,
+      status: stale ? "error" : partial ? "partial" : "ranked", checkedAt,
+      error: stale ? best.entry.error : failed?.entry.error };
   }
   if (entries.length < accounts.length) return { status: "pending", checkedAt };
-  if (entries.every(entry => entry.status === "unranked")) return { rank: null, status: "unranked", checkedAt };
-  const failed = entries.find(entry => entry.status === "error");
-  return { status: failed ? "error" : "pending", checkedAt, error: failed?.error };
+  if (entries.every(item => item.entry.status === "unranked")) return { rank: null, status: "unranked", checkedAt };
+  const failed = entries.find(item => item.entry.status === "error");
+  return { status: failed ? "error" : "pending", checkedAt, error: failed?.entry.error };
 }
 
 function hydrate(players, cache = {}) {
@@ -41,6 +43,7 @@ function hydrate(players, cache = {}) {
     const state = playerRankState(player, cache);
     if (!state.status) return player;
     return { ...player, ...(state.rank !== undefined ? { bestRank: state.rank || {} } : {}),
+      ...(state.rankAccount ? { bestRankAccount: state.rankAccount } : {}),
       rankStatus: state.status, rankCheckedAt: state.checkedAt, rankError: state.error };
   });
 }
@@ -107,7 +110,8 @@ async function loadBatch(riot, players, { cache = {}, accountCache = {}, priorit
   }
   for (const player of players.filter(p => affected.has(p.id))) {
     const state = playerRankState(player, cache);
-    updates.push({ id: player.id, rank: state.rank, status: state.status, checkedAt: state.checkedAt, error: state.error });
+    updates.push({ id: player.id, rank: state.rank, rankAccount: state.rankAccount,
+      status: state.status, checkedAt: state.checkedAt, error: state.error });
   }
   const candidateAccounts = new Set(candidates.map(({ account }) => accountKey(account))).size;
   return { updates, checked: seen.size, remaining: Math.max(0, candidateAccounts - seen.size),
