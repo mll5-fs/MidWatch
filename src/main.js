@@ -1,4 +1,4 @@
-const{app,BrowserWindow,ipcMain,shell,dialog}=require("electron");const path=require("path");const store=require("./store"),bundledOuat=require("./data/ouat-current.json"),{Riot}=require("./services/riot"),{winrateInterval,sampleWindow,laneAt5,laneAt10,laneTransition,championTransitionBreakdown,opponentTransitionBreakdown,championLaneBreakdown,opponentLaneBreakdown,earlyHabits,participantForScouting,patchBreakdown,matchupBreakdown}=require("./services/scouting"),{buildCoverage}=require("./services/sample-coverage"),statsCache=require("./services/stats-cache"),spectate=require("./services/spectate"),ouat=require("./services/ouat"),{RiotScheduler}=require("./services/riot-scheduler"),{checkLiveAccount}=require("./services/live-status");let mainWindow;const ranks=require("./services/ranks"),riotScheduler=new RiotScheduler();let rankInFlight=null,liveInFlight=null,rankRetryAt=0;
+const{app,BrowserWindow,ipcMain,shell,dialog}=require("electron");const path=require("path");const store=require("./store"),bundledOuat=require("./data/ouat-current.json"),{Riot}=require("./services/riot"),{winrateInterval,sampleWindow,laneAt5,laneAt10,laneTransition,championTransitionBreakdown,opponentTransitionBreakdown,championLaneBreakdown,opponentLaneBreakdown,earlyHabits,participantForScouting,patchBreakdown,matchupBreakdown}=require("./services/scouting"),{buildCoverage}=require("./services/sample-coverage"),statsCache=require("./services/stats-cache"),spectate=require("./services/spectate"),ouat=require("./services/ouat"),{RiotScheduler}=require("./services/riot-scheduler"),{checkLiveAccounts}=require("./services/live-status");let mainWindow;const ranks=require("./services/ranks"),riotScheduler=new RiotScheduler();let rankInFlight=null,liveInFlight=null,rankRetryAt=0;
 let liveCursor=0,rankCursor=0;function applyOverrides(list){const o=store.get("accountOverrides",{});return(list||[]).map(p=>o[p.id]?{...p,accounts:[o[p.id]],accountOverride:true}:p)}function key(){return String(store.get("riotKey","")||"").trim()}
 function create(){store.init();const found=spectate.detect(store.get("leaguePath",""));if(found&&found!==store.get("leaguePath",""))store.set("leaguePath",found);mainWindow=new BrowserWindow({width:1460,height:920,minWidth:1040,minHeight:700,show:false,backgroundColor:"#070a0f",title:"MidPulse",autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,"preload.js"),contextIsolation:true,nodeIntegration:false,sandbox:false}});mainWindow.loadFile(path.join(__dirname,"renderer/index.html"));mainWindow.once("ready-to-show",()=>mainWindow.show())}
 
@@ -48,17 +48,16 @@ async function liveBatchWork(){
   const saved=store.get("ouat",{}),o=(Array.isArray(saved.players)&&saved.players.length)?saved:bundledOuat;
   const fav=new Set(store.get("favorites",[]));
   const players=applyOverrides(o.players||[]);
-  const withAccounts=players.filter(p=>p.accounts?.[0]?.gameName&&p.accounts?.[0]?.tagLine);
+  const withAccounts=players.filter(p=>p.accounts?.some(a=>a?.gameName&&a?.tagLine));
   withAccounts.sort((a,b)=>(fav.has(b.id)-fav.has(a.id))||((a.region==="OUAT")-(b.region==="OUAT")));
   if(!withAccounts.length)return{updates:[],checked:0};
   const cache=store.get("riotAccountCache",{}),riot=new Riot(key()),updates=[],batch=[];
   for(let i=0;i<8&&i<withAccounts.length;i++)batch.push(withAccounts[(liveCursor+i)%withAccounts.length]);
   liveCursor=(liveCursor+batch.length)%withAccounts.length;
   for(const p of batch){
-    const a=p.accounts[0];
     try{
-      const status=await checkLiveAccount(riot,a,{accountCache:cache});
-      updates.push({id:p.id,live:status.live,checkedAt:status.checkedAt,gameId:status.gameId});
+      const status=await checkLiveAccounts(riot,p.accounts,{accountCache:cache});
+      updates.push({id:p.id,live:status.live,liveAccount:status.account,checkedAt:status.checkedAt,gameId:status.gameId});
     }catch(e){
       updates.push({id:p.id,live:null,checkedAt:Date.now(),error:String(e.message||e)});
     }

@@ -49,6 +49,8 @@ When a previously verified rank is retained after a Riot refresh error, the UI l
 
 Live status now distinguishes a successful Spectator-V5 `404` for a resolved account (confirmed outside a game) from account-resolution, authentication, rate-limit and network failures (status unavailable). An unavailable refresh also clears a stale in-game badge. The manual account check likewise reports League-V4 failures instead of presenting them as an unranked result.
 
+Automatic live detection checks every linked Riot account for a player. A player is only marked offline when every account was checked successfully and none is active; if a secondary account is active, the drawer identifies that exact Riot ID as live.
+
 When a player has several linked Riot accounts, rank loading checks every unique account within the existing five-account batch budget and displays the highest verified SoloQ rank. A successful unranked response for one account no longer hides a ranked secondary account or marks the player unranked while another account is still pending.
 
 Once that best verified account is known, the OUAT list, scouting statistics, patch analysis and DPM link all use the same Riot ID. Until a rank has been verified, they keep the first linked account as a deterministic fallback.

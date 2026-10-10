@@ -8,7 +8,7 @@ const app = fs.readFileSync(path.join(__dirname, "../src/renderer/app.js"), "utf
 
 test("rank labels distinguish pending, missing credentials, error and confirmed unranked", () => {
   const source = app.slice(app.indexOf("function rankPlaceholder("), app.indexOf("function tracked("));
-  const context = vm.createContext({ S: { hasKey: true } });
+  const context = vm.createContext({ S: { hasKey: true }, scoutingAccount: p => p.accounts?.[0] });
   vm.runInContext(source, context);
   const linked = { accounts: [{ gameName: "Test", tagLine: "EUW" }] };
   assert.equal(context.rankPlaceholder(linked), "RANG À CHARGER");
@@ -59,6 +59,15 @@ test("live status distinguishes confirmed offline from unavailable and clears st
   assert.equal(context.stateOf({ live: null, accounts: [{}] }), "unknown");
   assert.match(app, /hasOwnProperty\.call\(u,"live"\)/);
   assert.doesNotMatch(app, /if\(u\.live===true\|\|u\.live===false\)liveState/);
+});
+
+test("automatic live detection covers every linked account and identifies the active one", () => {
+  const main = fs.readFileSync(path.join(__dirname, "../src/main.js"), "utf8");
+  assert.match(main, /p\.accounts\?\.some\(a=>a\?\.gameName&&a\?\.tagLine\)/);
+  assert.match(main, /checkLiveAccounts\(riot,p\.accounts/);
+  assert.match(main, /liveAccount:status\.account/);
+  assert.match(app, /liveMeta\[u\.id\]=\{liveAccount:u\.liveAccount\|\|null\}/);
+  assert.match(app, /sameRiotAccount\(a,p\.liveAccount\)/);
 });
 
 test("manual account check never converts a Riot rank failure to unranked", () => {
@@ -156,7 +165,7 @@ test("renders paired five-to-ten progression per opposing champion", () => {
 
 test("scouting panel explains unavailable data and only loads with credentials", () => {
   const source = app.slice(app.indexOf("function scoutingPanel("), app.indexOf("function drawPlayer("));
-  const context = vm.createContext({ S: { hasKey: false }, esc: value => String(value) });
+  const context = vm.createContext({ S: { hasKey: false }, scoutingAccount: p => p.accounts?.[0], esc: value => String(value) });
   vm.runInContext(source, context);
   const linked = { accounts: [{ gameName: "Test", tagLine: "EUW" }] };
   const missingKey = context.scoutingPanel(linked);

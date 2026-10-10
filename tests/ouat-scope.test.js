@@ -6,7 +6,7 @@ const app = fs.readFileSync('src/renderer/app.js','utf8');
 const main = fs.readFileSync('src/main.js','utf8');
 test('cached professional players cannot enter OUAT views or background batches',()=>{
  const source=app.slice(app.indexOf('function applyLive('),app.indexOf('function rankPlaceholder('));
- const context=vm.createContext({S:{players:[{id:'pro'}],ouatPlayers:[{id:'ouat'}]},rankMeta:{},rankState:{},liveState:{}});
+ const context=vm.createContext({S:{players:[{id:'pro'}],ouatPlayers:[{id:'ouat'}]},rankMeta:{},rankState:{},liveState:{},liveMeta:{}});
  vm.runInContext(source,context);
  assert.deepEqual(Array.from(context.allPlayers(),p=>p.id),['ouat']);
  assert.doesNotMatch(main,/currentPros|pros:refresh|services\/pros|data\/players/);
