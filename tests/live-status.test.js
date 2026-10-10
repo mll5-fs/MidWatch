@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { accountKey, checkLiveAccount } = require("../src/services/live-status");
+const { accountKey, checkLiveAccount, checkLiveAccounts } = require("../src/services/live-status");
 
 const account = { gameName: "Player", tagLine: "EUW", platform: "EUW1" };
 const error = status => Object.assign(new Error(`HTTP ${status}`), { status });
@@ -35,4 +35,28 @@ test("an active game and cached PUUID are returned without resolving again", asy
   assert.equal(result.live, true);
   assert.equal(result.gameId, 42);
   assert.equal(resolutions, 0);
+});
+
+test("finds a live secondary account after the first linked account is offline", async () => {
+  const accounts = [account, { gameName: "Secondary", tagLine: "EUW", platform: "EUW1" }];
+  const riot = { resolveAccount: async a => ({ puuid: a.gameName.toLowerCase() }),
+    active: async (_platform, puuid) => {
+      if (puuid === "player") throw error(404);
+      return { gameId: 77 };
+    } };
+  const result = await checkLiveAccounts(riot, accounts, { now: 789 });
+  assert.equal(result.live, true);
+  assert.equal(result.gameId, 77);
+  assert.equal(result.account.gameName, "Secondary");
+});
+
+test("only confirms a multi-account player offline when every account was checked", async () => {
+  const accounts = [account, { gameName: "Secondary", tagLine: "EUW", platform: "EUW1" }];
+  const offline = { resolveAccount: async a => ({ puuid: a.gameName }), active: async () => { throw error(404); } };
+  assert.equal((await checkLiveAccounts(offline, accounts, { now: 900 })).live, false);
+  const partial = { resolveAccount: async a => {
+    if (a.gameName === "Player") throw error(404);
+    return { puuid: "secondary" };
+  }, active: async () => { throw error(404); } };
+  await assert.rejects(checkLiveAccounts(partial, accounts, { now: 901 }), e => e.status === 404);
 });
