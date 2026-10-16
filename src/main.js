@@ -1,5 +1,6 @@
 const {selectRoster}=require("./services/ouat-roles");
 const TeamScouting=require("./renderer/teams");
+const PlayerIdentity=require("./renderer/identity");
 const spectateGuard=require("./services/spectate-guard").createSpectateGuard();
 const {clipboard}=require("electron");
 const{app,BrowserWindow,ipcMain,shell,dialog}=require("electron");const path=require("path");const store=require("./store"),bundledOuat=require("./data/ouat-current.json"),{Riot}=require("./services/riot"),{winrateInterval,sampleWindow,laneAt5,laneAt10,laneTransition,championTransitionBreakdown,opponentTransitionBreakdown,championLaneBreakdown,opponentLaneBreakdown,earlyHabits,participantForScouting,patchBreakdown,matchupBreakdown}=require("./services/scouting"),{buildCoverage}=require("./services/sample-coverage"),statsCache=require("./services/stats-cache"),spectate=require("./services/spectate"),ouat=require("./services/ouat"),{RiotScheduler}=require("./services/riot-scheduler"),{checkLiveAccounts}=require("./services/live-status");let mainWindow;const ranks=require("./services/ranks"),riotScheduler=new RiotScheduler();let rankInFlight=null,liveInFlight=null,rankRetryAt=0;
@@ -71,9 +72,9 @@ async function liveBatchWork(){
   for(const p of batch){
     try{
       const status=await checkLiveAccounts(riot,p.accounts,{accountCache:cache});
-      updates.push({id:p.id,live:status.live,liveAccount:status.account,checkedAt:status.checkedAt,gameId:status.gameId});
+      updates.push({id:p.id,identity:PlayerIdentity.fingerprint(p),live:status.live,liveAccount:status.account,checkedAt:status.checkedAt,gameId:status.gameId});
     }catch(e){
-      updates.push({id:p.id,live:null,checkedAt:Date.now(),error:String(e.message||e)});
+      updates.push({id:p.id,identity:PlayerIdentity.fingerprint(p),live:null,checkedAt:Date.now(),error:String(e.message||e)});
     }
   }
   store.set("riotAccountCache",cache);

@@ -1,5 +1,5 @@
 let S={players:[],ouatPlayers:[],ouat:{},favorites:[],hasKey:false,leaguePath:"",proCacheAt:0};
-let view="TEAMS",liveOnly=false,busy=false,ouatDivision="ALL",liveState={},liveMeta={},rankState={},rankMeta={},rankBusy=false,rankCooldownAt=0,rankFollowup=null,drawerRequest=0;
+let view="TEAMS",liveOnly=false,busy=false,ouatDivision="ALL",liveState={},liveMeta={},rankState={},rankMeta={},rankBusy=false,rankReloadPending=false,rankCooldownAt=0,rankFollowup=null,drawerRequest=0;
 const $=q=>document.querySelector(q);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let patchRequest=0,patchPlayerId="",patchStats=null,patchError="",patchLoading=false;
@@ -9,7 +9,7 @@ function playerRankLabel(p={}){const label=rankLabel(p.bestRank);if(!label)retur
 function rankScore(p){const o={CHALLENGER:10,GRANDMASTER:9,MASTER:8,DIAMOND:7,EMERALD:6,PLATINUM:5,GOLD:4,SILVER:3,BRONZE:2,IRON:1};const r=p.bestRank||{};const tier=o[String(r.tier||"").toUpperCase()]||0;if(!tier)return 0;const apex=tier>=8,division=apex?0:({IV:0,III:1,II:2,I:3}[r.rank]||0),rawLp=Number(r.leaguePoints??r.lp??0),lp=Number.isFinite(rawLp)?Math.max(0,Math.min(rawLp,apex?99999:999)):0;return tier*100000+division*1000+lp}
 function sameRiotAccount(a={},b={}){return String(a.gameName||"").trim().toLowerCase()===String(b.gameName||"").trim().toLowerCase()&&String(a.tagLine||"").trim().toLowerCase()===String(b.tagLine||"").trim().toLowerCase()&&String(a.platform||"EUW1").toUpperCase()===String(b.platform||"EUW1").toUpperCase()}
 function scoutingAccount(p={}){const accounts=p.accounts||[],preferred=p.bestRankAccount;return(preferred&&accounts.find(a=>sameRiotAccount(a,preferred)))||accounts[0]}
-function applyLive(list){return(list||[]).map(original=>{const p={...original,...rankMeta[original.id],...liveMeta[original.id]};const x=liveState[p.id]===undefined?p:{...p,live:liveState[p.id]};return rankState[p.id]===undefined?x:{...x,bestRank:rankState[p.id]||{}}})}function allPlayers(){return applyLive(S.ouatPlayers)}
+function applyLive(list){return(list||[]).map(original=>{const rank=PlayerIdentity.matches(original,rankMeta[original.id]),live=PlayerIdentity.matches(original,liveMeta[original.id]),p={...original,...(rank?rankMeta[original.id]:{}),...(live?liveMeta[original.id]:{})};const x=!live||liveState[p.id]===undefined?p:{...p,live:liveState[p.id]};return !rank||rankState[p.id]===undefined?x:{...x,bestRank:rankState[p.id]||{}}})}function allPlayers(){return applyLive(S.ouatPlayers)}
 function rankPlaceholder(p){
   const account=scoutingAccount(p);if(!account?.gameName||!account?.tagLine)return"COMPTE NON RELIÉ";
   if(p.rankStatus==="unranked")return"NON CLASSÉ SOLOQ";
@@ -325,8 +325,14 @@ function drawPlayer(p){
   $("#dpm").onclick=()=>window.mw.open(dpmUrl(p));
   document.querySelectorAll("[data-check]").forEach(b=>b.onclick=()=>checkAccount(p,+b.dataset.check));
   document.querySelectorAll("[data-spec]").forEach(b=>b.onclick=()=>spectateAccount(p,+b.dataset.spec));syncSpectateButtons();
-  if($("#saveFix"))$("#saveFix").onclick=async()=>{try{const a=await window.mw.overrideAccount(p.id,{gameName:$("#fixName").value,tagLine:$("#fixTag").value,platform:"EUW1"});p={...p,accounts:[a],accountOverride:true};const idx=S.ouatPlayers.findIndex(x=>x.id===p.id);if(idx>=0)S.ouatPlayers[idx]=p;openPlayer(p.id);render();}catch(e){$("#fixMsg").innerHTML=`<div class="result">${esc(e.message)}</div>`}};
-  if($("#clearFix"))$("#clearFix").onclick=async()=>{await window.mw.clearOverride(p.id);const fresh=await window.mw.data();S.ouatPlayers=fresh.ouatPlayers;openPlayer(p.id);render()};
+  if($("#saveFix"))$("#saveFix").onclick=async()=>{try{await window.mw.overrideAccount(p.id,{gameName:$("#fixName").value,tagLine:$("#fixTag").value,platform:"EUW1"});await reloadAccountIdentity(p.id);}catch(e){$("#fixMsg").innerHTML=`<div class="result">${esc(e.message)}</div>`}};
+  if($("#clearFix"))$("#clearFix").onclick=async()=>{await window.mw.clearOverride(p.id);await reloadAccountIdentity(p.id)};
+}
+async function reloadAccountIdentity(id){
+ delete rankState[id];delete rankMeta[id];delete liveState[id];delete liveMeta[id];teamDuel.cancel();
+ const fresh=await window.mw.data();S.ouatPlayers=fresh.ouatPlayers;
+ notice("Compte mis à jour. Les données de l’ancien Riot ID sont retirées ; rechargement des rangs lancé.");
+ openPlayer(id);renderNav();render();if(rankBusy)rankReloadPending=true;else refreshRanks();
 }
 async function checkAccount(p,i){
   const a=p.accounts[i],box=$(`#res-${i}`);if(!box)return;box.className="result";box.textContent="Vérification Riot…";
@@ -372,16 +378,16 @@ async function refreshRanks(){
     const r=await window.mw.rankBatch(visible);
     rankCooldownAt=Number(r.retryAt)||0;
     if([401,403].includes(r.blockedStatus))S.hasKey=false;
-    for(const u of r.updates||[]){if(u.rank!==undefined)rankState[u.id]=u.rank;rankMeta[u.id]={rankStatus:u.status,rankCheckedAt:u.checkedAt,rankError:u.error,...(u.rankAccount?{bestRankAccount:u.rankAccount}:{})}}
+    for(const u of r.updates||[]){if(!S.ouatPlayers.some(p=>p.id===u.id&&PlayerIdentity.matches(p,u)))continue;if(rankMeta[u.id]?.identity!==u.identity)delete rankState[u.id];if(u.rank!==undefined)rankState[u.id]=u.rank;rankMeta[u.id]={identity:u.identity,rankStatus:u.status,rankCheckedAt:u.checkedAt,rankError:u.error,...(u.rankAccount?{bestRankAccount:u.rankAccount}:{})}}
     render();
     if(S.hasKey&&!r.retryAt&&(r.deferred||r.remaining>0))rankFollowup=setTimeout(refreshRanks,r.deferred?2000:4000);
-  }catch(_){}finally{rankBusy=false}
+  }catch(_){}finally{rankBusy=false;if(rankReloadPending){rankReloadPending=false;refreshRanks()}}
 }
 async function refreshLive(){
   if(!S.hasKey)return;
   try{
     const r=await window.mw.liveBatch();
-    for(const u of r.updates||[]){if(Object.prototype.hasOwnProperty.call(u,"live")){liveState[u.id]=u.live;liveMeta[u.id]={liveAccount:u.liveAccount||null}}}
+    for(const u of r.updates||[]){if(!S.ouatPlayers.some(p=>p.id===u.id&&PlayerIdentity.matches(p,u)))continue;if(Object.prototype.hasOwnProperty.call(u,"live")){liveState[u.id]=u.live;liveMeta[u.id]={identity:u.identity,liveAccount:u.liveAccount||null}}}
     renderNav();render();
   }catch(_){}
 }

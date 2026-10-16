@@ -49,4 +49,11 @@ assert.match(read('src/services/spectate-guard.js'),/function createSpectateGuar
 assert.match(read('src/main.js'),/spectateGuard.run\(\(\)=>foregroundRiot/);
 assert.match(read('src/renderer/app.js'),/function syncSpectateButtons/);
 assert.match(read('src/services/spectate-flow.js'),/launchUncertain=true/);
+assert.match(read('src/renderer/index.html'),/src="identity.js"/);
+assert.match(read('src/renderer/identity.js'),/function fingerprint/);
+assert.match(read('src/renderer/app.js'),/PlayerIdentity.matches\(original,rankMeta/);
+assert.match(read('src/renderer/app.js'),/async function reloadAccountIdentity/);
+assert.match(read('src/renderer/app.js'),/rankReloadPending=true/);
+assert.match(read('src/services/ranks.js'),/identity:fingerprint\(player\)/);
+assert.match(read('src/main.js'),/identity:PlayerIdentity.fingerprint\(p\)/);
 console.log(JSON.stringify({archive,version:expected,players:roster.players.length,roles:Object.fromEntries(roles.map(role=>[role,roster.players.filter(p=>p.role===role).length])),uwu:roster.players.filter(p=>p.team.trim().toUpperCase()==='UWU GANG').map(p=>({name:p.name,role:p.role,division:p.division,group:p.group})),packagedTeamUI:true,packagedRoleReports:true,versionFromElectron:true},null,2));

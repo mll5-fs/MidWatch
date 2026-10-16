@@ -109,7 +109,7 @@ test("checks every linked account and keeps the highest verified SoloQ rank", as
   riot.ranked = async (_platform, puuid) => puuid === "inactive" ? [] : [solo];
   const result = await loadBatch(riot, [p], { now: 1000 });
   assert.equal(result.checked, 2);
-  assert.deepEqual(result.updates, [{ id: "multi", rank: { tier: "DIAMOND", rank: "II", leaguePoints: 0 },
+  assert.deepEqual(result.updates, [{ id: "multi", identity:require('../src/renderer/identity').fingerprint(p), rank: { tier: "DIAMOND", rank: "II", leaguePoints: 0 },
     rankAccount: p.accounts[1], status: "ranked", checkedAt: 1000, error: undefined }]);
   const hydrated = hydrate([p], result.cache)[0];
   assert.equal(hydrated.bestRank.tier, "DIAMOND");
