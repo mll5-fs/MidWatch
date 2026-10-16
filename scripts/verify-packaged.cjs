@@ -1,6 +1,6 @@
 const fs=require('node:fs'),assert=require('node:assert/strict'),asar=require('@electron/asar');
 const archive=process.argv[2]||'dist/win-unpacked/resources/app.asar';
-const read=p=>asar.extractFile(archive,p).toString('utf8');
+const read=p=>asar.extractFile(archive,require('node:path').normalize(p)).toString('utf8');
 const expected=JSON.parse(fs.readFileSync('package.json','utf8')).version;
 assert.equal(JSON.parse(read('package.json')).version,expected);
 assert.match(read('src/renderer/index.html'),/id="teamsNav"/);
