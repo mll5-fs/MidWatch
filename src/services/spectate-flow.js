@@ -28,7 +28,11 @@ async function launchThroughClient(raw, root, body) {
         status: response?.status, auth: response?.auth };
     } catch (error) {
       // Retry another endpoint only when this route does not exist, never after an ambiguous timeout.
-      if (![404, 405].includes(error.status)) throw failure(error, phase);
+      if (![404, 405].includes(error.status)) {
+        const result=failure(error,phase);
+        if(!error.status||error.status>=500)result.launchUncertain=true;
+        throw result;
+      }
     }
   }
   throw new Error("Les routes Spectate ne sont pas disponibles dans ce client League. Essaie depuis League et vérifie que le client est à jour.");
