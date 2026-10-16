@@ -147,6 +147,15 @@ function groupBoardHtml(board){
  const reasons={selection_missing:"choix local absent de l’effectif",missing:"joueur absent",ambiguous:"titulaire non confirmé",account_missing:"compte absent",duplicate:"compte partagé",error:"erreur Riot",partial:"rang partiel",rank_missing:"rang absent / non classé",stale:"rang périmé"};
  return `<div class="panel group-board"><div class="panel-title">RANGS MOYENS DU GROUPE · ${esc(board.division)} · ${esc(board.group)}</div><p class="sample-note">Résumé des rangs SoloQ officiels, pas un classement du tournoi ni du MMR. Seules les équipes avec 5/5 rôles couverts sont ordonnées par moyenne ; les équipes incomplètes restent ensuite par ordre alphabétique. Les ex æquo partagent le même ordre.</p><div class="group-table-scroll"><table class="group-table"><thead><tr><th scope="col">Ordre SoloQ</th><th scope="col">Équipe</th><th scope="col">Moyenne observée</th><th scope="col">Couverture</th><th scope="col">Données exclues</th></tr></thead><tbody>${board.rows.map(({team,summary,position})=>`<tr class="${team.name.trim().toUpperCase()==="UWU GANG"?"home-team":""}"><td>${position??"—"}</td><td><button class="action" data-group-team="${esc(team.id)}">${esc(team.name)}</button></td><td>${esc(summary.label)}</td><td>${summary.covered}/5${summary.complete?" · COMPLET":" · PARTIEL"}${summary.slots.some(s=>s.manual)?" · COMPOSITION LOCALE":""}</td><td>${summary.slots.filter(s=>s.status!=="covered").map(s=>`${esc(s.role)} : ${esc(reasons[s.status]||"indisponible")}`).join(" · ")||"—"}</td></tr>`).join("")}</tbody></table></div></div>`;
 }
+function preparationPanel(team,home){
+ const pair=DuelScouting.pair(team,home,duelRole,S.lineups,S.hasKey),active=pair&&teamDuel.state.key===pair.key&&(teamDuel.state.loading||teamDuel.state.sides.length>0);
+ const text=ReportBuilder.build({team,home,lineups:S.lineups,version:S.version,ouat:S.ouat,duel:active?{pair,reports:teamDuel.state.sides.map(s=>s?.report),patch:duelPatch,loading:teamDuel.state.loading}:null});
+ return `<div class="panel preparation-report"><div class="panel-title">RAPPORT DE PRÉPARATION D’ÉQUIPE</div><p>Copie un instantané des cinq rôles, rangs, exclusions et de la comparaison SoloQ actuellement chargée. Aucun nouvel appel Riot. Contient les Riot IDs publics et tes choix de composition locale ; aucune clé Riot.</p><button id="copyPreparation" class="action primary">Copier le rapport d’équipe</button><details><summary>Aperçu du texte à copier</summary><pre id="preparationPreview">${esc(text)}</pre></details></div>`;
+}
+function bindPreparation(){
+ const button=$("#copyPreparation");if(!button)return;
+ button.onclick=async()=>{button.disabled=true;try{await window.mw.copyReport($("#preparationPreview").textContent);notice("Rapport copié. Tu peux le coller dans ton document ou ton chat d’équipe.")}catch(_){notice("Copie impossible. Tu peux sélectionner le texte dans l’aperçu du rapport.")}finally{button.disabled=false}};
+}
 function renderTeamSection(){
  $("#sort").hidden=true;$("#liveOnly").hidden=true;
  const teams=TeamScouting.group(allPlayers()),q=$("#qTop").value.trim().toLowerCase();
@@ -176,8 +185,9 @@ function renderTeamSection(){
  }).join("");
  const average=(s)=>`${esc(s.label)} · ${s.covered}/5 rôles couverts${s.complete?"":" · MOYENNE PARTIELLE"}`;
  $("#grid").innerHTML=`<div class="team-scouting"><div class="panel"><div class="panel-title">RANG SOLOQ MOYEN OBSERVÉ</div><h2>${average(summary)}</h2><p class="sample-note">Résumé descriptif des rangs officiels : 100 points par division, 400 par palier, plus les LP ; Master/Grandmaster/Challenger partagent la base Master + LP. Ce n’est pas le MMR. Un seul joueur déclaré ou choisi localement par rôle, compte distinct, rang complet vérifié depuis moins de 15 min. Rangs manquants, partiels ou périmés exclus. ${summary.excluded} rôle(s) exclu(s). Une moyenne partielle ne représente pas les cinq joueurs.</p></div><div class="team-columns"><div class="panel"><div class="panel-title">${esc(team.name)}</div>${rosterRows(team)}</div><div class="panel"><div class="panel-title">COMPARAISON · UWU GANG</div>${home?`<p>${average(homeSummary)}</p>${home.id===team.id?"<p>Sélectionne une autre équipe pour comparer les effectifs.</p>":rosterRows(home)}`:"<p>UWU GANG introuvable dans l’effectif LEA chargé. Aucune composition inventée.</p>"}</div></div></div>`;
- $("#grid").innerHTML=groupBoardHtml(TeamScouting.groupBoard(teams,team.id,Date.now(),S.lineups))+duelPanel(team,home)+$("#grid").innerHTML;
- bindDuel(team,home);
+ const duelHtml=duelPanel(team,home);
+ $("#grid").innerHTML=groupBoardHtml(TeamScouting.groupBoard(teams,team.id,Date.now(),S.lineups))+preparationPanel(team,home)+duelHtml+$("#grid").innerHTML;
+ bindDuel(team,home);bindPreparation();
  document.querySelectorAll("[data-lineup-team]").forEach(select=>select.onchange=async()=>{select.disabled=true;try{S.lineups=await window.mw.setLineup(select.dataset.lineupTeam,select.dataset.lineupRole,select.value);render();refreshRanks()}catch(e){notice("Composition non enregistrée : "+String(e.message||e));render()}});
  document.querySelectorAll("[data-team-player]").forEach(b=>b.onclick=()=>openPlayer(b.dataset.teamPlayer));
  document.querySelectorAll("[data-group-team]").forEach(b=>b.onclick=()=>{const t=teams.find(t=>t.id===b.dataset.groupTeam);if(!t)return;selectedTeam=t.id;teamDivision=t.division;teamGroup=t.group;$("#qTop").value="";render();refreshRanks()});
