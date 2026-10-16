@@ -2,6 +2,53 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const T=require('../src/renderer/teams'),{normalizeRole,selectRoster}=require('../src/services/ouat-roles');
 const now=10000000;
 function roster(){return T.roles.map((role,i)=>({id:String(i),role,team:'UWU GANG',teamId:1,division:'D1',group:'A',accounts:[{gameName:'P'+i,tagLine:'EUW'}],bestRank:{tier:'GOLD',rank:'II',leaguePoints:50},rankStatus:'ranked',rankCheckedAt:now}));}
+test('local lineup resolves a declared substitute without dropping the full roster',()=>{
+ const ps=roster();ps.push({...ps[0],id:'sub',accounts:[{gameName:'Sub',tagLine:'EUW'}],bestRank:{tier:'PLATINUM',rank:'II',leaguePoints:50}});
+ assert.equal(T.summarize(ps,now).covered,4);
+ const choices=T.updateLineup({},ps,'1','TOP','sub'),s=T.summarize(ps,now,T.lineup(choices,'1'));
+ assert.equal(s.covered,5);assert.equal(s.score,1530);assert.equal(s.slots[0].manual,true);assert.equal(s.slots[0].declared.length,2);assert.equal(ps.length,6);
+ assert.equal(T.groupBoard(T.group(ps),'1',now,choices).rows[0].summary.score,s.score);
+ const reset=T.updateLineup(choices,ps,'1','TOP','');assert.equal(T.summarize(ps,now,T.lineup(reset,'1')).covered,4);assert.equal(choices['1'].TOP,'sub');
+});
+test('local choices cannot invent players, roles or teams and never change roster data',()=>{
+ const ps=roster();
+ for(const args of [['1','TOP','foreign'],['1','TOP','1'],['unknown','TOP','0'],['1','COACH','0'],['1','TOP',{}]])assert.throws(()=>T.updateLineup({},ps,...args),/invalide/);
+ const choices=T.updateLineup({},ps,'1','TOP','0');assert.deepEqual(JSON.parse(JSON.stringify(choices)),{'1':{TOP:'0'}});assert.equal(T.lineup({},'constructor').TOP,undefined);
+});
+test('departed or role-changed local selection stays excluded until explicitly reset',()=>{
+ const ps=roster(),selection={TOP:'departed'};let s=T.summarize(ps,now,selection);
+ assert.equal(s.covered,4);assert.equal(s.slots[0].status,'selection_missing');
+ s=T.summarize(ps,now,{TOP:'1'});assert.equal(s.slots[0].status,'selection_missing');
+});
+test('local choice never bypasses freshness or shared-account exclusions',()=>{
+ const ps=roster();ps.push({...ps[0],id:'sub',accounts:ps[1].accounts});
+ let s=T.summarize(ps,now,{TOP:'sub'});assert.equal(s.covered,3);assert.equal(s.slots[0].status,'duplicate');
+ ps[5].accounts=[{gameName:'Sub',tagLine:'EUW'}];ps[5].rankCheckedAt=now-900000;
+ s=T.summarize(ps,now,{TOP:'sub'});assert.equal(s.covered,4);assert.equal(s.slots[0].status,'stale');
+});
+test('lineup IPC persists validated choices and data returns them after reload',async()=>{
+ const fs=require('node:fs'),vm=require('node:vm'),source=fs.readFileSync('src/main.js','utf8'),state={},handlers={};
+ const store={get:(k,d)=>state[k]??d,set:(k,v)=>state[k]=v};
+ const ctx=vm.createContext({TeamScouting:T,store,data:()=>({ouatPlayers:roster()}),ipcMain:{handle:(name,fn)=>handlers[name]=fn}});
+ vm.runInContext(source.split('\n').find(l=>l.startsWith('ipcMain.handle("team:lineup"')),ctx);
+ handlers['team:lineup']({},'1','TOP','0');assert.equal(state.lineups['1'].TOP,'0');
+ assert.throws(()=>handlers['team:lineup']({},'1','TOP','made-up'));assert.equal(state.lineups['1'].TOP,'0');
+ const dataLine=source.split('\n').find(l=>l.startsWith('function data()'));
+ const reload=vm.createContext({store,app:{getVersion:()=> 'test'},selectRoster:()=>({players:[]}),bundledOuat:{},ranks:{hydrate:x=>x},applyOverrides:x=>x,key:()=>'',spectate:{detect:()=>''}});
+ vm.runInContext(dataLine,reload);assert.equal(reload.data().lineups['1'].TOP,'0');
+ handlers['team:lineup']({},'1','TOP','');assert.equal(state.lineups['1'].TOP,undefined);
+});
+test('lineup selector saves through IPC and preserves earlier choices on write failure',async()=>{
+ const fs=require('node:fs'),vm=require('node:vm'),app=fs.readFileSync('src/renderer/app.js','utf8'),nodes={},ps=roster();
+ ps.push({...ps[0],id:'sub'});const $=id=>nodes[id]??={value:'',innerHTML:'',textContent:'',hidden:false};let selects=[],fail=false,notice='';
+ const S={ouat:{},lineups:{}},ctx=vm.createContext({TeamScouting:T,allPlayers:()=>ps,$,S,esc:String,queryMatch:()=>true,playerRankLabel:()=>'',rankPlaceholder:()=>'',scoutingAccount:p=>p.accounts[0],notice:s=>notice=s,window:{mw:{setLineup:async(t,r,p)=>{if(fail)throw Error('disk full');return T.updateLineup(S.lineups,ps,t,r,p)}}},document:{querySelectorAll:selector=>{
+  if(selector!=='[data-lineup-team]')return [];
+  selects=[...nodes['#grid'].innerHTML.matchAll(/data-lineup-team="([^"]+)" data-lineup-role="([^"]+)"/g)].map(m=>({dataset:{lineupTeam:m[1],lineupRole:m[2]},value:''}));return selects;
+ }},render:()=>ctx.renderTeamSection(),refreshRanks:()=>{}});
+ vm.runInContext(app.slice(app.indexOf('let teamDivision='),app.indexOf('\nfunction render(){')),ctx);ctx.renderTeamSection();
+ let top=selects.find(s=>s.dataset.lineupRole==='TOP');top.value='sub';await top.onchange();assert.equal(S.lineups['1'].TOP,'sub');assert.match(nodes['#grid'].innerHTML,/COMPOSITION LOCALE/);
+ fail=true;top=selects.find(s=>s.dataset.lineupRole==='TOP');top.value='0';await top.onchange();assert.equal(S.lineups['1'].TOP,'sub');assert.match(notice,/non enregistrée/);
+});
 test('normalizes all five LEA roles and excludes coaches/unknowns',()=>{
  assert.deepEqual(['top','jgl','Middle','bot','sup'].map(normalizeRole),T.roles);
  assert.equal(normalizeRole('Jungla'),'JUNGLE');assert.equal(normalizeRole('coach'),null);assert.equal(normalizeRole(''),null);
