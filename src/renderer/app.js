@@ -119,6 +119,11 @@ function renderPatchSection(){
 }
 
 let teamDivision="ALL",teamGroup="ALL",selectedTeam="";
+function groupBoardHtml(board){
+ if(!board.known)return '<div class="panel group-board"><p>Groupe LEA non publié : comparaison du groupe indisponible.</p></div>';
+ const reasons={missing:"joueur absent",ambiguous:"titulaire non confirmé",account_missing:"compte absent",duplicate:"compte partagé",error:"erreur Riot",partial:"rang partiel",rank_missing:"rang absent / non classé",stale:"rang périmé"};
+ return `<div class="panel group-board"><div class="panel-title">RANGS MOYENS DU GROUPE · ${esc(board.division)} · ${esc(board.group)}</div><p class="sample-note">Résumé des rangs SoloQ officiels, pas un classement du tournoi ni du MMR. Seules les équipes avec 5/5 rôles couverts sont ordonnées par moyenne ; les équipes incomplètes restent ensuite par ordre alphabétique. Les ex æquo partagent le même ordre.</p><div class="group-table-scroll"><table class="group-table"><thead><tr><th scope="col">Ordre SoloQ</th><th scope="col">Équipe</th><th scope="col">Moyenne observée</th><th scope="col">Couverture</th><th scope="col">Données exclues</th></tr></thead><tbody>${board.rows.map(({team,summary,position})=>`<tr class="${team.name.trim().toUpperCase()==="UWU GANG"?"home-team":""}"><td>${position??"—"}</td><td><button class="action" data-group-team="${esc(team.id)}">${esc(team.name)}</button></td><td>${esc(summary.label)}</td><td>${summary.covered}/5${summary.complete?" · COMPLET":" · PARTIEL"}</td><td>${summary.slots.filter(s=>s.status!=="covered").map(s=>`${esc(s.role)} : ${esc(reasons[s.status]||"indisponible")}`).join(" · ")||"—"}</td></tr>`).join("")}</tbody></table></div></div>`;
+}
 function renderTeamSection(){
  $("#sort").hidden=true;$("#liveOnly").hidden=true;
  const teams=TeamScouting.group(allPlayers()),q=$("#qTop").value.trim().toLowerCase();
@@ -131,6 +136,10 @@ function renderTeamSection(){
  const team=visible.find(t=>t.id===selectedTeam),summary=team?TeamScouting.summarize(team.players):null,homeSummary=home?TeamScouting.summarize(home.players):null;
  const option=(value,label,selected)=>`<option value="${esc(value)}" ${value===selected?"selected":""}>${esc(label)}</option>`;
  $("#hero").innerHTML=`<div class="panel"><div class="panel-title">SCOUTING D’ÉQUIPE · TOP / JUNGLE / MID / ADC / SUPPORT</div><div class="team-filters"><label>Division<select id="teamDivision" class="fullinput">${option("ALL","Toutes divisions",teamDivision)+divisions.map(d=>option(d,d,teamDivision)).join("")}</select></label><label>Groupe<select id="teamGroup" class="fullinput">${option("ALL","Tous groupes",teamGroup)+groups.map(g=>option(g,g,teamGroup)).join("")}</select></label><label>Équipe<select id="teamSelect" class="fullinput">${visible.map(t=>option(t.id,t.name,selectedTeam)).join("")}</select></label></div><p class="sample-note">Effectifs LEA · ${esc(S.ouat.season||"")} · ${S.ouat.updatedAt?esc(new Date(S.ouat.updatedAt).toLocaleString("fr-FR")):"date inconnue"}. ${esc(S.ouat.warning||"")} Les rôles LEA ne garantissent pas une composition titulaire. Plusieurs joueurs au même rôle restent affichés ; ce rôle est exclu de la moyenne.</p></div>`;
+ if(home&&home.division!=="Sans division"&&home.group!=="Groupe non publié"){
+  $("#hero").innerHTML+='<button id="uwuGroup" class="action primary">Voir le groupe d’UWU GANG</button>';
+  $("#uwuGroup").onclick=()=>{teamDivision=home.division;teamGroup=home.group;selectedTeam=home.id;$("#qTop").value="";render();refreshRanks()};
+ }
  $("#teamDivision").onchange=e=>{teamDivision=e.target.value;teamGroup="ALL";render();refreshRanks()};
  $("#teamGroup").onchange=e=>{teamGroup=e.target.value;render();refreshRanks()};
  $("#teamSelect").onchange=e=>{selectedTeam=e.target.value;render();refreshRanks()};
@@ -143,7 +152,9 @@ function renderTeamSection(){
  }).join("");
  const average=(s)=>`${esc(s.label)} · ${s.covered}/5 rôles couverts${s.complete?"":" · MOYENNE PARTIELLE"}`;
  $("#grid").innerHTML=`<div class="team-scouting"><div class="panel"><div class="panel-title">RANG SOLOQ MOYEN OBSERVÉ</div><h2>${average(summary)}</h2><p class="sample-note">Résumé descriptif des rangs officiels : 100 points par division, 400 par palier, plus les LP ; Master/Grandmaster/Challenger partagent la base Master + LP. Ce n’est pas le MMR. Un seul joueur déclaré par rôle, compte distinct, rang complet vérifié depuis moins de 15 min. Rangs manquants, partiels ou périmés exclus. ${summary.excluded} rôle(s) exclu(s). Une moyenne partielle ne représente pas les cinq joueurs.</p></div><div class="team-columns"><div class="panel"><div class="panel-title">${esc(team.name)}</div>${rosterRows(team)}</div><div class="panel"><div class="panel-title">COMPARAISON · UWU GANG</div>${home?`<p>${average(homeSummary)}</p>${home.id===team.id?"<p>Sélectionne une autre équipe pour comparer les effectifs.</p>":rosterRows(home)}`:"<p>UWU GANG introuvable dans l’effectif LEA chargé. Aucune composition inventée.</p>"}</div></div></div>`;
+ $("#grid").innerHTML=groupBoardHtml(TeamScouting.groupBoard(teams,team.id))+$("#grid").innerHTML;
  document.querySelectorAll("[data-team-player]").forEach(b=>b.onclick=()=>openPlayer(b.dataset.teamPlayer));
+ document.querySelectorAll("[data-group-team]").forEach(b=>b.onclick=()=>{const t=teams.find(t=>t.id===b.dataset.groupTeam);if(!t)return;selectedTeam=t.id;teamDivision=t.division;teamGroup=t.group;$("#qTop").value="";render();refreshRanks()});
 }
 
 function render(){
@@ -310,7 +321,8 @@ async function refreshRanks(){
     const onScreen=[...document.querySelectorAll(".player-card,.scout-row,[data-team-player]")].filter(node=>{
       const rect=node.getBoundingClientRect();return rect.bottom>0&&rect.top<window.innerHeight;
     }).map(node=>node.dataset.teamPlayer||node.dataset.id);
-    const visible=[...new Set([...onScreen,...listForView().slice(0,20).map(p=>p.id)])];
+    const groupPriority=view==="TEAMS"?TeamScouting.groupBoard(TeamScouting.group(allPlayers()),selectedTeam).rows.flatMap(row=>row.team.players.map(p=>p.id)):[];
+    const visible=[...new Set([...onScreen,...groupPriority,...listForView().slice(0,20).map(p=>p.id)])];
     const r=await window.mw.rankBatch(visible);
     rankCooldownAt=Number(r.retryAt)||0;
     if([401,403].includes(r.blockedStatus))S.hasKey=false;

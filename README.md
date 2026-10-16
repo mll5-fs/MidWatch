@@ -1,4 +1,8 @@
-# MidPulse 5.4 — OUAT team scouting and role reports
+# MidPulse 5.5 — OUAT group comparison and role reports
+
+In **Équipes · 5 rôles**, select **Voir le groupe d’UWU GANG** or choose another team to see the official-rank summary for its actual LEA division/group. The group table appears above detailed rosters and opens a team comparison when its name is clicked. Only teams with five fresh, valid, distinct-account roles receive an order by observed average; ties share that order. Partial teams follow alphabetically with coverage and the exact excluded roles/reasons. This order is not the tournament standings or hidden MMR. Unknown groups are never combined into a fabricated group.
+
+Group rank loading is prioritized within the existing account budget and Riot cooldowns. A linked-account comparison uses the oldest available account-check timestamp, so refreshing a secondary account cannot make an old best rank appear fresh. A shared account across two declared roles excludes both roles from the average.
 
 Open a TOP/JUNGLE/ADC/SUPPORT player from **Équipes · 5 rôles** to load a role-specific SoloQ report using a configured Riot API key. Only matches where Riot identifies the declared role are retained: up to 12 valid games from 20 recent SoloQ matches. The report shows results, champions, K/D/A, time-weighted CS/damage/gold per minute, vision per game, sample dates and coverage. Incomplete payloads are excluded and counted; errors and API limits mark partial coverage. No midlane CS or damage thresholds are applied to other roles. This is a statistical description, not movement or micro-gameplay analysis.
 

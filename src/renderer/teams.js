@@ -16,18 +16,29 @@ const TeamScouting = (()=>{
  }
  function summarize(players,now=Date.now()){
   const slots=roles.map(role=>({role,players:players.filter(p=>p.role===role)}));
-  const used=new Set();let excluded=0;
+  const accountKey=p=>{const a=p.bestRankAccount||p.accounts?.[0];return a?.gameName&&a?.tagLine?`${a.platform||"EUW1"}|${a.gameName.trim()}#${a.tagLine.trim()}`.toLowerCase():"";};
+  const keys=slots.filter(s=>s.players.length===1).map(s=>accountKey(s.players[0])).filter(Boolean);
+  let excluded=0;
   const values=slots.flatMap(slot=>{
-   if(slot.players.length!==1){excluded++;return [];}
-   const p=slot.players[0],value=points(p.bestRank),a=p.bestRankAccount||p.accounts?.[0],key=a?`${a.platform||"EUW1"}|${a.gameName}#${a.tagLine}`.toLowerCase():"";
+   if(slot.players.length!==1){slot.status=slot.players.length?"ambiguous":"missing";excluded++;return [];}
+   const p=slot.players[0],value=points(p.bestRank),key=accountKey(p);
    const fresh=Number.isFinite(p.rankCheckedAt)&&p.rankCheckedAt<=now&&now-p.rankCheckedAt<15*60*1000;
-   if(value===null||p.rankStatus!=="ranked"||!fresh||!key||used.has(key)){excluded++;return [];}
-   used.add(key);return [value];
+   slot.status=!key?"account_missing":keys.filter(k=>k===key).length>1?"duplicate":p.rankStatus==="error"?"error":p.rankStatus==="partial"?"partial":value===null||p.rankStatus!=="ranked"?"rank_missing":!fresh?"stale":"covered";
+   if(slot.status!=="covered"){excluded++;return [];}
+   return [value];
   });
   const score=values.length?values.reduce((a,b)=>a+b,0)/values.length:null;
   return {slots,covered:values.length,excluded,score,label:label(score),complete:values.length===5};
  }
  function group(players){const map=new Map();for(const p of players){const key=String(p.teamId||p.team);if(!map.has(key))map.set(key,{id:key,name:p.team||"Équipe inconnue",division:p.division||"Sans division",group:p.group||"Groupe non publié",players:[]});map.get(key).players.push(p);}return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name));}
- return {roles,points,label,summarize,group};
+ function groupBoard(teams,selectedId,now=Date.now()){
+  const selected=teams.find(t=>t.id===selectedId);
+  if(!selected||selected.division==="Sans division"||selected.group==="Groupe non publié")return {known:false,rows:[]};
+  const rows=teams.filter(t=>t.division===selected.division&&t.group===selected.group).map(team=>({team,summary:summarize(team.players,now)}));
+  rows.sort((a,b)=>Number(b.summary.complete)-Number(a.summary.complete)||(a.summary.complete?b.summary.score-a.summary.score:0)||a.team.name.localeCompare(b.team.name));
+  for(const row of rows)row.position=row.summary.complete?1+rows.filter(r=>r.summary.complete&&r.summary.score>row.summary.score).length:null;
+  return {known:true,division:selected.division,group:selected.group,rows};
+ }
+ return {roles,points,label,summarize,group,groupBoard};
 })();
 if(typeof module!=="undefined")module.exports=TeamScouting;
