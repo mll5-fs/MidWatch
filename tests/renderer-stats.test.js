@@ -224,7 +224,10 @@ test("renders patch samples and their statistical limits", () => {
 });
 
 test("coverage target label reflects the actual collection target", () => {
-  assert.match(app, /objectif de \$\{esc\(c\.target\)\} parties mid atteint/);
+  const source=app.slice(app.indexOf('function coverageReport('),app.indexOf('function roleStatReport('));
+  const context=vm.createContext({esc:String});vm.runInContext(source,context);
+  assert.match(context.coverageReport({requested:60,target:30,targetReached:true,midGames:30}),/objectif de 30 parties mid atteint/);
+  assert.match(context.coverageReport({requested:60,target:30,targetReached:true,role:'SUPPORT',roleGames:30}),/objectif de 30 parties SUPPORT atteint/);
   assert.doesNotMatch(app, /objectif de 12 parties mid atteint/);
 });
 

@@ -68,6 +68,6 @@ jobs:
           if ($exists) {
             Write-Host "Release $tag already exists. Preserving its installer; bump package.json to publish changes."
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Scouting equipe OUAT : cinq roles, filtres division et groupe, rang moyen observe avec couverture sur cinq et comparaison UWU GANG. Migration du cache historique. Contenu Electron de cet installateur inspecte automatiquement. Source commit: ${{ github.sha }}."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Scouting equipe OUAT : cinq roles, filtres division et groupe, rang moyen observe et comparaison UWU GANG. Statistiques SoloQ et analyses par patch filtrees au role du joueur pour TOP/JUNGLE/MID/ADC/SUPPORT. Cache separe par role, taille et couverture des echantillons explicites. Timelines de lane reservees aux mids. Contenu Electron de cet installateur inspecte automatiquement. Source commit: ${{ github.sha }}."
             if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           }
