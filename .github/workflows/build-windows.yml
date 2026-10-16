@@ -68,6 +68,6 @@ jobs:
           if ($exists) {
             Write-Host "Release $tag already exists. Preserving its installer; bump package.json to publish changes."
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Rapport de preparation d'equipe copiable : cinq roles, rangs disponibles, couverture, exclusions et comparaison SoloQ chargee avec son filtre de patch. Apercu avant copie ; aucun appel Riot supplementaire ni configuration privee incluse. Donnees manquantes et limites explicites. Statistiques SoloQ et analyses par patch pour les cinq roles ; timelines de lane reservees aux mids. Contenu Electron de cet installateur inspecte automatiquement. Source commit: ${{ github.sha }}."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Correctif Spectate : verrou contre les doubles clics et demandes concurrentes avant la file Riot, boutons desactives pendant la demande et pause de 15 secondes apres acceptation ou lancement incertain. Aucun retry automatique ambigu. Une acceptation locale ne confirme pas le lancement du jeu. Statistiques SoloQ et analyses par patch pour les cinq roles ; timelines de lane reservees aux mids. Contenu Electron de cet installateur inspecte automatiquement. Source commit: ${{ github.sha }}."
             if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           }

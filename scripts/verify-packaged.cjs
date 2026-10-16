@@ -45,4 +45,8 @@ assert.match(read('src/renderer/app.js'),/Copier le rapport d’équipe/);
 assert.match(read('src/renderer/report.js'),/const ReportBuilder/);
 assert.match(read('src/main.js'),/ipcMain.handle\("report:copy"/);
 assert.match(read('src/preload.js'),/copyReport:/);
+assert.match(read('src/services/spectate-guard.js'),/function createSpectateGuard/);
+assert.match(read('src/main.js'),/spectateGuard.run\(\(\)=>foregroundRiot/);
+assert.match(read('src/renderer/app.js'),/function syncSpectateButtons/);
+assert.match(read('src/services/spectate-flow.js'),/launchUncertain=true/);
 console.log(JSON.stringify({archive,version:expected,players:roster.players.length,roles:Object.fromEntries(roles.map(role=>[role,roster.players.filter(p=>p.role===role).length])),uwu:roster.players.filter(p=>p.team.trim().toUpperCase()==='UWU GANG').map(p=>({name:p.name,role:p.role,division:p.division,group:p.group})),packagedTeamUI:true,packagedRoleReports:true,versionFromElectron:true},null,2));

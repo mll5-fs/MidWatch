@@ -324,7 +324,7 @@ function drawPlayer(p){
   $("#fav").onclick=async()=>{S.favorites=await window.mw.favorite(p.id);renderNav();render();openPlayer(p.id)};
   $("#dpm").onclick=()=>window.mw.open(dpmUrl(p));
   document.querySelectorAll("[data-check]").forEach(b=>b.onclick=()=>checkAccount(p,+b.dataset.check));
-  document.querySelectorAll("[data-spec]").forEach(b=>b.onclick=()=>spectateAccount(p,+b.dataset.spec));
+  document.querySelectorAll("[data-spec]").forEach(b=>b.onclick=()=>spectateAccount(p,+b.dataset.spec));syncSpectateButtons();
   if($("#saveFix"))$("#saveFix").onclick=async()=>{try{const a=await window.mw.overrideAccount(p.id,{gameName:$("#fixName").value,tagLine:$("#fixTag").value,platform:"EUW1"});p={...p,accounts:[a],accountOverride:true};const idx=S.ouatPlayers.findIndex(x=>x.id===p.id);if(idx>=0)S.ouatPlayers[idx]=p;openPlayer(p.id);render();}catch(e){$("#fixMsg").innerHTML=`<div class="result">${esc(e.message)}</div>`}};
   if($("#clearFix"))$("#clearFix").onclick=async()=>{await window.mw.clearOverride(p.id);const fresh=await window.mw.data();S.ouatPlayers=fresh.ouatPlayers;openPlayer(p.id);render()};
 }
@@ -333,9 +333,19 @@ async function checkAccount(p,i){
   try{const r=await window.mw.check(a),solo=(r.ranked||[]).find(x=>x.queueType==="RANKED_SOLO_5x5");box.className="result"+(r.active?" live":"");box.textContent=r.active?`● EN GAME · ${solo?rankLabel(solo):"SoloQ"}`:`○ HORS LIGNE · ${solo?rankLabel(solo):"non classé"}`}
   catch(e){const raw=String(e.message||e).replace(/^Error invoking remote method [^:]+:\s*Error:\s*/,"");box.innerHTML=p.region==="OUAT"&&/not found|no results/i.test(raw)?"Riot ne trouve plus ce compte. Le Riot ID LEA est probablement ancien — corrige-le plus bas.":esc(raw)}
 }
+let spectatePending=false,spectateRetryAt=0,spectateTimer=null;
+function syncSpectateButtons(){
+ const paused=Date.now()<spectateRetryAt;
+ document.querySelectorAll("[data-spec]").forEach(b=>{b.disabled=spectatePending||paused;b.textContent=spectatePending?"Demande en cours…":paused?"Vérifie le client…":"▶ SPECTATE";b.title=paused?"Une demande a été acceptée. Vérifie le client avant de relancer.":""});
+ if(spectateTimer)clearTimeout(spectateTimer);
+ if(paused)spectateTimer=setTimeout(syncSpectateButtons,Math.max(1,spectateRetryAt-Date.now()));
+}
 async function spectateAccount(p,i){
+  if(spectatePending||Date.now()<spectateRetryAt)return;
   const a=p.accounts[i],box=$(`#res-${i}`);if(!box)return;box.className="result";box.textContent="Recherche de la partie…";
-  try{const r=await window.mw.spectate(a),route=String(r.endpoint||"").split("/").filter(Boolean).slice(0,1).join("")||"LCU",phase=r.phase||"inconnue";box.className="result live";box.textContent=`✓ Demande acceptée · phase ${phase} · route ${route}. Vérifie le lancement dans le client.`}catch(e){box.textContent=String(e.message||e).replace(/^Error invoking remote method [^:]+:\s*Error:\s*/,"")}
+  spectatePending=true;syncSpectateButtons();
+  try{const r=await window.mw.spectate(a),route=String(r.endpoint||"").split("/").filter(Boolean).slice(0,1).join("")||"LCU",phase=r.phase||"inconnue";spectateRetryAt=Number(r.retryAt)||0;box.className="result live";box.textContent=`✓ Demande acceptée · phase ${phase} · route ${route}. Vérifie le lancement dans le client. Attends la fin de la pause avant toute nouvelle demande.`}catch(e){box.textContent=String(e.message||e).replace(/^Error invoking remote method [^:]+:\s*Error:\s*/,"")}
+  finally{spectatePending=false;syncSpectateButtons();}
 }
 function settings(){
   drawerRequest++;
