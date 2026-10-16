@@ -4,6 +4,7 @@ const account=name=>({gameName:name,tagLine:'EUW',platform:'EUW1'});
 const team=(id)=>({id,name:id,players:T.roles.map(role=>({id:id+role,role,accounts:[account(id+role)]}))});
 const pair=(role='MID')=>D.pair(team('opp'),team('home'),role,{},true);
 const report=(role='MID',stop='target')=>({role,games:3,coverage:{stop}});
+const rich=(role='MID',overrides={})=>({role,games:6,wins:3,winrate:50,interval:{low:19,high:81},kda:3,kills:4,deaths:4,assists:8,cspm:7,dpm:500,gpm:400,vision:20,coverage:{partial:false,stop:'target'},window:{stale:false},champions:[{name:'Ahri',games:3},{name:'Orianna',games:2}],patches:[{patch:'16.20',games:4},{patch:'16.19',games:2}],...overrides});
 test('duel supports all five roles and respects manual selection without requiring a rank',()=>{
  for(const role of T.roles){const p=pair(role);assert.equal(p.ready,true);assert.equal(p.sides[0].player.role,role);}
  const t=team('opp');t.players.push({...t.players[0],id:'sub',accounts:[account('Sub')]});
@@ -62,4 +63,26 @@ test('team comparator UI launches selected role and renders both samples with li
  const ctx=vm.createContext({DuelScouting:D,TeamScouting:T,$,S:{hasKey:true},view:'TEAMS',esc:String,roleStatReport:r=>`SAMPLE ${r.role} ${r.games}`,patchReport:()=> 'PATCH',window:{mw:{roleStats:async(a,role)=>{calls++;return report(role);}}},render:()=>{html=ctx.duelPanel(opp,home);ctx.bindDuel(opp,home);}});
  vm.runInContext(app.slice(app.indexOf('let teamDivision='),app.indexOf('function groupBoardHtml(')),ctx);ctx.render();
  nodes['#duelRole'].onchange({target:{value:'SUPPORT'}});await nodes['#loadDuel'].onclick();assert.equal(calls,2);assert.match(html,/SAMPLE SUPPORT 3/);assert.match(html,/pas des confrontations directes/);assert.match(html,/20 dernières SoloQ/);
+});
+test('descriptive synthesis exposes deltas, confidence intervals and sample sizes without a winner score',()=>{
+ const c=D.compare(rich(),rich('MID',{games:4,winrate:25,interval:{low:7,high:59},kda:2,cspm:6,dpm:450,gpm:380,vision:18,champions:[{name:'ahri',games:2},{name:'Syndra',games:2}],patches:[{patch:'16.20',games:3}]}));
+ assert.equal(c.games[0],6);assert.equal(c.games[1],4);assert.equal(c.metrics.find(m=>m.key==='winrate').delta,25);assert.equal(c.metrics.find(m=>m.key==='kda').delta,1);
+ assert.deepEqual(c.intervals,[{low:19,high:81},{low:7,high:59}]);assert.deepEqual(c.champions.common,[{name:'Ahri',left:3,right:2}]);
+ assert.deepEqual(c.champions.leftOnly,[{name:'Orianna',games:2}]);assert.deepEqual(c.champions.rightOnly,[{name:'Syndra',games:2}]);assert.deepEqual(c.patches,[{patch:'16.20',left:4,right:3}]);
+ assert.equal('score' in c,false);assert.equal('winner' in c,false);
+});
+test('synthesis rejects zero-game or mismatched-role comparisons and marks collection limits',()=>{
+ assert.equal(D.compare(rich(),{...rich(),games:0}),null);assert.equal(D.compare(rich('MID'),rich('TOP')),null);
+ const c=D.compare(rich('SUPPORT',{coverage:{partial:true},window:{stale:true}}),rich('SUPPORT'));
+ assert.deepEqual(c.limitations.partial,[true,false]);assert.deepEqual(c.limitations.stale,[true,false]);
+});
+test('malformed optional champion, patch and metric fields are excluded rather than fabricated',()=>{
+ const c=D.compare(rich('ADC',{kda:NaN,champions:[{name:'',games:4},{name:'Jinx',games:0}],patches:[{patch:'',games:3}]}),rich('ADC'));
+ assert.equal(c.metrics.some(m=>m.key==='kda'),false);assert.deepEqual(c.champions.leftOnly,[]);assert.deepEqual(c.champions.common,[]);assert.deepEqual(c.patches,[]);
+});
+test('rendered synthesis labels direction, common evidence and comparison limits',()=>{
+ const app=fs.readFileSync('src/renderer/app.js','utf8'),ctx=vm.createContext({DuelScouting:D,esc:String});
+ vm.runInContext(app.slice(app.indexOf('function duelSynthesis('),app.indexOf('function duelPanel(')),ctx);
+ const p=pair(),state={sides:[{report:rich()},{report:rich('MID',{games:4,winrate:25,champions:[{name:'Ahri',games:2}],patches:[{patch:'16.20',games:3}]})}]},html=ctx.duelSynthesis(p,state);
+ assert.match(html,/SYNTHÈSE DES ÉCHANTILLONS/);assert.match(html,/6 parties/);assert.match(html,/Écart descriptif/);assert.match(html,/\+25/);assert.match(html,/Ahri \(3G \/ 2G\)/);assert.match(html,/16\.20 \(4G \/ 3G\)/);assert.match(html,/ne mesurent pas le micro-gameplay/);
 });
