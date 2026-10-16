@@ -102,20 +102,20 @@ function titles(){
   if(view==="FAV")return["LIBRARY","Favoris","Les joueurs que tu veux garder sous les yeux."];
   if(view==="TEAMS")return["SCOUTING D’ÉQUIPE","Équipes OUAT · 5 rôles","Effectifs LEA, rangs SoloQ et comparaison avec UWU GANG."];
   if(view==="OUAT")return["OUAT SCOUTING",`OUATventure ${S.ouat.season||""}`,`Base scouting · ${S.ouatPlayers.length} joueurs · ${S.ouat.teams||0} équipes`];
-  if(view==="PATCHES")return["PATCHS","Analyse de patchs","Notes officielles Riot et performances SoloQ des joueurs OUAT par version."];
+  if(view==="PATCHES")return["PATCHS","Analyse de patchs","Notes officielles Riot et performances SoloQ des cinq rôles OUAT par version."];
   return["OUAT SCOUTING","OUATventure","Scouting des joueurs OUAT"];
 }
 function renderPatchSection(){
   $("#sort").hidden=true;$("#liveOnly").hidden=true;
-  $("#hero").innerHTML=`<div class="panel"><div class="panel-title">NOTES OFFICIELLES RIOT</div><p>Consulte les changements de champions, objets et systèmes dans les notes officielles, puis compare les résultats observés du joueur entre les patchs.</p><button id="riotPatchNotes" class="action">Ouvrir les notes de patch Riot</button><p class="sample-note">Les différences de résultats ne prouvent pas qu’un buff ou un nerf en est la cause. Les données ci-dessous sont limitées aux parties SoloQ mid disponibles du compte sélectionné.</p></div>`;
+  $("#hero").innerHTML=`<div class="panel"><div class="panel-title">NOTES OFFICIELLES RIOT</div><p>Consulte les changements de champions, objets et systèmes dans les notes officielles, puis compare les résultats observés du joueur entre les patchs.</p><button id="riotPatchNotes" class="action">Ouvrir les notes de patch Riot</button><p class="sample-note">Les différences de résultats ne prouvent pas qu’un buff ou un nerf en est la cause. Les données ci-dessous sont limitées aux parties SoloQ au rôle du joueur disponibles du compte sélectionné.</p></div>`;
   $("#riotPatchNotes").onclick=()=>window.mw.open("https://www.leagueoflegends.com/fr-fr/news/tags/patch-notes/");
-  const players=allPlayers().filter(p=>!p.role||p.role==="MID").filter(p=>scoutingAccount(p)?.gameName&&scoutingAccount(p)?.tagLine).filter(p=>queryMatch(p,$("#qTop").value.trim().toLowerCase()));
+  const players=allPlayers().filter(p=>scoutingAccount(p)?.gameName&&scoutingAccount(p)?.tagLine).filter(p=>queryMatch(p,$("#qTop").value.trim().toLowerCase()));
   $("#sectionTitle").textContent="PERFORMANCES OUAT PAR PATCH";$("#summary").textContent=`${players.length} joueurs avec un compte relié`;
   if(!players.some(p=>p.id===patchPlayerId)){patchRequest++;patchLoading=false;patchPlayerId=players[0]?.id||"";patchStats=null;patchError="";}
   if(!players.length){$("#grid").innerHTML='<div class="panel" style="grid-column:1/-1"><p>Aucun joueur OUAT avec un compte relié ne correspond à la recherche.</p></div>';return;}
-  $("#grid").innerHTML=`<div class="panel" style="grid-column:1/-1"><label for="patchPlayer">Joueur OUAT</label><select id="patchPlayer" class="fullinput">${players.map(p=>{const a=scoutingAccount(p);return`<option value="${esc(p.id)}" ${p.id===patchPlayerId?"selected":""}>${esc(p.name)} · ${esc(p.team)} · ${esc(a.gameName)}#${esc(a.tagLine)}</option>`}).join("")}</select><button id="analyzePatch" class="action primary" ${patchLoading||!S.hasKey||!players.length?"disabled":""}>${patchLoading?"Analyse en cours…":"Analyser les patchs"}</button><div id="patchResults">${!S.hasKey?'<p>Configure une clé Riot valide dans Réglages.</p>':patchError?`<p>${esc(patchError)}</p>`:patchStats?coverageReport(patchStats.coverage)+sampleWindowReport(patchStats.window)+patchReport(patchStats.patches)+(!patchStats.patches?.length?'<p>Aucune partie mid avec un patch exploitable dans l’historique disponible.</p>':""):"<p>Sélectionne un joueur puis lance l’analyse. Les groupes affichent le nombre de parties, le winrate avec IC95 et le KDA.</p>"}</div></div>`;
+  $("#grid").innerHTML=`<div class="panel" style="grid-column:1/-1"><label for="patchPlayer">Joueur OUAT</label><select id="patchPlayer" class="fullinput">${players.map(p=>{const a=scoutingAccount(p);return`<option value="${esc(p.id)}" ${p.id===patchPlayerId?"selected":""}>${esc(p.name)} · ${esc(p.team)} · ${esc(a.gameName)}#${esc(a.tagLine)}</option>`}).join("")}</select><button id="analyzePatch" class="action primary" ${patchLoading||!S.hasKey||!players.length?"disabled":""}>${patchLoading?"Analyse en cours…":"Analyser les patchs"}</button><div id="patchResults">${!S.hasKey?'<p>Configure une clé Riot valide dans Réglages.</p>':patchError?`<p>${esc(patchError)}</p>`:patchStats?coverageReport(patchStats.coverage)+sampleWindowReport(patchStats.window)+patchReport(patchStats.patches)+(!patchStats.patches?.length?'<p>Aucune partie au rôle sélectionné avec un patch exploitable dans l’historique disponible.</p>':""):"<p>Sélectionne un joueur puis lance l’analyse. Les groupes affichent le nombre de parties, le winrate avec IC95 et le KDA.</p>"}</div></div>`;
   $("#patchPlayer").onchange=()=>{patchRequest++;patchLoading=false;patchPlayerId=$("#patchPlayer").value;patchStats=null;patchError="";render()};
-  $("#analyzePatch").onclick=async()=>{const player=allPlayers().find(p=>p.id===patchPlayerId);if(!player||!S.hasKey||patchLoading)return;const request=++patchRequest;patchLoading=true;patchError="";render();try{const stats=await window.mw.patchStats(scoutingAccount(player));if(request!==patchRequest||view!=="PATCHES")return;patchStats=stats;}catch(e){if(request!==patchRequest||view!=="PATCHES")return;patchError=String(e.message||e);}finally{if(request===patchRequest&&view==="PATCHES"){patchLoading=false;render()}}};
+  $("#analyzePatch").onclick=async()=>{const player=allPlayers().find(p=>p.id===patchPlayerId);if(!player||!S.hasKey||patchLoading)return;const request=++patchRequest;patchLoading=true;patchError="";render();try{const stats=player.role&&player.role!=="MID"?await window.mw.roleStats(scoutingAccount(player),player.role,true):await window.mw.patchStats(scoutingAccount(player));if(request!==patchRequest||view!=="PATCHES")return;patchStats=stats;}catch(e){if(request!==patchRequest||view!=="PATCHES")return;patchError=String(e.message||e);}finally{if(request===patchRequest&&view==="PATCHES"){patchLoading=false;render()}}};
 }
 
 let teamDivision="ALL",teamGroup="ALL",selectedTeam="";
@@ -182,7 +182,7 @@ async function openPlayer(id){
   drawPlayer(p);
   if(scoutingAccount(p)&&S.hasKey){
     try{
-      if(p.role&&p.role!=="MID"){const anchor=$("#scout-live");if(anchor)anchor.innerHTML='<div class="panel">Rang SoloQ et comptes disponibles pour ce rôle. Le rapport de lane actuel est réservé aux mids.</div>';return;}
+      if(p.role&&p.role!=="MID"){const stats=await window.mw.roleStats(scoutingAccount(p),p.role);if(request!==drawerRequest)return;const anchor=$("#scout-live");if(anchor)anchor.innerHTML=roleStatReport(stats)+patchReport(stats.patches);return;}
       const stats=await window.mw.stats(scoutingAccount(p));if(request!==drawerRequest)return;
       const anchor=$("#scout-live");if(anchor)anchor.innerHTML=statReport(stats)+championLaneReport(stats.championLanes)+championTransitionReport(stats.championTransitions)+opponentLaneReport(stats.opponentLanes)+opponentTransitionReport(stats.opponentTransitions)+matchupReport(stats.matchups)+patchReport(stats.patches);
     }catch(e){
@@ -193,8 +193,9 @@ async function openPlayer(id){
 }
 function patchReport(patches=[]){
   if(!patches.length)return"";
+  const role=patches[0]?.role||"MID";
   const signed=n=>`${n>0?"+":""}${n}`;
-  return`<div class="panel"><div class="panel-title">PERFORMANCE PAR PATCH</div><div class="champions">${patches.map(p=>{const pool=(p.champions||[]).map(c=>`${esc(c.name)} ${esc(c.games)}G`).join(" · "),c=p.comparison;return`<span class="champ"><b>PATCH ${esc(p.patch)}</b> · ${esc(p.games)}G · ${esc(p.winrate)}% WR${confidenceLabel(p.interval)} · ${esc(p.kda)} KDA · K/D/A MOYEN ${esc(p.avgKills)}/${esc(p.avgDeaths)}/${esc(p.avgAssists)}${pool?`<small>CHAMPIONS · ${pool}</small>`:""}${p.limited?" · ÉCHANTILLON FAIBLE":""}${c?`<small>VS PATCH OBSERVÉ ${esc(c.previousPatch)} · Δ WR ${esc(signed(c.winrateDelta))} points · Δ KDA ${esc(signed(c.kdaDelta))} · ${esc(c.currentGames)}G vs ${esc(c.previousGames)}G${c.limited?" · ÉCHANTILLON FAIBLE":""}</small>`:""}</span>`}).join("")}</div><p class="sample-note">Chaque version utilise son propre échantillon de parties SoloQ au rôle mid. La comparaison porte sur le patch observé précédent, qui n’est pas forcément la version Riot immédiatement précédente. Le pool de champions et le contexte peuvent différer ; les écarts restent descriptifs et ne prouvent pas un effet du patch.</p></div>`;
+  return`<div class="panel"><div class="panel-title">PERFORMANCE PAR PATCH</div><div class="champions">${patches.map(p=>{const pool=(p.champions||[]).map(c=>`${esc(c.name)} ${esc(c.games)}G`).join(" · "),c=p.comparison;return`<span class="champ"><b>PATCH ${esc(p.patch)}</b> · ${esc(p.games)}G · ${esc(p.winrate)}% WR${confidenceLabel(p.interval)} · ${esc(p.kda)} KDA · K/D/A MOYEN ${esc(p.avgKills)}/${esc(p.avgDeaths)}/${esc(p.avgAssists)}${pool?`<small>CHAMPIONS · ${pool}</small>`:""}${p.limited?" · ÉCHANTILLON FAIBLE":""}${c?`<small>VS PATCH OBSERVÉ ${esc(c.previousPatch)} · Δ WR ${esc(signed(c.winrateDelta))} points · Δ KDA ${esc(signed(c.kdaDelta))} · ${esc(c.currentGames)}G vs ${esc(c.previousGames)}G${c.limited?" · ÉCHANTILLON FAIBLE":""}</small>`:""}</span>`}).join("")}</div><p class="sample-note">Chaque version utilise son propre échantillon de parties SoloQ au rôle ${esc(role)}. La comparaison porte sur le patch observé précédent, qui n’est pas forcément la version Riot immédiatement précédente. Le pool de champions et le contexte peuvent différer ; les écarts restent descriptifs et ne prouvent pas un effet du patch.</p></div>`;
 }
 function championLaneReport(rows=[]){
   if(!rows.length)return"";const signed=n=>`${n>0?"+":""}${n}`;
@@ -222,10 +223,18 @@ function accountHtml(a,i,p){
   return`<div class="account"><div class="account-head"><div><b>${esc(a.gameName||"Compte")}#${esc(a.tagLine||"?")}</b><small>${esc(a.platform||"")}</small></div><span class="tag ${live?"live":"rank"}">${live?"● LIVE":esc(rankLabel(a.rank)||"CHECK")}</span></div><div class="account-actions"><button class="action" data-check="${i}">CHECK RIOT</button><button class="action live" data-spec="${i}">▶ SPECTATE</button></div><div id="res-${i}"></div></div>`;
 }
 function coverageReport(c={}){
+  const role=c.role?esc(c.role):"mid";
   if(!c.requested)return"";
-  const reason=c.stop==="rate_limit"?" · collecte arrêtée par la limite Riot":c.stop==="auth"?" · clé Riot refusée":c.targetReached?` · objectif de ${esc(c.target)} parties mid atteint`:"";
+  const reason=c.stop==="rate_limit"?" · collecte arrêtée par la limite Riot":c.stop==="auth"?" · clé Riot refusée":c.targetReached?` · objectif de ${esc(c.target)} parties ${role} atteint`:"";
   const timelines=c.timelineAttempts?` · timelines ${c.timelinesLoaded}/${c.timelineAttempts}`:"";
-  return`<p class="sample-note"><b>${c.partial?"ÉCHANTILLON PARTIEL":"COUVERTURE CONTRÔLÉE"}</b> · historique chargé ${c.matchesLoaded}/${c.requested} · parties mid ${c.midGames}${timelines}${reason}</p>`;
+  return`<p class="sample-note"><b>${c.partial?"ÉCHANTILLON PARTIEL":"COUVERTURE CONTRÔLÉE"}</b> · historique chargé ${c.matchesLoaded}/${c.requested} · parties ${role} ${c.roleGames??c.midGames}${c.invalidGames?` · ${esc(c.invalidGames)} partie(s) incomplète(s) exclue(s)`:""}${timelines}${reason}</p>`;
+}
+function roleStatReport(s={}){
+ const role=s.role||"RÔLE INCONNU";
+ const header=`<div class="panel scouting"><div class="panel-title">SCOUTING SOLOQ · ${esc(role)} · ${esc(s.games||0)} PARTIES${s.limited?" · ÉCHANTILLON FAIBLE":""}</div>${coverageReport(s.coverage)}${sampleWindowReport(s.window)}`;
+ if(!s.games)return header+`<p>Aucune partie SoloQ exploitable au rôle ${esc(role)} dans l’historique chargé.</p></div>`;
+ const metrics=[[`${s.winrate}%`,'WIN RATE'+confidenceLabel(s.interval)],[s.kda,'KDA'],[`${s.kills}/${s.deaths}/${s.assists}`,'K/D/A MOYEN'],[s.cspm,'CS/MIN'],[s.dpm,'DÉGÂTS/MIN'],[s.gpm,'OR/MIN'],[s.vision,'VISION/PARTIE']];
+ return header+`<div class="stats-grid">${metrics.map(([value,label])=>`<div><b>${esc(value)}</b><span>${label}</span></div>`).join("")}</div><div class="panel-title">CHAMPIONS JOUÉS · ${esc(role)}</div><div class="champions">${(s.champions||[]).map(c=>`<span class="champ"><b>${esc(c.name)}</b> · ${esc(c.games)}G · ${esc(c.winrate)}% WR${confidenceLabel(c.interval)}</span>`).join("")}</div><p class="sample-note">Seules les parties SoloQ au rôle ${esc(role)} identifié par Riot sont retenues. CS, dégâts et or sont pondérés par le temps joué ; vision et K/D/A sont des moyennes par partie. Aucun seuil mid n’est appliqué aux autres rôles : un faible CS de support n’est pas une faiblesse déduite. Ces mesures ne décrivent ni les déplacements ni la qualité du micro-gameplay. Les timelines de lane et les habitudes précoces restent réservées au rapport mid.</p></div>`;
 }
 function sampleWindowReport(w={}){
   if(!w.games)return"";
@@ -254,7 +263,7 @@ function statReport(s){if(!s||!s.games)return`<div class="panel"><div class="pan
 function scoutingPanel(p){
   const account=scoutingAccount(p);
   const message=!account?"Aucun compte Riot public relié : statistiques indisponibles.":!S.hasKey?"Configure une clé Riot valide dans Réglages pour charger les statistiques.":"Analyse des matchs Riot récents…";
-  return `<div id="scout-live"><div class="panel"><div class="panel-title">SCOUTING SOLOQ · ${esc(p.role||"MID")}</div><p class="helper">${esc(message)}</p><p class="sample-note">Rapport récent · Lane à 10 min · Matchups · Comparaison par patch</p>${!S.hasKey&&account?'<button id="configureScouting" class="action primary">Configurer Riot</button>':""}</div></div>`;
+  return `<div id="scout-live"><div class="panel"><div class="panel-title">SCOUTING SOLOQ · ${esc(p.role||"MID")}</div><p class="helper">${esc(message)}</p><p class="sample-note">${p.role&&p.role!=="MID"?"Rapport SoloQ au rôle déclaré · Champions · Comparaison par patch":"Rapport récent · Lane à 10 min · Matchups · Comparaison par patch"}</p>${!S.hasKey&&account?'<button id="configureScouting" class="action primary">Configurer Riot</button>':""}</div></div>`;
 }
 function drawPlayer(p){
   const accounts=p.accounts||[],fav=S.favorites.includes(p.id),ouat=p.region==="OUAT";

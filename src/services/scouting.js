@@ -23,10 +23,14 @@ function sampleWindow(matches, sampledAt = Date.now()) {
     stale: latestAgeDays >= 30, partial: timestamps.length < rows.length };
 }
 
-function participantForScouting(match, puuid) {
+function participantForScouting(match, puuid, role = "MID") {
   if (match?.info?.queueId !== 420) return null;
   const player = (match.info.participants || []).find(x => x.puuid === puuid);
-  return isMid(player) ? player : null;
+  if (!player) return null;
+  if (role === "MID") return isMid(player) ? player : null;
+  const { normalizeRole } = require("./ouat-roles");
+  const actual = normalizeRole(player.teamPosition) || normalizeRole(player.individualPosition);
+  return normalizeRole(role) && actual === normalizeRole(role) ? player : null;
 }
 
 function midOpponent(participants, player) {
@@ -235,10 +239,10 @@ function earlyHabits(samples, puuid) {
     limited: rows.length < 3 };
 }
 
-function patchBreakdown(matches, puuid) {
+function patchBreakdown(matches, puuid, role = "MID") {
   const groups = new Map();
   for (const match of matches || []) {
-    const player = participantForScouting(match, puuid);
+    const player = participantForScouting(match, puuid, role);
     const version = String(match?.info?.gameVersion || "").match(/^(\d+)\.(\d+)/);
     if (!player || !version) continue;
     const values = [player.kills, player.deaths, player.assists];

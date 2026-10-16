@@ -1,4 +1,8 @@
-# MidPulse 5.3 — OUAT team scouting
+# MidPulse 5.4 — OUAT team scouting and role reports
+
+Open a TOP/JUNGLE/ADC/SUPPORT player from **Équipes · 5 rôles** to load a role-specific SoloQ report using a configured Riot API key. Only matches where Riot identifies the declared role are retained: up to 12 valid games from 20 recent SoloQ matches. The report shows results, champions, K/D/A, time-weighted CS/damage/gold per minute, vision per game, sample dates and coverage. Incomplete payloads are excluded and counted; errors and API limits mark partial coverage. No midlane CS or damage thresholds are applied to other roles. This is a statistical description, not movement or micro-gameplay analysis.
+
+**Analyse de patchs** now supports every OUAT role, with a separate match-only target of 30 valid role games from 60 recent SoloQ matches. Role-specific cache keys prevent an account's mid report from appearing as its support or jungle report. Detailed lane timelines remain mid-only. Patch differences remain descriptive and do not establish balance causality.
 
 Open **Équipes · 5 rôles** (the default view). Filter division and group, select an opponent and compare the declared LEA roster with UWU GANG. Every declared TOP/JUNGLE/MID/ADC/SUPPORT player can be opened for their linked accounts and official SoloQ rank. The detailed timeline reports remain mid-only; other roles are explicitly labelled as such.
 
