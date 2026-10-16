@@ -34,7 +34,7 @@ async function playerRoleStats(a,role,patchOnly=false){
  if(!key())throw new Error("Configure une clé Riot valide dans Réglages.");
  role=require("./services/ouat-roles").normalizeRole(role);
  if(!role)throw new Error("Rôle de scouting inconnu.");
- const cacheName=patchOnly?"patchStatsCache":"roleStatsCache",account={...a,scoutingRole:role};
+ const cacheName=patchOnly?"patchStatsCache":"roleStatsCacheV2",account={...a,scoutingRole:role};
  const cached=statsCache.read(store.get(cacheName,{}),account);if(cached)return cached;
  const report=await require("./services/role-report").collectRoleReport(new Riot(key()),a,role,{patchOnly});
  store.set(cacheName,statsCache.write(store.get(cacheName,{}),account,report,report.sampledAt));return report;

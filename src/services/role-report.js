@@ -8,16 +8,21 @@ function participantForRole(match,puuid,role){
  const actual=normalizeRole(p?.teamPosition)||normalizeRole(p?.individualPosition);
  return p&&actual===normalizeRole(role)?p:null;
 }
-function summarizeRole(matches,puuid,role,sampledAt=Date.now()){
+function summarizeRole(matches,puuid,role,sampledAt=Date.now(),includePatchReports=true){
  const accepted=(matches||[]).map(match=>({match,p:participantForRole(match,puuid,role)})).filter(({p})=>p&&typeof p.win==='boolean'&&['kills','deaths','assists','timePlayed','totalMinionsKilled','neutralMinionsKilled','totalDamageDealtToChampions','goldEarned','visionScore'].every(k=>Number.isFinite(p[k])&&p[k]>=0)&&p.timePlayed>0);
  const rows=accepted.map(x=>x.p),games=rows.length,wins=rows.filter(p=>p.win).length;
  const report={role:normalizeRole(role),games,wins,limited:games<3,scope:`SoloQ classée · rôle ${normalizeRole(role)}`,window:sampleWindow(accepted.map(x=>x.match),sampledAt),sampledAt};
  if(!games)return {...report,champions:[],patches:[]};
  const sum=k=>rows.reduce((s,p)=>s+p[k],0),minutes=sum('timePlayed')/60,round=n=>Math.round(n*10)/10;
  const champions=new Map();for(const p of rows){const name=p.championName||'Inconnu';if(!champions.has(name))champions.set(name,{name,games:0,wins:0});const c=champions.get(name);c.games++;c.wins+=p.win?1:0;}
- return {...report,winrate:Math.round(100*wins/games),interval:winrateInterval(wins,games),kills:round(sum('kills')/games),deaths:round(sum('deaths')/games),assists:round(sum('assists')/games),kda:round((sum('kills')+sum('assists'))/Math.max(1,sum('deaths'))),cspm:round((sum('totalMinionsKilled')+sum('neutralMinionsKilled'))/minutes),dpm:Math.round(sum('totalDamageDealtToChampions')/minutes),gpm:Math.round(sum('goldEarned')/minutes),vision:round(sum('visionScore')/games),
- champions:[...champions.values()].sort((a,b)=>b.games-a.games||a.name.localeCompare(b.name)).slice(0,6).map(c=>({...c,winrate:Math.round(100*c.wins/c.games),interval:winrateInterval(c.wins,c.games)})),
+ const result={...report,winrate:Math.round(100*wins/games),interval:winrateInterval(wins,games),kills:round(sum('kills')/games),deaths:round(sum('deaths')/games),assists:round(sum('assists')/games),kda:round((sum('kills')+sum('assists'))/Math.max(1,sum('deaths'))),cspm:round((sum('totalMinionsKilled')+sum('neutralMinionsKilled'))/minutes),dpm:Math.round(sum('totalDamageDealtToChampions')/minutes),gpm:Math.round(sum('goldEarned')/minutes),vision:round(sum('visionScore')/games),
+ champions:[...champions.values()].sort((a,b)=>b.games-a.games||a.name.localeCompare(b.name)).map(c=>({...c,winrate:Math.round(100*c.wins/c.games),interval:winrateInterval(c.wins,c.games)})),
  patches:patchBreakdown(accepted.map(x=>x.match),puuid,role).map(p=>({...p,role:normalizeRole(role)}))};
+ if(includePatchReports){
+  const groups=new Map();for(const {match}of accepted){const v=String(match.info.gameVersion||'').match(/^(\d+)\.(\d+)/);if(!v)continue;const patch=`${Number(v[1])}.${Number(v[2])}`;if(!groups.has(patch))groups.set(patch,[]);groups.get(patch).push(match);}
+  result.byPatch=[...groups].sort(([a],[b])=>b.localeCompare(a,undefined,{numeric:true})).map(([patch,ms])=>({patch,report:summarizeRole(ms,puuid,role,sampledAt,false)}));
+ }
+ return result;
 }
 async function collectRoleReport(riot,account,role,{patchOnly=false,now=Date.now}={}){
  role=normalizeRole(role);if(!role)throw new Error('Rôle de scouting inconnu.');

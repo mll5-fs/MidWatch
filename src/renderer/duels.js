@@ -47,9 +47,9 @@ const DuelScouting=(()=>{
   return {state,sync,cancel,load};
  }
  function compare(left,right){
-  if(!left?.games||!right?.games||left.role!==right.role)return null;
+  if(!Number.isInteger(left?.games)||left.games<=0||!Number.isInteger(right?.games)||right.games<=0||left.role!==right.role)return null;
   const metric=(key,label,digits=1)=>{
-   const a=Number(left[key]),b=Number(right[key]);if(!Number.isFinite(a)||!Number.isFinite(b))return null;
+   const a=left[key],b=right[key];if(!Number.isFinite(a)||!Number.isFinite(b))return null;
    const round=n=>Number(n.toFixed(digits));return {key,label,left:round(a),right:round(b),delta:round(a-b)};
   };
   const metrics=[metric('winrate','WIN RATE',0),metric('kda','KDA'),metric('kills','KILLS'),metric('deaths','DEATHS'),metric('assists','ASSISTS'),metric('cspm','CS/MIN'),metric('dpm','DÉGÂTS/MIN',0),metric('gpm','OR/MIN',0),metric('vision','VISION/PARTIE')].filter(Boolean);
@@ -62,6 +62,17 @@ const DuelScouting=(()=>{
   return {role:left.role,games:[left.games,right.games],metrics,intervals:[interval(left),interval(right)],champions:{common,leftOnly:exclusive(a,b),rightOnly:exclusive(b,a)},patches,
    limitations:{partial:[!!left.coverage?.partial,!!right.coverage?.partial],stale:[!!left.window?.stale,!!right.window?.stale]}};
  }
- return {pair,create,compare};
+ function commonPatches(reports){
+  if(reports.length!==2||!reports.every(Boolean))return [];
+  const valid=(row,role)=>/^\d+\.\d+$/.test(row?.patch||'')&&row.report?.role===role&&Number.isInteger(row.report.games)&&row.report.games>0;
+  const right=new Set((reports[1].byPatch||[]).filter(p=>valid(p,reports[1].role)).map(p=>p.patch));
+  return [...new Set((reports[0].byPatch||[]).filter(p=>valid(p,reports[0].role)&&right.has(p.patch)).map(p=>p.patch))].sort((a,b)=>b.localeCompare(a,undefined,{numeric:true}));
+ }
+ function scopeReport(report,patch){
+  if(!report||patch==='ALL')return report;
+  const scoped=report.byPatch?.find(p=>p.patch===patch)?.report;if(!scoped)return null;
+  return {...scoped,scope:`SoloQ classée · rôle ${scoped.role} · patch ${patch}`,coverage:{...report.coverage,roleGames:scoped.games,targetReached:scoped.games>=(report.coverage?.target||12)},selectedPatch:patch};
+ }
+ return {pair,create,compare,commonPatches,scopeReport};
 })();
 if(typeof module!=='undefined')module.exports=DuelScouting;

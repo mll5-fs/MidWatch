@@ -56,7 +56,7 @@ test('navigation, account or role change discards late success and late failure'
 test('standard mid comparison cache cannot shadow detailed timeline reports',async()=>{
  const source=fs.readFileSync('src/main.js','utf8'),fn=source.slice(source.indexOf('async function playerRoleStats('),source.indexOf('async function rankBatch('));let cacheRead,cacheWrite;
  const ctx=vm.createContext({key:()=>true,require:p=>p.includes('ouat-roles')?{normalizeRole:r=>r}:{collectRoleReport:async()=>report()},Riot:function(){},statsCache:{read:()=>null,write:()=>({})},store:{get:k=>{cacheRead=k;return {};},set:k=>cacheWrite=k}});
- vm.runInContext(fn,ctx);await ctx.playerRoleStats(account('x'),'MID');assert.equal(cacheRead,'roleStatsCache');assert.equal(cacheWrite,'roleStatsCache');
+ vm.runInContext(fn,ctx);await ctx.playerRoleStats(account('x'),'MID');assert.equal(cacheRead,'roleStatsCacheV2');assert.equal(cacheWrite,'roleStatsCacheV2');
 });
 test('team comparator UI launches selected role and renders both samples with limits',async()=>{
  const app=fs.readFileSync('src/renderer/app.js','utf8'),nodes={},$=id=>nodes[id]??={value:'MID',innerHTML:''},opp=team('opp'),home=team('home');let calls=0,html='';
@@ -82,7 +82,26 @@ test('malformed optional champion, patch and metric fields are excluded rather t
 });
 test('rendered synthesis labels direction, common evidence and comparison limits',()=>{
  const app=fs.readFileSync('src/renderer/app.js','utf8'),ctx=vm.createContext({DuelScouting:D,esc:String});
- vm.runInContext(app.slice(app.indexOf('function duelSynthesis('),app.indexOf('function duelPanel(')),ctx);
+ vm.runInContext('let duelPatch="ALL";'+app.slice(app.indexOf('function duelSynthesis('),app.indexOf('function duelPanel(')),ctx);
  const p=pair(),state={sides:[{report:rich()},{report:rich('MID',{games:4,winrate:25,champions:[{name:'Ahri',games:2}],patches:[{patch:'16.20',games:3}]})}]},html=ctx.duelSynthesis(p,state);
  assert.match(html,/SYNTHÈSE DES ÉCHANTILLONS/);assert.match(html,/6 parties/);assert.match(html,/Écart descriptif/);assert.match(html,/\+25/);assert.match(html,/Ahri \(3G \/ 2G\)/);assert.match(html,/16\.20 \(4G \/ 3G\)/);assert.match(html,/ne mesurent pas le micro-gameplay/);
+});
+test('common patch selection sorts versions numerically and preserves collection warnings',()=>{
+ const a=rich('MID',{byPatch:[{patch:'16.9',report:rich('MID',{games:2})},{patch:'16.20',report:rich('MID',{games:3,winrate:100})}],coverage:{partial:true,target:12}}),b=rich('MID',{byPatch:[{patch:'16.9',report:rich('MID',{games:1})},{patch:'16.20',report:rich('MID',{games:2,winrate:50})}]});
+ assert.deepEqual(D.commonPatches([a,b]),['16.20','16.9']);const scoped=D.scopeReport(a,'16.20');assert.equal(scoped.games,3);assert.equal(scoped.winrate,100);assert.equal(scoped.coverage.partial,true);assert.equal(scoped.coverage.roleGames,3);assert.equal(scoped.coverage.targetReached,false);
+ assert.equal(D.compare(scoped,D.scopeReport(b,'16.20')).metrics.find(m=>m.key==='winrate').delta,50);
+ assert.equal(D.scopeReport(a,'ALL'),a);assert.equal(D.scopeReport(a,'unknown'),null);
+});
+test('missing legacy patch samples never invent a common scope or zero-valued metrics',()=>{
+ assert.deepEqual(D.commonPatches([rich(),rich()]),[]);assert.deepEqual(D.commonPatches([rich()]),[]);
+ const c=D.compare(rich('MID',{kda:null,cspm:'7',vision:''}),rich());for(const k of ['kda','cspm','vision'])assert.equal(c.metrics.some(m=>m.key===k),false);
+ for(const games of [-1,'3',1.5])assert.equal(D.compare(rich('MID',{games}),rich()),null);
+});
+test('patch filter handler changes the rendered samples without further Riot calls',async()=>{
+ const app=fs.readFileSync('src/renderer/app.js','utf8'),nodes={},$=id=>nodes[id]??={value:'',innerHTML:''},opp=team('opp'),home=team('home');let calls=0,html='';
+ const r=rich('MID',{byPatch:[{patch:'16.20',report:rich('MID',{games:2})}]});
+ const ctx=vm.createContext({DuelScouting:D,TeamScouting:T,$,S:{hasKey:true},view:'TEAMS',esc:String,roleStatReport:r=>`SAMPLE ${r.games}`,patchReport:()=>'',window:{mw:{roleStats:async()=>{calls++;return r;}}},render:()=>{html=ctx.duelPanel(opp,home);ctx.bindDuel(opp,home);}});
+ vm.runInContext(app.slice(app.indexOf('let teamDivision='),app.indexOf('function groupBoardHtml(')),ctx);ctx.render();await nodes['#loadDuel'].onclick();assert.equal(calls,2);assert.match(html,/SAMPLE 6/);
+ nodes['#duelPatch'].onchange({target:{value:'16.20'}});assert.match(html,/SAMPLE 2/);assert.match(html,/patch commun 16.20 uniquement/);assert.equal(calls,2);
+ nodes['#duelRole'].onchange({target:{value:'SUPPORT'}});assert.equal(vm.runInContext('duelPatch',ctx),'ALL');assert.doesNotMatch(html,/SAMPLE 2/);
 });
