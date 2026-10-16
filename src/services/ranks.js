@@ -1,5 +1,6 @@
 const TTL = 15 * 60 * 1000;
 const RETRY = 2 * 60 * 1000;
+const {fingerprint}=require('../renderer/identity');
 
 function accountKey(account) {
   return `${String(account.platform || "EUW1").toUpperCase()}|${account.gameName}#${account.tagLine}`.toLowerCase();
@@ -115,7 +116,7 @@ async function loadBatch(riot, players, { cache = {}, accountCache = {}, priorit
   }
   for (const player of players.filter(p => affected.has(p.id))) {
     const state = playerRankState(player, cache);
-    updates.push({ id: player.id, rank: state.rank, rankAccount: state.rankAccount,
+    updates.push({ id: player.id, identity:fingerprint(player), rank: state.rank, rankAccount: state.rankAccount,
       status: state.status, checkedAt: state.checkedAt, error: state.error });
   }
   const candidateAccounts = new Set(candidates.map(({ account }) => accountKey(account))).size;
