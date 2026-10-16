@@ -68,6 +68,6 @@ jobs:
           if ($exists) {
             Write-Host "Release $tag already exists. Preserving its installer; bump package.json to publish changes."
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Synthese du comparateur SoloQ par role : ecarts descriptifs, tailles d'echantillon, IC95 du winrate, champions communs ou propres a chaque historique et patchs communs face a UWU GANG. Aucun score de joueur, pronostic ou causalite inventee. Statistiques SoloQ et analyses par patch pour les cinq roles ; timelines de lane reservees aux mids. Contenu Electron de cet installateur inspecte automatiquement. Source commit: ${{ github.sha }}."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Filtre par patch commun dans le comparateur SoloQ : statistiques, champions, periodes et synthese recalculees sur les parties du meme patch, sans appels Riot supplementaires. Pool complet des champions et correction des metriques absentes converties en zero. Pas de causalite ou de pronostic invente. Statistiques SoloQ et analyses par patch pour les cinq roles ; timelines de lane reservees aux mids. Contenu Electron de cet installateur inspecte automatiquement. Source commit: ${{ github.sha }}."
             if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           }

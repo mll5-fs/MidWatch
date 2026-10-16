@@ -3,6 +3,14 @@ const {participantForRole,summarizeRole,collectRoleReport}=require('../src/servi
 const cache=require('../src/services/stats-cache');
 function match(role='UTILITY',overrides={}){return {info:{queueId:420,gameVersion:'16.20.1',gameStartTimestamp:Date.UTC(2026,9,15),participants:[{puuid:'p',teamPosition:role,championName:'Braum',win:true,kills:2,deaths:3,assists:13,timePlayed:1800,totalMinionsKilled:20,neutralMinionsKilled:0,totalDamageDealtToChampions:9000,goldEarned:9000,visionScore:60,...overrides}]}};}
 const account={gameName:'Test',tagLine:'EUW',platform:'EUW1'};
+test('patch-scoped reports recompute actual per-patch samples and retain the entire champion pool',()=>{
+ const matches=Array.from({length:8},(_,i)=>{const m=match('MIDDLE',{championName:'Champion'+i,win:i<4,kills:i<4?10:0});m.info.gameVersion=i<4?'16.20.1':'16.19.2';return m;});
+ const r=summarizeRole(matches,'p','MID');assert.equal(r.champions.length,8);assert.equal(r.byPatch.length,2);
+ const current=r.byPatch.find(p=>p.patch==='16.20').report,previous=r.byPatch.find(p=>p.patch==='16.19').report;
+ assert.equal(current.games,4);assert.equal(current.winrate,100);assert.equal(current.kills,10);assert.equal(current.champions.length,4);
+ assert.equal(previous.games,4);assert.equal(previous.winrate,0);assert.equal(previous.kills,0);assert.equal(current.byPatch,undefined);
+ matches[0].info.gameVersion='unknown';const next=summarizeRole(matches,'p','MID');assert.equal(next.games,8);assert.equal(next.byPatch.find(p=>p.patch==='16.20').report.games,3);
+});
 test('five-role report accepts the actual Riot role and excludes off-role or non-SoloQ games',()=>{
  for(const [riot,role] of [['TOP','TOP'],['JUNGLE','JUNGLE'],['MIDDLE','MID'],['BOTTOM','ADC'],['UTILITY','SUPPORT']])assert.ok(participantForRole(match(riot),'p',role));
  assert.equal(participantForRole(match('TOP'),'p','SUPPORT'),null);
