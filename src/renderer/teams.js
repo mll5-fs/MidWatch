@@ -10,7 +10,7 @@ const TeamScouting = (()=>{
  }
  function label(score){
   if(!Number.isFinite(score))return "Indisponible";
-  if(score>=2800)return `MASTER+ · ${Math.round(score-2800)} LP moyens`;
+  if(Math.round(score)>=2800)return `MASTER+ · ${Math.max(0,Math.round(score-2800))} LP moyens`;
   const value=Math.max(0,Math.round(score)),tier=Math.min(6,Math.floor(value/400)),division=Math.floor(value%400/100);
   return `${tiers[tier]} ${["IV","III","II","I"][division]} · ${value%100} LP`;
  }

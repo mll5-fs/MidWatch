@@ -4,7 +4,7 @@ const now=10000000;
 function roster(){return T.roles.map((role,i)=>({id:String(i),role,team:'UWU GANG',teamId:1,division:'D1',group:'A',accounts:[{gameName:'P'+i,tagLine:'EUW'}],bestRank:{tier:'GOLD',rank:'II',leaguePoints:50},rankStatus:'ranked',rankCheckedAt:now}));}
 test('normalizes all five LEA roles and excludes coaches/unknowns',()=>{
  assert.deepEqual(['top','jgl','Middle','bot','sup'].map(normalizeRole),T.roles);
- assert.equal(normalizeRole('coach'),null);assert.equal(normalizeRole(''),null);
+ assert.equal(normalizeRole('Jungla'),'JUNGLE');assert.equal(normalizeRole('coach'),null);assert.equal(normalizeRole(''),null);
 });
 test('migrates legacy mid-only cache while preserving a current full roster',()=>{
  const bundle={schemaVersion:2,players:roster()},legacy={players:[{role:'MID'}]};
@@ -36,4 +36,9 @@ test('team screen renders five roles, opponent comparison, filters and selectabl
  nodes['#teamSelect'].onchange({target:{value:'2'}});const html=nodes['#grid'].innerHTML;
  assert.equal((html.match(/data-team-player=/g)||[]).length,10);for(const role of T.roles)assert.ok(html.includes(role));
  assert.match(html,/COMPARAISON · UWU GANG/);assert.match(html,/Ce n’est pas le MMR/);
+});
+
+test('rank mean label rounds consistently at the Master boundary',()=>{
+ assert.equal(T.label(2799.8),'MASTER+ · 0 LP moyens');
+ assert.equal(T.label(2799.4),'DIAMOND I · 99 LP');
 });
