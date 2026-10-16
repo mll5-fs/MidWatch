@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import roles from "../src/services/ouat-roles.js";
 const API="https://api.leamateur.pro";
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function get(path,attempts=6){
@@ -44,7 +45,7 @@ async function worker(){
       const r=await get("/team/"+teamId),team=r?.data||e?.team||{},pl=place.get(teamId)||{};
       for(const m of r?.players||[]){
         const u=m?.user||{};
-        if(!/^mid$/i.test(String(u.position||m.position||"").trim()))continue;
+        const role=roles.normalizeRole(u.position||m.position);if(!role)continue;
         const acc=split(u.summonerName||"");
         players.push({
           id:"ouat-"+teamId+"-"+String(m.userId||u.id||u.nickname||"mid").toLowerCase().replace(/[^a-z0-9]+/g,"-"),
@@ -57,7 +58,7 @@ async function worker(){
           division:String(pl.division||"").trim(),
           group:String(pl.group||"").trim(),
           platform:"EUW1",
-          role:"MID",
+          role,
           source:"LEA API snapshot",
           accounts:acc?[acc]:[],
           live:null
@@ -69,7 +70,7 @@ async function worker(){
 await Promise.all(Array.from({length:Math.min(3,entries.length)},worker));
 const seen=new Set();
 const unique=players.filter(p=>{const k=(p.teamId+"|"+p.name).toLowerCase();if(seen.has(k))return false;seen.add(k);return true}).sort((a,b)=>String(a.division).localeCompare(String(b.division),undefined,{numeric:true})||a.team.localeCompare(b.team)||a.name.localeCompare(b.name));
-const out={season:String(t.abbreviation||t.name||"").trim(),status:String(t.status||"").trim(),start:t.start||"",end:t.end||"",teams:entries.length,players:unique,updatedAt:Date.now(),source:"LEA API snapshot",warning:errors.length?errors.length+" roster(s) unavailable during build":""};
+const out={schemaVersion:2,season:String(t.abbreviation||t.name||"").trim(),status:String(t.status||"").trim(),start:t.start||"",end:t.end||"",teams:entries.length,players:unique,updatedAt:Date.now(),source:"LEA API snapshot",warning:errors.length?errors.length+" roster(s) unavailable during build":""};
 if(!unique.length)throw new Error("OUAT snapshot generation returned 0 mids");
 fs.writeFileSync("src/data/ouat-current.json",JSON.stringify(out,null,2));
-console.log(JSON.stringify({season:out.season,teams:out.teams,mids:out.players.length,errors:errors.length},null,2));
+console.log(JSON.stringify({season:out.season,teams:out.teams,players:out.players.length,roles:Object.fromEntries(roles.ROLES.map(role=>[role,out.players.filter(p=>p.role===role).length])),errors:errors.length},null,2));

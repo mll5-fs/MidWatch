@@ -1,6 +1,6 @@
 # MidPulse product scope
 
-MidPulse now exclusively scouts OUATventure players, as explicitly requested by the owner on 2026-10-08. Do not restore professional rosters, professional navigation, or background professional API calls. Existing local pro caches must remain excluded from every view and batch.
+MidPulse now exclusively scouts OUATventure players across TOP/JUNGLE/MID/ADC/SUPPORT, as explicitly requested by the owner on 2026-10-08. Do not restore professional rosters, professional navigation, or background professional API calls. Existing local pro caches must remain excluded from every view and batch.
 
 The Analyse de patchs section combines links to official Riot patch notes with measured OUAT ranked-mid performance grouped by game patch. Do not describe descriptive differences as caused by balance changes.
 

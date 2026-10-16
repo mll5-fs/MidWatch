@@ -2,6 +2,7 @@ const { net } = require("electron");
 
 const API = "https://api.leamateur.pro";
 const TIMEOUT = 12000;
+const {normalizeRole}=require("./ouat-roles");
 const MID_RE = /^(mid|middle|midlane|mid laner)$/i;
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -144,7 +145,7 @@ async function refresh() {
     const roster = await getJson(`/team/${teamId}`);
     const team = roster?.data || entry?.team || {};
     const place = placements.get(teamId) || {};
-    const mids = (roster?.players || []).filter(isMid);
+    const mids = (roster?.players || []).filter(p=>normalizeRole(p?.user?.position||p?.position));
 
     return mids.map(member => {
       const user = member.user || {};
@@ -161,7 +162,7 @@ async function refresh() {
         division: clean(place.division),
         group: clean(place.group),
         platform: "EUW1",
-        role: "MID",
+        role: normalizeRole(member?.user?.position||member?.position),
         source: "LEA API",
         accounts: account ? [account] : [],
         live: null
@@ -195,6 +196,7 @@ async function refresh() {
     status: clean(tournament.status),
     start: tournament.start || "",
     end: tournament.end || "",
+    schemaVersion: 2,
     teams: entries.length,
     players: unique,
     updatedAt: Date.now(),

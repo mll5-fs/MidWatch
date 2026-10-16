@@ -1,3 +1,9 @@
+# MidPulse 5.3 — OUAT team scouting
+
+Open **Équipes · 5 rôles** (the default view). Filter division and group, select an opponent and compare the declared LEA roster with UWU GANG. Every declared TOP/JUNGLE/MID/ADC/SUPPORT player can be opened for their linked accounts and official SoloQ rank. The detailed timeline reports remain mid-only; other roles are explicitly labelled as such.
+
+The mean summarizes official SoloQ ranks using 100 points per division, 400 per tier plus LP; apex ranks use Master base plus LP. It is descriptive, not a hidden MMR estimate. It includes only one declared player per role, distinct linked accounts, complete ranked status and checks younger than 15 minutes. Missing, stale, partial ranks and ambiguous role assignments are excluded; coverage is always shown out of five. LEA role assignments do not establish the starting five. Groups absent from LEA remain labelled unpublished. Schema-v1 mid-only local rosters are replaced by the bundled schema-v2 roster without deleting keys, favorites or account overrides.
+
 # MidPulse — OUAT scouting
 
 Windows desktop scouting for OUATventure midlaners only. Professional rosters and professional background requests have been removed. Existing professional cache entries are ignored.

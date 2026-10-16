@@ -1,5 +1,5 @@
 let S={players:[],ouatPlayers:[],ouat:{},favorites:[],hasKey:false,leaguePath:"",proCacheAt:0};
-let view="OUAT",liveOnly=false,busy=false,ouatDivision="ALL",liveState={},liveMeta={},rankState={},rankMeta={},rankBusy=false,rankCooldownAt=0,rankFollowup=null,drawerRequest=0;
+let view="TEAMS",liveOnly=false,busy=false,ouatDivision="ALL",liveState={},liveMeta={},rankState={},rankMeta={},rankBusy=false,rankCooldownAt=0,rankFollowup=null,drawerRequest=0;
 const $=q=>document.querySelector(q);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let patchRequest=0,patchPlayerId="",patchStats=null,patchError="",patchLoading=false;
@@ -30,6 +30,7 @@ function renderNav(){
   $("#liveNav").classList.toggle("on",view==="LIVE");
   $("#favNav").classList.toggle("on",view==="FAV");
   $("#ouatNav").classList.toggle("on",view==="OUAT");
+  $("#teamsNav").classList.toggle("on",view==="TEAMS");
   $("#patchNav").classList.toggle("on",view==="PATCHES");
 }
 
@@ -77,7 +78,7 @@ function hero(){
   if(view==="OUAT"&&!$("#qTop").value){
     const divisions=["ALL",...new Set(S.ouatPlayers.map(p=>String(p.division||"Sans division")).filter(Boolean).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})))];
     const teams=new Set((ouatDivision==="ALL"?S.ouatPlayers:S.ouatPlayers.filter(p=>String(p.division||"Sans division")===ouatDivision)).map(p=>p.team)).size;
-    const ranked=S.ouatPlayers.filter(p=>rankScore(p)>0).length,masters=S.ouatPlayers.filter(p=>rankScore(p)>=800000).length,live=S.ouatPlayers.filter(p=>p.live===true).length;$("#hero").innerHTML=`<div class="scouting-hero"><div class="scouting-intro"><div class="panel-kicker">OUATVENTURE · SCOUTING DATABASE</div><h2>Repère les mids qui sortent du lot.</h2><p>Classement SoloQ, champion pool, forme récente et rapports de jeu réunis dans une seule base.</p></div><div class="scouting-kpis"><div><strong>${S.ouatPlayers.length}</strong><span>MIDS</span></div><div><strong>${ranked}</strong><span>CLASSÉS</span></div><div><strong>${masters}</strong><span>MASTER+</span></div><div><strong>${live}</strong><span>LIVE</span></div></div><div class="division-strip">${divisions.map(d=>`<button data-division="${esc(d)}" class="${ouatDivision===d?"on":""}">${d==="ALL"?"Toutes divisions":esc(d)}</button>`).join("")}</div></div>`;
+    const ranked=S.ouatPlayers.filter(p=>rankScore(p)>0).length,masters=S.ouatPlayers.filter(p=>rankScore(p)>=800000).length,live=S.ouatPlayers.filter(p=>p.live===true).length;$("#hero").innerHTML=`<div class="scouting-hero"><div class="scouting-intro"><div class="panel-kicker">OUATVENTURE · SCOUTING DATABASE</div><h2>Scoute les joueurs OUAT.</h2><p>Classement SoloQ, champion pool, forme récente et rapports de jeu réunis dans une seule base.</p></div><div class="scouting-kpis"><div><strong>${S.ouatPlayers.length}</strong><span>JOUEURS</span></div><div><strong>${ranked}</strong><span>CLASSÉS</span></div><div><strong>${masters}</strong><span>MASTER+</span></div><div><strong>${live}</strong><span>LIVE</span></div></div><div class="division-strip">${divisions.map(d=>`<button data-division="${esc(d)}" class="${ouatDivision===d?"on":""}">${d==="ALL"?"Toutes divisions":esc(d)}</button>`).join("")}</div></div>`;
     document.querySelectorAll("[data-division]").forEach(b=>b.onclick=()=>{ouatDivision=b.dataset.division;render()});
     return;
   }
@@ -96,18 +97,19 @@ function hero(){
 function titles(){
   const q=$("#qTop").value.trim();
   if(q)return["RECHERCHE",`Résultats pour “${q}”`,"Joueurs, équipes et Riot IDs"];
-  if(view==="OVERVIEW")return["SCOUTING DESK","Dashboard","Analyse, compare et surveille les midlaners OUAT."];
-  if(view==="LIVE")return["LIVE","En direct","Tous les midlaners actuellement détectés en partie."];
+  if(view==="OVERVIEW")return["SCOUTING DESK","Dashboard","Analyse, compare et surveille les joueurs OUAT."];
+  if(view==="LIVE")return["LIVE","En direct","Tous les joueurs actuellement détectés en partie."];
   if(view==="FAV")return["LIBRARY","Favoris","Les joueurs que tu veux garder sous les yeux."];
-  if(view==="OUAT")return["OUAT SCOUTING",`OUATventure ${S.ouat.season||""}`,`Base scouting · ${S.ouatPlayers.length} midlaners · ${S.ouat.teams||0} équipes`];
+  if(view==="TEAMS")return["SCOUTING D’ÉQUIPE","Équipes OUAT · 5 rôles","Effectifs LEA, rangs SoloQ et comparaison avec UWU GANG."];
+  if(view==="OUAT")return["OUAT SCOUTING",`OUATventure ${S.ouat.season||""}`,`Base scouting · ${S.ouatPlayers.length} joueurs · ${S.ouat.teams||0} équipes`];
   if(view==="PATCHES")return["PATCHS","Analyse de patchs","Notes officielles Riot et performances SoloQ des joueurs OUAT par version."];
-  return["OUAT SCOUTING","OUATventure","Scouting des midlaners OUAT"];
+  return["OUAT SCOUTING","OUATventure","Scouting des joueurs OUAT"];
 }
 function renderPatchSection(){
   $("#sort").hidden=true;$("#liveOnly").hidden=true;
   $("#hero").innerHTML=`<div class="panel"><div class="panel-title">NOTES OFFICIELLES RIOT</div><p>Consulte les changements de champions, objets et systèmes dans les notes officielles, puis compare les résultats observés du joueur entre les patchs.</p><button id="riotPatchNotes" class="action">Ouvrir les notes de patch Riot</button><p class="sample-note">Les différences de résultats ne prouvent pas qu’un buff ou un nerf en est la cause. Les données ci-dessous sont limitées aux parties SoloQ mid disponibles du compte sélectionné.</p></div>`;
   $("#riotPatchNotes").onclick=()=>window.mw.open("https://www.leagueoflegends.com/fr-fr/news/tags/patch-notes/");
-  const players=allPlayers().filter(p=>scoutingAccount(p)?.gameName&&scoutingAccount(p)?.tagLine).filter(p=>queryMatch(p,$("#qTop").value.trim().toLowerCase()));
+  const players=allPlayers().filter(p=>!p.role||p.role==="MID").filter(p=>scoutingAccount(p)?.gameName&&scoutingAccount(p)?.tagLine).filter(p=>queryMatch(p,$("#qTop").value.trim().toLowerCase()));
   $("#sectionTitle").textContent="PERFORMANCES OUAT PAR PATCH";$("#summary").textContent=`${players.length} joueurs avec un compte relié`;
   if(!players.some(p=>p.id===patchPlayerId)){patchRequest++;patchLoading=false;patchPlayerId=players[0]?.id||"";patchStats=null;patchError="";}
   if(!players.length){$("#grid").innerHTML='<div class="panel" style="grid-column:1/-1"><p>Aucun joueur OUAT avec un compte relié ne correspond à la recherche.</p></div>';return;}
@@ -116,8 +118,37 @@ function renderPatchSection(){
   $("#analyzePatch").onclick=async()=>{const player=allPlayers().find(p=>p.id===patchPlayerId);if(!player||!S.hasKey||patchLoading)return;const request=++patchRequest;patchLoading=true;patchError="";render();try{const stats=await window.mw.patchStats(scoutingAccount(player));if(request!==patchRequest||view!=="PATCHES")return;patchStats=stats;}catch(e){if(request!==patchRequest||view!=="PATCHES")return;patchError=String(e.message||e);}finally{if(request===patchRequest&&view==="PATCHES"){patchLoading=false;render()}}};
 }
 
+let teamDivision="ALL",teamGroup="ALL",selectedTeam="";
+function renderTeamSection(){
+ $("#sort").hidden=true;$("#liveOnly").hidden=true;
+ const teams=TeamScouting.group(allPlayers()),q=$("#qTop").value.trim().toLowerCase();
+ const divisions=[...new Set(teams.map(t=>t.division))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+ const inDivision=teams.filter(t=>teamDivision==="ALL"||t.division===teamDivision),groups=[...new Set(inDivision.map(t=>t.group))].sort();
+ if(teamGroup!=="ALL"&&!groups.includes(teamGroup))teamGroup="ALL";
+ const visible=inDivision.filter(t=>(teamGroup==="ALL"||t.group===teamGroup)&&(!q||t.name.toLowerCase().includes(q)||t.players.some(p=>queryMatch(p,q))));
+ const home=teams.find(t=>t.name.trim().toUpperCase()==="UWU GANG");
+ if(!visible.some(t=>t.id===selectedTeam))selectedTeam=visible.find(t=>t.id===home?.id)?.id||visible[0]?.id||"";
+ const team=visible.find(t=>t.id===selectedTeam),summary=team?TeamScouting.summarize(team.players):null,homeSummary=home?TeamScouting.summarize(home.players):null;
+ const option=(value,label,selected)=>`<option value="${esc(value)}" ${value===selected?"selected":""}>${esc(label)}</option>`;
+ $("#hero").innerHTML=`<div class="panel"><div class="panel-title">SCOUTING D’ÉQUIPE · TOP / JUNGLE / MID / ADC / SUPPORT</div><div class="team-filters"><label>Division<select id="teamDivision" class="fullinput">${option("ALL","Toutes divisions",teamDivision)+divisions.map(d=>option(d,d,teamDivision)).join("")}</select></label><label>Groupe<select id="teamGroup" class="fullinput">${option("ALL","Tous groupes",teamGroup)+groups.map(g=>option(g,g,teamGroup)).join("")}</select></label><label>Équipe<select id="teamSelect" class="fullinput">${visible.map(t=>option(t.id,t.name,selectedTeam)).join("")}</select></label></div><p class="sample-note">Effectifs LEA · ${esc(S.ouat.season||"")} · ${S.ouat.updatedAt?esc(new Date(S.ouat.updatedAt).toLocaleString("fr-FR")):"date inconnue"}. ${esc(S.ouat.warning||"")} Les rôles LEA ne garantissent pas une composition titulaire. Plusieurs joueurs au même rôle restent affichés ; ce rôle est exclu de la moyenne.</p></div>`;
+ $("#teamDivision").onchange=e=>{teamDivision=e.target.value;teamGroup="ALL";render();refreshRanks()};
+ $("#teamGroup").onchange=e=>{teamGroup=e.target.value;render();refreshRanks()};
+ $("#teamSelect").onchange=e=>{selectedTeam=e.target.value;render();refreshRanks()};
+ $("#sectionTitle").textContent=team?`${team.name} · ${team.division} · ${team.group}`:"Aucune équipe";
+ $("#summary").textContent=`${visible.length} équipes · ${allPlayers().length} joueurs OUAT`;
+ if(!team){$("#grid").innerHTML='<div class="panel">Aucune équipe ne correspond aux filtres.</div>';return;}
+ const rosterRows=(roster,compare=false)=>TeamScouting.roles.map(role=>{
+  const ps=roster.players.filter(p=>p.role===role);
+  return `<div class="team-role"><b>${role}</b><div>${ps.length?ps.map(p=>`<button class="team-player" data-team-player="${esc(p.id)}"><strong>${esc(p.name)}</strong><span>${esc(playerRankLabel(p)||rankPlaceholder(p))}</span><small>${esc((scoutingAccount(p)?.gameName||"Compte non relié")+(scoutingAccount(p)?.tagLine?"#"+scoutingAccount(p).tagLine:""))}</small></button>`).join(""):"<p>Joueur non renseigné par LEA</p>"}${ps.length>1?'<small>Plusieurs joueurs déclarés · titulaire non confirmé</small>':""}</div></div>`;
+ }).join("");
+ const average=(s)=>`${esc(s.label)} · ${s.covered}/5 rôles couverts${s.complete?"":" · MOYENNE PARTIELLE"}`;
+ $("#grid").innerHTML=`<div class="team-scouting"><div class="panel"><div class="panel-title">RANG SOLOQ MOYEN OBSERVÉ</div><h2>${average(summary)}</h2><p class="sample-note">Résumé descriptif des rangs officiels : 100 points par division, 400 par palier, plus les LP ; Master/Grandmaster/Challenger partagent la base Master + LP. Ce n’est pas le MMR. Un seul joueur déclaré par rôle, compte distinct, rang complet vérifié depuis moins de 15 min. Rangs manquants, partiels ou périmés exclus. ${summary.excluded} rôle(s) exclu(s). Une moyenne partielle ne représente pas les cinq joueurs.</p></div><div class="team-columns"><div class="panel"><div class="panel-title">${esc(team.name)}</div>${rosterRows(team)}</div><div class="panel"><div class="panel-title">COMPARAISON · UWU GANG</div>${home?`<p>${average(homeSummary)}</p>${home.id===team.id?"<p>Sélectionne une autre équipe pour comparer les effectifs.</p>":rosterRows(home)}`:"<p>UWU GANG introuvable dans l’effectif LEA chargé. Aucune composition inventée.</p>"}</div></div></div>`;
+ document.querySelectorAll("[data-team-player]").forEach(b=>b.onclick=()=>openPlayer(b.dataset.teamPlayer));
+}
+
 function render(){
   const [ey,title,sub]=titles();$("#eyebrow").textContent=ey;$("#title").textContent=title;$("#sub").textContent=sub;
+  if(view==="TEAMS"){renderTeamSection();status();return}
   if(view==="PATCHES"){renderPatchSection();status();return}
   $("#sort").hidden=false;$("#liveOnly").hidden=false;
   hero();
@@ -144,13 +175,14 @@ async function openPlayer(id){
   let p=findPlayer(id);if(!p)return;
   const request=++drawerRequest;
   $("#shade").classList.remove("hidden");$("#drawer").classList.remove("hidden");
-  $("#drawer").innerHTML=`<div class="drawer-header"><div><div class="drawer-kicker">${esc(p.region)} · MID</div><h2>${esc(p.name)}</h2><div class="drawer-team">${esc(p.team)}</div></div><button class="drawer-close">✕</button></div><div class="panel"><span class="spinner">↻</span> Chargement…</div>`;
+  $("#drawer").innerHTML=`<div class="drawer-header"><div><div class="drawer-kicker">${esc(p.region)} · ${esc(p.role||"MID")}</div><h2>${esc(p.name)}</h2><div class="drawer-team">${esc(p.team)}</div></div><button class="drawer-close">✕</button></div><div class="panel"><span class="spinner">↻</span> Chargement…</div>`;
   $(".drawer-close").onclick=closeDrawer;
 
   if(request!==drawerRequest)return;
   drawPlayer(p);
   if(scoutingAccount(p)&&S.hasKey){
     try{
+      if(p.role&&p.role!=="MID"){const anchor=$("#scout-live");if(anchor)anchor.innerHTML='<div class="panel">Rang SoloQ et comptes disponibles pour ce rôle. Le rapport de lane actuel est réservé aux mids.</div>';return;}
       const stats=await window.mw.stats(scoutingAccount(p));if(request!==drawerRequest)return;
       const anchor=$("#scout-live");if(anchor)anchor.innerHTML=statReport(stats)+championLaneReport(stats.championLanes)+championTransitionReport(stats.championTransitions)+opponentLaneReport(stats.opponentLanes)+opponentTransitionReport(stats.opponentTransitions)+matchupReport(stats.matchups)+patchReport(stats.patches);
     }catch(e){
@@ -222,11 +254,11 @@ function statReport(s){if(!s||!s.games)return`<div class="panel"><div class="pan
 function scoutingPanel(p){
   const account=scoutingAccount(p);
   const message=!account?"Aucun compte Riot public relié : statistiques indisponibles.":!S.hasKey?"Configure une clé Riot valide dans Réglages pour charger les statistiques.":"Analyse des matchs Riot récents…";
-  return `<div id="scout-live"><div class="panel"><div class="panel-title">SCOUTING SOLOQ · MID</div><p class="helper">${esc(message)}</p><p class="sample-note">Rapport récent · Lane à 10 min · Matchups · Comparaison par patch</p>${!S.hasKey&&account?'<button id="configureScouting" class="action primary">Configurer Riot</button>':""}</div></div>`;
+  return `<div id="scout-live"><div class="panel"><div class="panel-title">SCOUTING SOLOQ · ${esc(p.role||"MID")}</div><p class="helper">${esc(message)}</p><p class="sample-note">Rapport récent · Lane à 10 min · Matchups · Comparaison par patch</p>${!S.hasKey&&account?'<button id="configureScouting" class="action primary">Configurer Riot</button>':""}</div></div>`;
 }
 function drawPlayer(p){
   const accounts=p.accounts||[],fav=S.favorites.includes(p.id),ouat=p.region==="OUAT";
-  $("#drawer").innerHTML=`<div class="drawer-header"><div><div class="drawer-kicker">${esc(p.region)}${p.division?" · "+esc(p.division):""} · MID</div><h2>${esc(p.name)}</h2><div class="drawer-team">${esc(p.team)}${p.country?" · "+esc(p.country):""}</div></div><button class="drawer-close">✕</button></div>
+  $("#drawer").innerHTML=`<div class="drawer-header"><div><div class="drawer-kicker">${esc(p.region)}${p.division?" · "+esc(p.division):""} · ${esc(p.role||"MID")}</div><h2>${esc(p.name)}</h2><div class="drawer-team">${esc(p.team)}${p.country?" · "+esc(p.country):""}</div></div><button class="drawer-close">✕</button></div>
     <div class="drawer-actions"><button id="fav" class="action">${fav?"★ Retirer des favoris":"☆ Ajouter aux favoris"}</button><button id="dpm" class="action primary">↗ DPM.LOL</button></div>${p.region==="LFL"||p.region==="LCKCL"?`<div class="panel"><div class="panel-title">PROFIL COMPÉTITIF</div><div class="champions"><span class="champ"><b>LIGUE</b> · ${esc(p.region==="LCKCL"?"LCK CL":p.region)}</span><span class="champ"><b>ÉQUIPE</b> · ${esc(p.team||"—")}</span><span class="champ"><b>RÔLE</b> · MID</span><span class="champ"><b>SOLOQ</b> · ${esc(rankLabel(p.bestRank)||"Non classé")}</span></div></div>`:""}
     <div class="panel"><div class="panel-title">SOLOQ ACCOUNTS</div>${accounts.length?accounts.map((a,i)=>accountHtml(a,i,p)).join(""):'<p class="helper">Aucun compte public relié pour ce joueur.</p>'}
     ${ouat?`<div class="account"><div class="panel-title">CORRIGER LE RIOT ID LEA</div><p class="helper">Si le Riot ID LEA est ancien, remplace-le ici. La correction reste uniquement sur ton PC.</p><div class="fix-row"><input id="fixName" class="fullinput" placeholder="Game name" value="${esc(accounts[0]?.gameName||"")}"><input id="fixTag" class="fullinput" placeholder="TAG" value="${esc(accounts[0]?.tagLine||"")}"></div><button id="saveFix" class="action">Enregistrer</button>${p.accountOverride?'<button id="clearFix" class="action">Revenir au Riot ID LEA</button>':""}<div id="fixMsg"></div></div>`:""}</div>
@@ -266,9 +298,9 @@ async function refreshRanks(){
   if(rankFollowup){clearTimeout(rankFollowup);rankFollowup=null}
   rankBusy=true;
   try{
-    const onScreen=[...document.querySelectorAll(".player-card,.scout-row")].filter(node=>{
+    const onScreen=[...document.querySelectorAll(".player-card,.scout-row,[data-team-player]")].filter(node=>{
       const rect=node.getBoundingClientRect();return rect.bottom>0&&rect.top<window.innerHeight;
-    }).map(node=>node.dataset.id);
+    }).map(node=>node.dataset.teamPlayer||node.dataset.id);
     const visible=[...new Set([...onScreen,...listForView().slice(0,20).map(p=>p.id)])];
     const r=await window.mw.rankBatch(visible);
     rankCooldownAt=Number(r.retryAt)||0;
@@ -290,7 +322,7 @@ async function refresh(){
   if(busy)return;busy=true;$("#refresh").innerHTML='<span class="spinner">↻</span>';
   notice("");
   try{
-    const r=await window.mw.refreshOuat(S.ouat.url||"");S.ouatPlayers=r.players;S.ouat={...S.ouat,...r};notice(`${r.players.length} midlaners · ${r.teams||0} équipes · ${r.season}${r.warning?" · "+r.warning:""}`);
+    const r=await window.mw.refreshOuat(S.ouat.url||"");S.ouatPlayers=r.players;S.ouat={...S.ouat,...r};notice(`${r.players.length} joueurs · ${r.teams||0} équipes · ${r.season}${r.warning?" · "+r.warning:""}`);
   }catch(e){notice(String(e.message||e))}
   finally{busy=false;$("#refresh").textContent="↻";renderNav();render()}
 }
@@ -299,6 +331,7 @@ $("#overviewNav").onclick=()=>setView("OVERVIEW");
 $("#liveNav").onclick=()=>setView("LIVE");
 $("#favNav").onclick=()=>setView("FAV");
 $("#ouatNav").onclick=()=>setView("OUAT");
+$("#teamsNav").onclick=()=>setView("TEAMS");
 $("#patchNav").onclick=()=>setView("PATCHES");
 $("#settingsNav").onclick=settings;
 $("#settingsTop").onclick=settings;

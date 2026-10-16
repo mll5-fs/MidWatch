@@ -1,0 +1,17 @@
+const fs=require('node:fs'),assert=require('node:assert/strict'),asar=require('@electron/asar');
+const archive=process.argv[2]||'dist/win-unpacked/resources/app.asar';
+const read=p=>asar.extractFile(archive,p).toString('utf8');
+const expected=JSON.parse(fs.readFileSync('package.json','utf8')).version;
+assert.equal(JSON.parse(read('package.json')).version,expected);
+assert.match(read('src/renderer/index.html'),/id="teamsNav"/);
+assert.match(read('src/renderer/index.html'),/src="teams.js"/);
+assert.match(read('src/renderer/app.js'),/view="TEAMS"/);
+assert.match(read('src/renderer/app.js'),/COMPARAISON · UWU GANG/);
+assert.match(read('src/main.js'),/version:app.getVersion\(\)/);
+assert.match(read('src/renderer/app.js'),/S.version/);
+const roster=JSON.parse(read('src/data/ouat-current.json'));
+assert.equal(roster.schemaVersion,2);
+const roles=['TOP','JUNGLE','MID','ADC','SUPPORT'];
+for(const role of roles)assert.ok(roster.players.some(p=>p.role===role),'Missing roster role '+role);
+assert.match(read('src/renderer/teams.js'),/covered:values.length/);
+console.log(JSON.stringify({archive,version:expected,players:roster.players.length,roles:Object.fromEntries(roles.map(role=>[role,roster.players.filter(p=>p.role===role).length])),uwu:roster.players.filter(p=>p.team.trim().toUpperCase()==='UWU GANG').map(p=>({name:p.name,role:p.role,division:p.division,group:p.group})),packagedTeamUI:true,versionFromElectron:true},null,2));
