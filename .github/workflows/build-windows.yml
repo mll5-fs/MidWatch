@@ -36,6 +36,19 @@ jobs:
           "value=$version" >> $env:GITHUB_OUTPUT
       - name: Build MidPulse
         run: npm run dist
+      - name: Verify embedded team scouting and release version
+        run: node scripts/verify-packaged.cjs
+      - name: Inspect actual installer payload
+        shell: pwsh
+        run: |
+          7z x "dist/MidPulse-Setup-${{ steps.version.outputs.value }}.exe" -overify-installer -y
+          if ($LASTEXITCODE -ne 0) { throw "Installer extraction failed" }
+          $payload = Get-ChildItem verify-installer -Recurse -Filter app-64.7z | Select-Object -First 1
+          if (-not $payload) { throw "Electron installer payload missing" }
+          7z x $payload.FullName -overify-payload -y
+          if ($LASTEXITCODE -ne 0) { throw "Payload extraction failed" }
+          node scripts/verify-packaged.cjs verify-payload/resources/app.asar
+          if ($LASTEXITCODE -ne 0) { throw "Installer content verification failed" }
       - uses: actions/upload-artifact@v4
         with:
           name: MidPulse-Windows-Installer
@@ -55,6 +68,6 @@ jobs:
           if ($exists) {
             Write-Host "Release $tag already exists. Preserving its installer; bump package.json to publish changes."
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Scouting OUATventure : rangs SoloQ, lane a 10 minutes, habitudes de debut de partie, matchups mid et analyses par patch avec taille d'echantillon. Source commit: ${{ github.sha }}."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Scouting equipe OUAT : cinq roles, filtres division et groupe, rang moyen observe avec couverture sur cinq et comparaison UWU GANG. Migration du cache historique. Contenu Electron de cet installateur inspecte automatiquement. Source commit: ${{ github.sha }}."
             if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           }
