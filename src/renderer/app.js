@@ -378,7 +378,7 @@ async function refreshRanks(){
     const r=await window.mw.rankBatch(visible);
     rankCooldownAt=Number(r.retryAt)||0;
     if([401,403].includes(r.blockedStatus))S.hasKey=false;
-    for(const u of r.updates||[]){if(!S.ouatPlayers.some(p=>p.id===u.id&&PlayerIdentity.matches(p,u)))continue;if(u.rank!==undefined)rankState[u.id]=u.rank;rankMeta[u.id]={identity:u.identity,rankStatus:u.status,rankCheckedAt:u.checkedAt,rankError:u.error,...(u.rankAccount?{bestRankAccount:u.rankAccount}:{})}}
+    for(const u of r.updates||[]){if(!S.ouatPlayers.some(p=>p.id===u.id&&PlayerIdentity.matches(p,u)))continue;if(rankMeta[u.id]?.identity!==u.identity)delete rankState[u.id];if(u.rank!==undefined)rankState[u.id]=u.rank;rankMeta[u.id]={identity:u.identity,rankStatus:u.status,rankCheckedAt:u.checkedAt,rankError:u.error,...(u.rankAccount?{bestRankAccount:u.rankAccount}:{})}}
     render();
     if(S.hasKey&&!r.retryAt&&(r.deferred||r.remaining>0))rankFollowup=setTimeout(refreshRanks,r.deferred?2000:4000);
   }catch(_){}finally{rankBusy=false;if(rankReloadPending){rankReloadPending=false;refreshRanks()}}

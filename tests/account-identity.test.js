@@ -38,6 +38,11 @@ test('a late old-account LIVE response is ignored and a matching response is acc
  const fresh=c.refreshLive();lives[1]({updates:[{id:current.id,identity:PlayerIdentity.fingerprint(current),live:false}]});await fresh;
  assert.equal(c.liveState[current.id],false);
 });
+test('a roster account change followed by a failed rank check cannot relabel the old rank as current',async()=>{
+ const {c,current,ranks}=harness();c.rankState[current.id]={tier:'DIAMOND'};c.rankMeta[current.id]={identity:PlayerIdentity.fingerprint(player('Old'))};
+ const request=c.refreshRanks();ranks[0]({updates:[{id:current.id,identity:PlayerIdentity.fingerprint(current),status:'error'}]});await request;
+ assert.equal(c.rankState[current.id],undefined);assert.equal(c.rankMeta[current.id].rankStatus,'error');
+});
 for(const busy of [false,true])test(`account reload clears old observations and ${busy?'queues':'starts'} rank loading`,async()=>{
  const current=player('New'),calls=[];
  const c=vm.createContext({S:{ouatPlayers:[player('Old')]},rankState:{'same-player':{}},rankMeta:{'same-player':{}},liveState:{'same-player':true},liveMeta:{'same-player':{}},rankBusy:busy,rankReloadPending:false,
