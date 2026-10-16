@@ -19,7 +19,7 @@ test('patch section loads selected OUAT account and renders measured patch group
  scoutingAccount:player=>player.accounts.find(account=>account.gameName===player.bestRankAccount?.gameName)||player.accounts[0],
  window:{mw:{patchStats:async account=>{calls++;assert.equal(account.gameName,'Riot');return {patches:[{patch:'26.20',games:3}]};},open:()=>{}}},
  coverageReport:()=>'',sampleWindowReport:()=>'',patchReport:rows=>'PATCH '+rows[0].patch,render:()=>context.renderPatchSection()});
- vm.runInContext('let patchRequest=0,patchPlayerId="",patchStats=null,patchError="",patchLoading=false,view="PATCHES";'+app.slice(app.indexOf('function renderPatchSection('),app.indexOf('\nfunction render(){')),context);
+ vm.runInContext('let patchRequest=0,patchPlayerId="",patchStats=null,patchError="",patchLoading=false,view="PATCHES";'+app.slice(app.indexOf('function renderPatchSection('),app.indexOf('let teamDivision=')),context);
  context.renderPatchSection();
  await nodes['#analyzePatch'].onclick();
  assert.equal(calls,1);assert.match(nodes['#grid'].innerHTML,/PATCH 26\.20/);
@@ -35,7 +35,7 @@ function patchHarness(){
  window:{mw:{patchStats:account=>new Promise((resolve,reject)=>pending.push({account,resolve,reject})),open:()=>{}}},
  coverageReport:()=>'',sampleWindowReport:()=>'',patchReport:rows=>'PATCH '+rows[0].patch,
  render:()=>context.renderPatchSection()});
- vm.runInContext('let patchRequest=0,patchPlayerId="",patchStats=null,patchError="",patchLoading=false,view="PATCHES";'+app.slice(app.indexOf('function renderPatchSection('),app.indexOf('\nfunction render(){')),context);
+ vm.runInContext('let patchRequest=0,patchPlayerId="",patchStats=null,patchError="",patchLoading=false,view="PATCHES";'+app.slice(app.indexOf('function renderPatchSection('),app.indexOf('let teamDivision=')),context);
  context.renderPatchSection();
  return {nodes,pending,context,state:expression=>vm.runInContext(expression,context),filter:q=>{nodes['#qTop'].value=q;context.renderPatchSection();}};
 }
