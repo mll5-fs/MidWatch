@@ -147,7 +147,7 @@ test("keeps a verified rank visible but partial when another linked account fail
     [accountKey(p.accounts[0])]: { rank: solo, status: "ranked", checkedAt: 1000 },
     [accountKey(p.accounts[1])]: { status: "error", checkedAt: 2000, error: "Riot indisponible" }
   };
-  assert.deepEqual(playerRankState(p, cache), { rank: solo, rankAccount: p.accounts[0], status: "partial", checkedAt: 2000,
+  assert.deepEqual(playerRankState(p, cache), { rank: solo, rankAccount: p.accounts[0], status: "partial", checkedAt: 1000,
     error: "Riot indisponible" });
 });
 
@@ -163,7 +163,7 @@ test("selects the strongest rank across cached accounts regardless of account or
   const state = playerRankState(p, cache);
   assert.equal(state.rank.tier, "MASTER");
   assert.equal(state.rankAccount.gameName, "master");
-  assert.equal(state.checkedAt, 2000);
+  assert.equal(state.checkedAt, 1000);
 });
 
 

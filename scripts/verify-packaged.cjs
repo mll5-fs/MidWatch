@@ -20,4 +20,8 @@ assert.match(read('src/main.js'),/ipcMain.handle\("riot:roleStats"/);
 assert.match(read('src/renderer/app.js'),/roleStats\(scoutingAccount\(p\),p.role\)/);
 assert.match(read('src/renderer/app.js'),/function roleStatReport/);
 assert.match(read('src/services/stats-cache.js'),/account.scoutingRole/);
+assert.match(read('src/renderer/teams.js'),/function groupBoard/);
+assert.match(read('src/renderer/app.js'),/RANGS MOYENS DU GROUPE/);
+assert.match(read('src/renderer/app.js'),/data-group-team/);
+assert.match(read('src/services/ranks.js'),/Math.min\(\.\.\.entries.map/);
 console.log(JSON.stringify({archive,version:expected,players:roster.players.length,roles:Object.fromEntries(roles.map(role=>[role,roster.players.filter(p=>p.role===role).length])),uwu:roster.players.filter(p=>p.team.trim().toUpperCase()==='UWU GANG').map(p=>({name:p.name,role:p.role,division:p.division,group:p.group})),packagedTeamUI:true,packagedRoleReports:true,versionFromElectron:true},null,2));

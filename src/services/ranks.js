@@ -23,7 +23,12 @@ function playerRankState(player, cache = {}) {
   const entries = accounts.map(account => ({ account, entry: cache[accountKey(account)] })).filter(item => item.entry);
   const ranked = entries.filter(item => item.entry.rank?.tier)
     .sort((a, b) => rankPoints(b.entry.rank) - rankPoints(a.entry.rank));
-  const checkedAt = entries.reduce((latest, item) => Math.max(latest, Number(item.entry.checkedAt) || 0), 0) || undefined;
+  // The best-account comparison is only as fresh as its oldest account check.
+  // Refreshing a secondary account must not refresh the age of an old best rank.
+  const checkedAt = ranked.length
+    ? (entries.length && entries.every(item => Number.isFinite(item.entry.checkedAt) && item.entry.checkedAt > 0)
+      ? Math.min(...entries.map(item => item.entry.checkedAt)) : undefined)
+    : entries.reduce((latest, item) => Math.max(latest, Number(item.entry.checkedAt) || 0), 0) || undefined;
   if (ranked.length) {
     const best = ranked[0], stale = best.entry.status === "error";
     const failed = entries.find(item => item.entry.status === "error");
