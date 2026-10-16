@@ -46,6 +46,22 @@ const DuelScouting=(()=>{
   }
   return {state,sync,cancel,load};
  }
- return {pair,create};
+ function compare(left,right){
+  if(!left?.games||!right?.games||left.role!==right.role)return null;
+  const metric=(key,label,digits=1)=>{
+   const a=Number(left[key]),b=Number(right[key]);if(!Number.isFinite(a)||!Number.isFinite(b))return null;
+   const round=n=>Number(n.toFixed(digits));return {key,label,left:round(a),right:round(b),delta:round(a-b)};
+  };
+  const metrics=[metric('winrate','WIN RATE',0),metric('kda','KDA'),metric('kills','KILLS'),metric('deaths','DEATHS'),metric('assists','ASSISTS'),metric('cspm','CS/MIN'),metric('dpm','DÉGÂTS/MIN',0),metric('gpm','OR/MIN',0),metric('vision','VISION/PARTIE')].filter(Boolean);
+  const pool=report=>new Map((report.champions||[]).filter(c=>c?.name&&Number.isFinite(c.games)&&c.games>0).map(c=>[String(c.name).toLowerCase(),{name:String(c.name),games:c.games}]));
+  const a=pool(left),b=pool(right),common=[...a.keys()].filter(k=>b.has(k)).map(k=>({name:a.get(k).name,left:a.get(k).games,right:b.get(k).games}));
+  const exclusive=(source,other)=>[...source.entries()].filter(([k])=>!other.has(k)).map(([,c])=>c);
+  const patchGames=report=>new Map((report.patches||[]).filter(p=>p?.patch&&Number.isFinite(p.games)&&p.games>0).map(p=>[String(p.patch),p.games]));
+  const pa=patchGames(left),pb=patchGames(right),patches=[...pa.keys()].filter(k=>pb.has(k)).sort().reverse().map(patch=>({patch,left:pa.get(patch),right:pb.get(patch)}));
+  const interval=report=>Number.isFinite(report.interval?.low)&&Number.isFinite(report.interval?.high)?{low:report.interval.low,high:report.interval.high}:null;
+  return {role:left.role,games:[left.games,right.games],metrics,intervals:[interval(left),interval(right)],champions:{common,leftOnly:exclusive(a,b),rightOnly:exclusive(b,a)},patches,
+   limitations:{partial:[!!left.coverage?.partial,!!right.coverage?.partial],stale:[!!left.window?.stale,!!right.window?.stale]}};
+ }
+ return {pair,create,compare};
 })();
 if(typeof module!=='undefined')module.exports=DuelScouting;
