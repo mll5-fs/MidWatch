@@ -23,6 +23,15 @@ test('actual HTTP transport shares 429 pause across instances/routes, without re
  assert.equal(h.calls(),1);await new h.Riot('B').ranked('EUW1','p');assert.equal(h.calls(),2);
  h.advance(31000);await a.active('EUW1','p');assert.equal(h.calls(),3);
 });
+test('HTTP 429 headers install the pause before a slow response body is read',async()=>{
+ let releaseBody,bodyStarted,calls=0;const started=new Promise(resolve=>bodyStarted=resolve);
+ const c=vm.createContext({AbortController,setTimeout,clearTimeout,module:{exports:{}},require:name=>{
+  if(name==='electron')return {net:{fetch:async()=>{calls++;return {ok:false,status:429,headers:{get:()=> '30'},json:()=>{bodyStarted();return new Promise(resolve=>releaseBody=resolve);}};}}};
+  if(name==='./riot-backoff')return {createRiotBackoff:()=>createRiotBackoff({now:()=>1000})};
+  return require('../src/services/'+name.slice(2));
+ }});vm.runInContext(fs.readFileSync('src/services/riot.js','utf8'),c);const riot=new c.module.exports.Riot('A'),first=riot.active('EUW1','p');
+ await started;await assert.rejects(riot.ranked('EUW1','p'),e=>e.status===429);assert.equal(calls,1);releaseBody({});await assert.rejects(first,e=>e.status===429&&e.retryAt===31000);
+});
 for(const header of [null,'invalid'])test(`missing/invalid Retry-After uses conservative fallback (${header})`,async()=>{
  const h=transport(header),a=new h.Riot('A');await assert.rejects(a.active('EUW1','p'),e=>e.retryAfterMs===120000&&e.retryAt===121000);
  await assert.rejects(a.ranked('EUW1','p'),e=>e.status===429);assert.equal(h.calls(),1);
