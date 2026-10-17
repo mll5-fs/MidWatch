@@ -11,11 +11,12 @@ test("dedicated patch analysis requests a larger match-only mid sample", () => {
   const end = main.indexOf("\nasync function rankBatch", start);
   const source = main.slice(start, end);
   assert.ok(start >= 0 && end > start);
-  assert.match(source, /matchIds\(acc\.platform,acc\.puuid,60,420\)/);
-  assert.match(source, /target:30/);
-  assert.match(source, /matches\.length>=30/);
+  assert.match(source, /playerPatchStats\(a\)\{return playerRoleStats\(a,"MID",true\)/);
+  const collector=fs.readFileSync('src/services/role-report.js','utf8');
+  assert.match(collector, /requested=patchOnly\?60:20,target=patchOnly\?30:12/);
+  assert.match(collector, /matches\.length>=target/);
   assert.doesNotMatch(source, /riot\.timeline/);
-  assert.match(source, /patchStatsCache/);
+  assert.match(source, /rolePatchStatsCacheV2/);
 });
 
 test("patch analysis has an isolated IPC path from the regular scouting report", () => {

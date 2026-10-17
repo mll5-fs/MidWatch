@@ -8,17 +8,31 @@ function participantForRole(match,puuid,role){
  const actual=normalizeRole(p?.teamPosition)||normalizeRole(p?.individualPosition);
  return p&&actual===normalizeRole(role)?p:null;
 }
-function validRoleStats(p){return !!p&&typeof p.win==='boolean'&&['kills','deaths','assists','timePlayed','totalMinionsKilled','neutralMinionsKilled','totalDamageDealtToChampions','goldEarned','visionScore'].every(k=>Number.isFinite(p[k])&&p[k]>=0)&&p.timePlayed>0;}
+// Riot documents omitted numeric values as zero. Only absent counting fields use
+// that convention: explicit null/undefined/strings remain invalid, as do missing
+// win, identity/role and positive duration. Never mutate the received payload.
+const ZERO_OMITTABLE_STATS=['kills','deaths','assists','totalMinionsKilled','neutralMinionsKilled','totalDamageDealtToChampions','goldEarned','visionScore'];
+function normalizeRoleStats(p){
+ if(!p||typeof p.win!=='boolean'||!Number.isFinite(p.timePlayed)||p.timePlayed<=0)return null;
+ const row={...p},riotOmittedStats=[];
+ for(const field of ZERO_OMITTABLE_STATS){
+  if(!Object.hasOwn(p,field)){row[field]=0;riotOmittedStats.push(field);}
+  else if(!Number.isFinite(p[field])||p[field]<0)return null;
+ }
+ return {...row,riotOmittedStats};
+}
+function validRoleStats(p){return !!normalizeRoleStats(p);}
+function normalizationSummary(rows){return {games:rows.filter(p=>p.riotOmittedStats.length).length,fields:rows.reduce((s,p)=>s+p.riotOmittedStats.length,0),policy:'riot-omitted-numeric-zero',source:'https://developer.riotgames.com/docs/portal#response-codes'};}
 function summarizeRole(matches,puuid,role,sampledAt=Date.now(),includePatchReports=true,includeChampionReports=true){
- const accepted=(matches||[]).map(match=>({match,p:participantForRole(match,puuid,role)})).filter(({p})=>validRoleStats(p));
+ const accepted=(matches||[]).map(match=>({match,p:normalizeRoleStats(participantForRole(match,puuid,role))})).filter(({p})=>p);
  const rows=accepted.map(x=>x.p),games=rows.length,wins=rows.filter(p=>p.win).length;
- const report={role:normalizeRole(role),games,wins,limited:games<3,scope:`SoloQ classée · rôle ${normalizeRole(role)}`,window:sampleWindow(accepted.map(x=>x.match),sampledAt),sampledAt};
+ const report={role:normalizeRole(role),games,wins,normalization:normalizationSummary(rows),limited:games<3,scope:`SoloQ classée · rôle ${normalizeRole(role)}`,window:sampleWindow(accepted.map(x=>x.match),sampledAt),sampledAt};
  if(!games)return {...report,champions:[],patches:[]};
  const sum=k=>rows.reduce((s,p)=>s+p[k],0),minutes=sum('timePlayed')/60,round=n=>Math.round(n*10)/10;
  const champions=new Map();for(const p of rows){const name=p.championName||'Inconnu';if(!champions.has(name))champions.set(name,{name,games:0,wins:0});const c=champions.get(name);c.games++;c.wins+=p.win?1:0;}
  const result={...report,winrate:Math.round(100*wins/games),interval:winrateInterval(wins,games),kills:round(sum('kills')/games),deaths:round(sum('deaths')/games),assists:round(sum('assists')/games),kda:round((sum('kills')+sum('assists'))/Math.max(1,sum('deaths'))),cspm:round((sum('totalMinionsKilled')+sum('neutralMinionsKilled'))/minutes),dpm:Math.round(sum('totalDamageDealtToChampions')/minutes),gpm:Math.round(sum('goldEarned')/minutes),vision:round(sum('visionScore')/games),
  champions:[...champions.values()].sort((a,b)=>b.games-a.games||a.name.localeCompare(b.name)).map(c=>({...c,winrate:Math.round(100*c.wins/c.games),interval:winrateInterval(c.wins,c.games)})),
- patches:patchBreakdown(accepted.map(x=>x.match),puuid,role).map(p=>({...p,role:normalizeRole(role)}))};
+ patches:patchBreakdown(accepted.map(({match,p})=>({...match,info:{...match.info,participants:match.info.participants.map(raw=>raw.puuid===puuid?p:raw)}})),puuid,role).map(p=>({...p,role:normalizeRole(role)}))};
  if(includeChampionReports){
   const groups=new Map();for(const {match,p}of accepted){if(typeof p.championName!=='string'||!p.championName.trim())continue;const champion=p.championName.trim(),key=champion.toLowerCase();if(!groups.has(key))groups.set(key,{champion,matches:[]});groups.get(key).matches.push(match);}
   result.byChampion=[...groups.values()].sort((a,b)=>a.champion.localeCompare(b.champion)).map(g=>({champion:g.champion,report:summarizeRole(g.matches,puuid,role,sampledAt,false,false)}));
@@ -48,4 +62,4 @@ async function collectRoleReport(riot,account,role,{patchOnly=false,now=Date.now
  if(invalidGames)report.coverage.partial=true;
  return report;
 }
-module.exports={participantForRole,validRoleStats,summarizeRole,collectRoleReport};
+module.exports={participantForRole,normalizeRoleStats,normalizationSummary,validRoleStats,summarizeRole,collectRoleReport};

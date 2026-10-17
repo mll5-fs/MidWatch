@@ -30,7 +30,7 @@ test('invalid games are excluded from dates, champions, patches and the twelve-g
  const h=harness([invalid,...Array.from({length:13},()=>match())]),r=await h.run();assert.equal(r.games,12);assert.equal(r.coverage.matchAttempts,13);assert.equal(h.calls.timelines,12);assert.equal(r.coverage.targetReached,true);assert.equal(r.coverage.partial,true);assert.equal(r.coverage.invalidGames,1);assert.equal(r.champions.length,1);assert.equal(r.patches[0].patch,'16.20');assert.equal(r.window.oldestAt,Date.UTC(2026,9,15));
 });
 test('empty validated reports have coverage and are reused only from the new cache namespace',async()=>{
- const legacy=cache.write({},account,{games:99,habits:['OLD']});const h=harness([match({visionScore:null})],{statsCache:legacy}),first=await h.run();assert.equal(first.games,0);assert.equal(first.window.games,0);assert.ok(h.stored.statsCacheV2);assert.equal(h.stored.statsCache,legacy);const again=await h.run();assert.equal(again.games,0);assert.equal(h.calls.ids,1);
+ const legacy=cache.write({},account,{games:99,habits:['OLD']});const h=harness([match({visionScore:null})],{statsCache:legacy}),first=await h.run();assert.equal(first.games,0);assert.equal(first.window.games,0);assert.ok(h.stored.statsCacheV3);assert.equal(h.stored.statsCache,legacy);const again=await h.run();assert.equal(again.games,0);assert.equal(h.calls.ids,1);
 });
 test('auth and quota stops remain partial without collecting subsequent matches',async()=>{
  for(const status of [403,429]){const h=harness([Object.assign(Error('blocked'),{status}),match()]),r=await h.run();assert.equal(r.games,0);assert.equal(r.coverage.partial,true);assert.equal(r.coverage.stop,status===403?'auth':'rate_limit');assert.equal(h.calls.matches,1);}

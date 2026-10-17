@@ -32,6 +32,7 @@ const ReportBuilder=(()=>{
     const raw=reports[i],s=raw?.role===pair.role?D.scopeReport(raw,analysis.patch||'ALL',analysis.champion||'ALL'):null;
     if(!s||!Number.isInteger(s.games)||s.games<=0){lines.push('  Rapport non chargé ou aucune partie exploitable.');return;}
     lines.push(`  ${s.games} parties au rôle ${clean(s.role)} · période ${date(s.window?.oldestAt)} → ${date(s.window?.newestAt)} · collecte ${date(s.sampledAt)}`);
+    if(s.normalization?.games)lines.push(`  Convention Riot : ${s.normalization.fields} champ(s) numérique(s) omis traité(s) à zéro dans ${s.normalization.games} partie(s) de cet échantillon. Source : https://developer.riotgames.com/docs/portal#response-codes`);
     if(s.coverage?.partial)lines.push('  COLLECTE PARTIELLE : erreurs, quota ou données incomplètes.');
     if(s.window?.stale)lines.push('  DONNÉES ANCIENNES.');
     for(const [field,label]of [['winrate','Winrate (%)'],['kda','KDA'],['cspm','CS/min'],['dpm','Dégâts/min'],['gpm','Or/min'],['vision','Vision/partie']])if(Number.isFinite(s[field]))lines.push(`  ${label} : ${s[field]}`);
