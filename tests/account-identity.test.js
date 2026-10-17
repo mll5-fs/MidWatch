@@ -46,11 +46,11 @@ test('a roster account change followed by a failed rank check cannot relabel the
 for(const busy of [false,true])test(`account reload clears old observations and ${busy?'queues':'starts'} rank loading`,async()=>{
  const current=player('New'),calls=[];
  const c=vm.createContext({S:{ouatPlayers:[player('Old')]},rankState:{'same-player':{}},rankMeta:{'same-player':{}},liveState:{'same-player':true},liveMeta:{'same-player':{}},rankBusy:busy,rankReloadPending:false,
- teamDuel:{cancel:()=>calls.push('cancel')},window:{mw:{data:async()=>({ouatPlayers:[current]})}},notice:()=>{},openPlayer:id=>calls.push(id),renderNav:()=>{},render:()=>{},refreshRanks:()=>calls.push('ranks')});
+ teamBatch:{cancel:()=>calls.push('cancelBatch')},teamDuel:{cancel:()=>calls.push('cancel')},window:{mw:{data:async()=>({ouatPlayers:[current]})}},notice:()=>{},openPlayer:id=>calls.push(id),renderNav:()=>{},render:()=>{},refreshRanks:()=>calls.push('ranks')});
  vm.runInContext(app.slice(app.indexOf('async function reloadAccountIdentity('),app.indexOf('async function checkAccount(')),c);
  await c.reloadAccountIdentity(current.id);
  for(const key of ['rankState','rankMeta','liveState','liveMeta'])assert.equal(Object.keys(c[key]).length,0);
- assert.equal(c.S.ouatPlayers[0].accounts[0].gameName,'New');assert.ok(calls.includes('cancel'));
+ assert.equal(c.S.ouatPlayers[0].accounts[0].gameName,'New');assert.ok(calls.includes('cancel'));assert.ok(calls.includes('cancelBatch'));
  assert.equal(calls.includes('ranks'),!busy);assert.equal(c.rankReloadPending,busy);
  assert.match(app,/#clearFix[\s\S]*?clearOverride\(p.id\);await reloadAccountIdentity\(p.id\)/);
 });

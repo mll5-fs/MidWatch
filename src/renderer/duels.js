@@ -20,7 +20,8 @@ const DuelScouting=(()=>{
   const cache=new Map(),maxAge=15*60*1000;
   const state={key:'',request:0,loading:false,sides:[],loadedAt:null,reused:false};
   function peek(key){const value=cache.get(key),age=value?now()-value.loadedAt:Infinity;if(age<0||age>=maxAge){cache.delete(key);return null;}return value?{...value,sides:value.sides.slice()}:null;}
-  function remember(){state.loadedAt=now();cache.delete(state.key);cache.set(state.key,{key:state.key,sides:state.sides.slice(),loadedAt:state.loadedAt});while(cache.size>30)cache.delete(cache.keys().next().value);}
+  function save(key,sides,activate=true){const loadedAt=now();cache.delete(key);cache.set(key,{key,sides:sides.slice(),loadedAt});while(cache.size>30)cache.delete(cache.keys().next().value);if(activate&&state.key===key&&!state.loading){state.sides=sides.slice();state.loadedAt=loadedAt;state.reused=true;}return loadedAt;}
+  function remember(){state.loadedAt=save(state.key,state.sides,false);}
   function sync(key){if(key!==state.key||(!state.loading&&state.loadedAt!==null&&!peek(key))){const saved=peek(key);state.key=key;state.request++;state.loading=false;state.sides=saved?.sides||[];state.loadedAt=saved?.loadedAt??null;state.reused=!!saved;}return state;}
   function cancel(){state.request++;state.loading=false;state.key='';state.sides=[];state.loadedAt=null;state.reused=false;}
   async function load(pair,fetchReport,onUpdate=()=>{}){
@@ -47,7 +48,35 @@ const DuelScouting=(()=>{
     }
    }finally{if(current()){state.loading=false;remember();onUpdate();}}
   }
-  return {state,sync,cancel,load,peek};
+  return {state,sync,cancel,load,peek,save};
+ }
+ function createBatch(){
+  const state={context:'',running:false,rows:[],stop:''};let request=0,worker=null;
+  const context=pairs=>JSON.stringify(pairs.map(p=>p?.key||''));
+  function cancel(){request++;worker?.cancel();worker=null;state.running=false;state.stop='cancelled';for(const row of state.rows)if(['waiting','loading'].includes(row.status))row.status='cancelled';}
+  function sync(pairs){const key=context(pairs);if(state.context!==key){cancel();state.context=key;state.rows=[];state.stop='';}return state;}
+  async function load(pairs,target,fetchReport,onUpdate=()=>{}){
+   sync(pairs);if(state.running||target.state.loading)return;
+   const token=++request;state.running=true;state.stop='';state.rows=pairs.map((p,i)=>({role:p?.role||teams.roles[i],status:'waiting',reason:''}));onUpdate();
+   try{
+    for(const [i,p]of pairs.entries()){
+     if(token!==request)return;const row=state.rows[i];
+     if(!p?.ready){row.status='blocked';row.reason=p?.sides.map(s=>s.reason).filter(Boolean).join(' · ')||'Clé Riot ou équipe indisponible.';onUpdate();continue;}
+     const saved=target.peek(p.key);
+     if(saved?.sides.length===2&&saved.sides.every(s=>s?.report?.role===p.role&&!s.error&&!s.report.coverage?.partial&&!['auth','rate_limit'].includes(s.report.coverage?.stop))){row.status='reused';onUpdate();continue;}
+     row.status='loading';onUpdate();if(token!==request)return;worker=create();await worker.load(p,fetchReport);
+     if(token!==request)return;
+     const sides=worker.state.sides;worker=null;target.save(p.key,sides);
+     const stop=sides.map(s=>s?.report?.coverage?.stop).find(s=>['auth','rate_limit'].includes(s));
+     if(stop||sides.some(s=>s?.error)){
+      row.status='error';row.reason=stop==='auth'?'Clé refusée par Riot.':stop==='rate_limit'?'Quota Riot atteint.':sides.find(s=>s?.error)?.error||'Collecte interrompue.';
+      state.stop=stop||'error';for(const next of state.rows.slice(i+1)){next.status='stopped';next.reason='Non lancé après interruption du lot.';}onUpdate();break;
+     }
+     row.status=sides.some(s=>s?.report?.coverage?.partial)?'partial':'loaded';onUpdate();
+    }
+   }finally{if(token===request){state.running=false;worker=null;onUpdate();}}
+  }
+  return {state,sync,cancel,load};
  }
  function compare(left,right){
   if(!Number.isInteger(left?.games)||left.games<=0||!Number.isInteger(right?.games)||right.games<=0||left.role!==right.role)return null;
@@ -85,6 +114,6 @@ const DuelScouting=(()=>{
   if(!scoped||scoped.role!==report.role||!Number.isInteger(scoped.games)||scoped.games<0)return null;
   return {...scoped,scope:`SoloQ classée · rôle ${scoped.role}${patch!=='ALL'?` · patch ${patch}`:''}${champion!=='ALL'?` · champion ${champion}`:''}`,coverage:{...report.coverage,roleGames:scoped.games,targetReached:scoped.games>=(report.coverage?.target||12)},...(patch!=='ALL'?{selectedPatch:patch}:{}),...(champion!=='ALL'?{selectedChampion:champion}:{})};
  }
- return {pair,create,compare,commonPatches,commonChampions,scopeReport};
+ return {pair,create,createBatch,compare,commonPatches,commonChampions,scopeReport};
 })();
 if(typeof module!=='undefined')module.exports=DuelScouting;

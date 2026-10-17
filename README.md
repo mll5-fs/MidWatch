@@ -1,4 +1,10 @@
-# MidPulse 5.5 — OUAT group comparison and role reports
+# MidPulse 5.14 — five-role OUAT preparation
+
+In **Équipes OUAT → opponent → Analyses mémorisées · 5 rôles**, use **Charger les 5 rôles** to collect the five role comparisons against UWU GANG. The current local lineups and selected linked accounts are respected. Missing/ambiguous slots are labelled and skipped, never filled with invented players. The batch loads at most ten individual match-only reports sequentially; complete session samples younger than 15 minutes are reused without changing their collection timestamps. Partial/error reports are retried on an explicit new batch. Any error or Riot authentication/rate-limit stop halts the remaining roles without automatic retry.
+
+Progress is shown per role. **Arrêter le chargement** prevents further requests/results; an IPC request already sent may still finish in the backend. Changing team, selected account, lineup, key availability or main view also cancels the batch. Previously completed roles remain in session memory for navigation and **Copier le rapport d’équipe**. The per-role comparator still offers common patch/champion filters. These are independent SoloQ histories, not direct head-to-head records, hidden MMR estimates or predictions. No authenticated Riot or interactive Windows/LoL test is implied by automated test results.
+
+## OUAT group comparison and role reports
 
 In **Équipes · 5 rôles**, select **Voir le groupe d’UWU GANG** or choose another team to see the official-rank summary for its actual LEA division/group. The group table appears above detailed rosters and opens a team comparison when its name is clicked. Only teams with five fresh, valid, distinct-account roles receive an order by observed average; ties share that order. Partial teams follow alphabetically with coverage and the exact excluded roles/reasons. This order is not the tournament standings or hidden MMR. Unknown groups are never combined into a fabricated group.
 
@@ -14,7 +20,7 @@ The mean summarizes official SoloQ ranks using 100 points per division, 400 per 
 
 # MidPulse — OUAT scouting
 
-Windows desktop scouting for OUATventure midlaners only. Professional rosters and professional background requests have been removed. Existing professional cache entries are ignored.
+Windows desktop scouting for OUATventure players across TOP/JUNGLE/MID/ADC/SUPPORT. Professional rosters and professional background requests have been removed. Existing professional cache entries are ignored.
 
 - OUAT players, teams, divisions, SoloQ ranks, favorites and spectator requests.
 - Analyse de patchs: choose an OUAT player, load a dedicated sample of up to 30 ranked-mid games without timelines, compare each observed patch with the previous observed sample using explicit game counts, average kills/deaths/assists, win-rate-point and KDA deltas, IC95, champion mix and sample warnings, and open official Riot patch notes.

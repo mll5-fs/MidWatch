@@ -20,7 +20,7 @@ function tracked(p){return p.source==="DPM public data"||p.source==="live"||p.li
 function stateOf(p){if(p.live===true)return"live";if(p.live===false)return"offline";return"unknown"}
 function dpmUrl(p){const a=scoutingAccount(p);if(p.region==="OUAT"){if(a?.gameName&&a?.tagLine)return`https://dpm.lol/${encodeURIComponent(a.gameName)}-${encodeURIComponent(a.tagLine)}`;return"https://dpm.lol/"}return`https://dpm.lol/pro/${encodeURIComponent(p.name)}`}
 
-function setView(next){teamDuel.cancel();patchRequest++;patchLoading=false;view=next;liveOnly=false;$("#qTop").value="";renderNav();render();refreshRanks()}
+function setView(next){teamBatch.cancel();teamDuel.cancel();patchRequest++;patchLoading=false;view=next;liveOnly=false;$("#qTop").value="";renderNav();render();refreshRanks()}
 function renderNav(){
   const live=allPlayers().filter(p=>p.live===true).length;
   $("#liveNavCount").textContent=live;
@@ -121,6 +121,7 @@ function renderPatchSection(){
 let teamDivision="ALL",teamGroup="ALL",selectedTeam="";
 let duelRole="MID",duelPatch="ALL",duelChampion="ALL";
 const teamDuel=DuelScouting.create();
+const teamBatch=DuelScouting.createBatch();
 function duelSynthesis(pair,state){
  const reports=state.sides.map(x=>DuelScouting.scopeReport(x?.report,duelPatch,duelChampion)),c=DuelScouting.compare(reports[0],reports[1]);if(!c)return"";
  const signed=n=>`${n>0?"+":""}${n}`,team=pair.sides[0].teamName;
@@ -132,7 +133,8 @@ function roleMemories(team,home){
 }
 function roleMemoryPanel(team,home){
  const rows=roleMemories(team,home);
- return '<div class="panel"><div class="panel-title">ANALYSES MÉMORISÉES · 5 RÔLES</div><p class="sample-note">Charge chaque rôle depuis le comparateur. Les résultats restent consultables pendant 15 min dans cette session, sans nouvel appel Riot lors du changement de rôle. La mémoire ne confirme ni une composition titulaire ni la fraîcheur de l’historique : vérifie les dates des rapports. Elle expire après 15 min ou à la fermeture de l’application.</p><div class="team-filters">'+rows.map(({pair,saved,role})=>{const reports=saved?.sides.filter(s=>s?.report?.role===role)||[],counts=reports.map(s=>s.report.games+'G').join(' / ');return '<button class="action" data-saved-role="'+role+'" '+(!pair?'disabled':'')+'>'+role+' · '+reports.length+'/2 rapports'+(counts?' · '+counts:'')+'</button>';}).join('')+'</div></div>';
+ const batch=teamBatch.sync(rows.map(r=>r.pair)),labels={waiting:'en attente',loading:'collecte en cours',blocked:'indisponible',reused:'mémoire réutilisée',loaded:'chargé',partial:'collecte partielle',error:'interrompu',stopped:'non lancé',cancelled:'arrêté'};
+ return '<div class="panel"><div class="panel-title">ANALYSES MÉMORISÉES · 5 RÔLES</div><p class="sample-note">Charge les cinq rôles en une action, ou chaque rôle depuis le comparateur. Les rapports complets déjà mémorisés sont réutilisés sans appel Riot. Jusqu’à dix rapports individuels, collectés successivement ; le lot s’arrête sur erreur ou refus Riot. Les rôles sans compte ou composition univoque sont ignorés, jamais inventés.</p><button id="loadTeamDuels" class="action primary" '+(!S.hasKey||batch.running||teamDuel.state.loading||!rows.some(r=>r.pair?.ready)?'disabled':'')+'>'+(batch.running?'Chargement des cinq rôles…':'Charger les 5 rôles')+'</button>'+(batch.running?'<button id="stopTeamDuels" class="action">Arrêter le chargement</button>':'')+'<p class="sample-note" role="status" aria-live="polite">'+batch.rows.map(r=>esc(r.role)+' : '+esc(labels[r.status]||r.status)+(r.reason?' — '+esc(r.reason):'')).join(' · ')+(batch.stop==='cancelled'?' · Arrêt demandé : une requête déjà partie peut encore finir, mais son résultat ne sera pas ajouté.':'')+'</p><p class="sample-note">Les résultats restent consultables pendant 15 min dans cette session, sans nouvel appel Riot lors du changement de rôle. La mémoire ne confirme ni une composition titulaire ni la fraîcheur de l’historique : vérifie les dates des rapports. Elle expire après 15 min ou à la fermeture de l’application.</p><div class="team-filters">'+rows.map(({pair,saved,role})=>{const reports=saved?.sides.filter(s=>s?.report?.role===role)||[],counts=reports.map(s=>s.report.games+'G').join(' / ');return '<button class="action" data-saved-role="'+role+'" '+(!pair?'disabled':'')+'>'+role+' · '+reports.length+'/2 rapports'+(counts?' · '+counts:'')+'</button>';}).join('')+'</div></div>';
 }
 function duelPanel(team,home){
  const pair=DuelScouting.pair(team,home,duelRole,S.lineups,S.hasKey);
@@ -148,11 +150,13 @@ function duelPanel(team,home){
  return `<section class="panel team-duel"><div class="panel-title">COMPARATEUR SOLOQ PAR RÔLE · ${esc(team.name)} / UWU GANG</div><div class="team-filters"><label>Rôle à comparer<select id="duelRole" class="fullinput">${TeamScouting.roles.map(r=>`<option value="${r}" ${r===duelRole?"selected":""}>${r}</option>`).join("")}</select></label>${patchPicker}${championPicker}<button id="loadDuel" class="action primary" ${!pair.ready||state.loading?"disabled":""}>${state.loading?"Chargement des rapports…":state.reused?"Actualiser ce rôle":"Comparer ce rôle"}</button></div><p class="sample-note">Deux historiques SoloQ individuels au même rôle, pas des confrontations directes. Jusqu’à 12 parties retenues parmi les 20 dernières SoloQ de chaque compte ; périodes, patchs, champions et adversaires peuvent différer. Aucun pronostic de victoire ni conclusion de micro-gameplay. Les compositions locales sont utilisées sans confirmer des titulaires officiels. ${!S.hasKey?"Configure une clé Riot valide dans Réglages.":""}</p><p class="sample-note">Périmètre : ${duelPatch==="ALL"?"tous les patchs des parties retenues":`patch commun ${esc(duelPatch)} uniquement`}. Champion : ${duelChampion==="ALL"?"tous ceux retenus":esc(duelChampion)}. Les filtres recalculent les deux rapports sans requête Riot supplémentaire ; seuls les champions observés des deux côtés dans le périmètre choisi sont proposés. Les adversaires, périodes et coéquipiers ne sont pas contrôlés. Les parties sans version exploitable restent uniquement dans « Toutes les parties ».</p>${state.reused?'<p class="sample-note">Rapports restaurés depuis la mémoire de cette session. Aucun appel Riot supplémentaire.</p>':""}${duelSynthesis(pair,state)}<div class="duel-columns">${pair.sides.map((side,i)=>{const stored=state.sides[i],result=stored?.report?{...stored,report:DuelScouting.scopeReport(stored.report,duelPatch,duelChampion)}:stored,a=side.account;return `<div><h3>${esc(side.teamName)} · ${esc(side.player?.name||"Joueur non sélectionné")}</h3><p>${esc(a?`${a.gameName}#${a.tagLine} · ${a.platform||"EUW1"}`:"Compte indisponible")} · ${side.manual?"composition locale":"seul joueur déclaré"}</p>${side.reason?`<p>${esc(side.reason)}</p>`:result?.error?`<p role="alert">${esc(result.error)}</p>`:result?.report?roleStatReport(result.report)+patchReport(result.report.patches):`<p>${state.loading?"Rapport en attente…":"Lance la comparaison pour charger les résultats mesurés."}</p>`}</div>`;}).join("")}</div></section>`;
 }
 function bindDuel(team,home){
+ if($("#loadTeamDuels"))$("#loadTeamDuels").onclick=()=>teamBatch.load(roleMemories(team,home).map(r=>r.pair),teamDuel,(account,role)=>window.mw.roleStats(account,role),()=>{if(view==="TEAMS")render()});
+ if($("#stopTeamDuels"))$("#stopTeamDuels").onclick=()=>{teamBatch.cancel();render()};
  if($("#duelChampion"))$("#duelChampion").onchange=e=>{duelChampion=e.target.value;render()};
  document.querySelectorAll("[data-saved-role]").forEach(button=>button.onclick=()=>{duelRole=button.dataset.savedRole;duelPatch="ALL";duelChampion="ALL";render()});
  if($("#duelPatch"))$("#duelPatch").onchange=e=>{duelPatch=e.target.value;render()};
  if($("#duelRole"))$("#duelRole").onchange=e=>{duelRole=e.target.value;duelPatch="ALL";duelChampion="ALL";render()};
- if($("#loadDuel"))$("#loadDuel").onclick=()=>teamDuel.load(DuelScouting.pair(team,home,duelRole,S.lineups,S.hasKey),(account,role)=>window.mw.roleStats(account,role),()=>{if(view==="TEAMS")render()});
+ if($("#loadDuel")){if(teamBatch.state.running)$("#loadDuel").disabled=true;$("#loadDuel").onclick=()=>{if(teamBatch.state.running)return;return teamDuel.load(DuelScouting.pair(team,home,duelRole,S.lineups,S.hasKey),(account,role)=>window.mw.roleStats(account,role),()=>{if(view==="TEAMS")render()});};}
 }
 function groupBoardHtml(board){
  if(!board.known)return '<div class="panel group-board"><p>Groupe LEA non publié : comparaison du groupe indisponible.</p></div>';
@@ -189,7 +193,7 @@ function renderTeamSection(){
  $("#teamSelect").onchange=e=>{selectedTeam=e.target.value;render();refreshRanks()};
  $("#sectionTitle").textContent=team?`${team.name} · ${team.division} · ${team.group}`:"Aucune équipe";
  $("#summary").textContent=`${visible.length} équipes · ${allPlayers().length} joueurs OUAT`;
- if(!team){teamDuel.cancel();$("#grid").innerHTML='<div class="panel">Aucune équipe ne correspond aux filtres.</div>';return;}
+ if(!team){teamBatch.cancel();teamDuel.cancel();$("#grid").innerHTML='<div class="panel">Aucune équipe ne correspond aux filtres.</div>';return;}
  const rosterRows=(roster,compare=false)=>TeamScouting.roles.map(role=>{
   const ps=roster.players.filter(p=>p.role===role),selection=TeamScouting.lineup(S.lineups,roster.id),chosen=selection[role];
   const picker=`<label class="lineup-picker">Composition locale · ${role}<select class="fullinput" data-lineup-team="${esc(roster.id)}" data-lineup-role="${role}"><option value="">${ps.length===1?"Automatique · seul joueur déclaré":"Aucun choix · rôle exclu"}</option>${chosen&&!ps.some(p=>p.id===chosen)?`<option value="${esc(chosen)}" selected>Choix précédent absent · à revoir</option>`:""}${ps.map(p=>`<option value="${esc(p.id)}" ${chosen===p.id?"selected":""}>${esc(p.name)} · choix personnel</option>`).join("")}</select></label>`;
@@ -341,7 +345,7 @@ function drawPlayer(p){
   if($("#clearFix"))$("#clearFix").onclick=async()=>{await window.mw.clearOverride(p.id);await reloadAccountIdentity(p.id)};
 }
 async function reloadAccountIdentity(id){
- delete rankState[id];delete rankMeta[id];delete liveState[id];delete liveMeta[id];teamDuel.cancel();
+ delete rankState[id];delete rankMeta[id];delete liveState[id];delete liveMeta[id];teamBatch.cancel();teamDuel.cancel();
  const fresh=await window.mw.data();S.ouatPlayers=fresh.ouatPlayers;
  notice("Compte mis à jour. Les données de l’ancien Riot ID sont retirées ; rechargement des rangs lancé.");
  openPlayer(id);renderNav();render();if(rankBusy)rankReloadPending=true;else refreshRanks();
