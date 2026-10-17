@@ -1,4 +1,10 @@
-# MidPulse 5.15 — five-role OUAT overview
+# MidPulse 5.15.1 — rank loading follows the selected team
+
+The **Équipes OUAT → Suivi des rangs SoloQ** panel distinguishes verified ranked/unranked results, pending, partial, failed, stale, missing-account and inconsistent states for each declared player. Its counts are not the five-role coverage of the team mean or confirmation of starters. Expand the details to see each player's status and last usable check timestamp.
+
+Rank collection now preserves the supplied priority order instead of treating it as an unordered set. Selected/local-lineup role players and the rest of the selected roster precede UWU GANG, visible players, the actual group and the fallback list. The existing five-account budget, fifteen-minute fresh cache, delayed follow-ups, shared Riot backoff and account-identity checks remain in place. No new API endpoint, bypass or forced refetch is added. This fixes scheduling delays; it cannot provide a rank that Riot does not return or repair a missing Riot ID automatically.
+
+## Five-role OUAT overview
 
 In **Équipes OUAT → opponent → Vue d’ensemble SoloQ · 5 rôles**, view all five independent role comparisons at once after loading them. Each side shows the selected player/account, sample size and dates, win rate, KDA, CS/damage per minute, vision per game and up to three most-played champions in that sample (with a truncation label). Missing metrics stay absent, never zero-filled. Small, partial and stale samples are marked per player. A role count indicates how many rows have non-empty samples on both sides, not statistical certainty or complete collection coverage.
 

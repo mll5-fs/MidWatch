@@ -65,12 +65,12 @@ function resetErrors(cache = {}) {
 }
 
 async function loadBatch(riot, players, { cache = {}, accountCache = {}, priorityIds = [], now = Date.now() } = {}) {
-  const priority = new Set(priorityIds);
+  const priority = new Map([...new Set(priorityIds)].map((id,index)=>[id,index]));
   const candidates = players.flatMap(player => (player.accounts || []).map((account, accountIndex) => ({ player, account, accountIndex }))).filter(({ account }) => {
     if (!account?.gameName || !account?.tagLine) return false;
     const entry = cache[accountKey(account)];
     return !entry || now >= (entry.nextCheck || 0);
-  }).sort((a, b) => Number(priority.has(b.player.id)) - Number(priority.has(a.player.id)) ||
+  }).sort((a, b) => (priority.get(a.player.id)??priority.size) - (priority.get(b.player.id)??priority.size) ||
     (cache[accountKey(a.account)]?.checkedAt || 0) - (cache[accountKey(b.account)]?.checkedAt || 0) ||
     a.accountIndex - b.accountIndex);
   const updates = [];
