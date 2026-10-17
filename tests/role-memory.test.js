@@ -49,6 +49,10 @@ test('multi-role export retains each role scope and data limitations',()=>{
 test('duplicate role entries cannot duplicate report sections',()=>{
  const op=team('Opponent'),home=team('UWU GANG'),entry={pair:pair('MID',op,home),reports:[report(),report()]},text=R.build({team:op,home,duels:[entry,entry]});assert.equal((text.match(/ANALYSE SOLOQ CHARGÉE : MID/g)||[]).length,1);
 });
+test('a failed request with no measured report is not exported as a loaded analysis',()=>{
+ const op=team('Opponent'),home=team('UWU GANG'),text=R.build({team:op,home,duels:[{pair:pair('MID',op,home),reports:[undefined,undefined]}]});
+ assert.match(text,/Aucune comparaison SoloQ chargée/);assert.doesNotMatch(text,/ANALYSE SOLOQ CHARGÉE/);
+});
 test('actual role shortcuts restore reports with no additional API call and copy includes both loaded roles',async()=>{
  const app=fs.readFileSync('src/renderer/app.js','utf8'),op=team('Opponent'),home=team('UWU GANG'),nodes={},buttons=T.roles.map(role=>({dataset:{savedRole:role}}));let calls=0;
  const $=id=>nodes[id]??={innerHTML:'',textContent:'',value:''};
