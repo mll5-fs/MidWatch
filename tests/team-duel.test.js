@@ -56,7 +56,7 @@ test('navigation, account or role change discards late success and late failure'
 test('standard mid comparison cache cannot shadow detailed timeline reports',async()=>{
  const source=fs.readFileSync('src/main.js','utf8'),fn=source.slice(source.indexOf('async function playerRoleStats('),source.indexOf('async function rankBatch('));let cacheRead,cacheWrite;
  const ctx=vm.createContext({document:{querySelectorAll:()=>[]},key:()=>true,require:p=>p.includes('ouat-roles')?{normalizeRole:r=>r}:{collectRoleReport:async()=>report()},Riot:function(){},statsCache:{read:()=>null,write:()=>({})},store:{get:k=>{cacheRead=k;return {};},set:k=>cacheWrite=k}});
- vm.runInContext(fn,ctx);await ctx.playerRoleStats(account('x'),'MID');assert.equal(cacheRead,'roleStatsCacheV2');assert.equal(cacheWrite,'roleStatsCacheV2');
+ vm.runInContext(fn,ctx);await ctx.playerRoleStats(account('x'),'MID');assert.equal(cacheRead,'roleStatsCacheV3');assert.equal(cacheWrite,'roleStatsCacheV3');
 });
 test('team comparator UI launches selected role and renders both samples with limits',async()=>{
  const app=fs.readFileSync('src/renderer/app.js','utf8'),nodes={},$=id=>nodes[id]??={value:'MID',innerHTML:''},opp=team('opp'),home=team('home');let calls=0,html='';
@@ -82,7 +82,7 @@ test('malformed optional champion, patch and metric fields are excluded rather t
 });
 test('rendered synthesis labels direction, common evidence and comparison limits',()=>{
  const app=fs.readFileSync('src/renderer/app.js','utf8'),ctx=vm.createContext({document:{querySelectorAll:()=>[]},DuelScouting:D,esc:String});
- vm.runInContext('let duelPatch="ALL";'+app.slice(app.indexOf('function duelSynthesis('),app.indexOf('function duelPanel(')),ctx);
+ vm.runInContext('let duelPatch="ALL",duelChampion="ALL";'+app.slice(app.indexOf('function duelSynthesis('),app.indexOf('function duelPanel(')),ctx);
  const p=pair(),state={sides:[{report:rich()},{report:rich('MID',{games:4,winrate:25,champions:[{name:'Ahri',games:2}],patches:[{patch:'16.20',games:3}]})}]},html=ctx.duelSynthesis(p,state);
  assert.match(html,/SYNTHÈSE DES ÉCHANTILLONS/);assert.match(html,/6 parties/);assert.match(html,/Écart descriptif/);assert.match(html,/\+25/);assert.match(html,/Ahri \(3G \/ 2G\)/);assert.match(html,/16\.20 \(4G \/ 3G\)/);assert.match(html,/ne mesurent pas le micro-gameplay/);
 });

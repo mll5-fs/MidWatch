@@ -71,11 +71,20 @@ const DuelScouting=(()=>{
   const right=new Set((reports[1].byPatch||[]).filter(p=>valid(p,reports[1].role)).map(p=>p.patch));
   return [...new Set((reports[0].byPatch||[]).filter(p=>valid(p,reports[0].role)&&right.has(p.patch)).map(p=>p.patch))].sort((a,b)=>b.localeCompare(a,undefined,{numeric:true}));
  }
- function scopeReport(report,patch){
-  if(!report||patch==='ALL')return report;
-  const scoped=report.byPatch?.find(p=>p.patch===patch)?.report;if(!scoped)return null;
-  return {...scoped,scope:`SoloQ classée · rôle ${scoped.role} · patch ${patch}`,coverage:{...report.coverage,roleGames:scoped.games,targetReached:scoped.games>=(report.coverage?.target||12)},selectedPatch:patch};
+ function commonChampions(reports,patch='ALL'){
+  if(reports.length!==2||!reports.every(Boolean)||reports[0].role!==reports[1].role)return [];
+  const valid=(r,role)=>typeof r?.champion==='string'&&r.champion.trim()&&r.report?.role===role&&Number.isInteger(r.report.games)&&r.report.games>0;
+  const rows=reports.map(r=>(scopeReport(r,patch)?.byChampion||[]).filter(c=>valid(c,r.role)));
+  const right=new Set(rows[1].map(c=>c.champion.toLowerCase()));
+  return [...new Set(rows[0].filter(c=>right.has(c.champion.toLowerCase())).map(c=>c.champion))].sort((a,b)=>a.localeCompare(b));
  }
- return {pair,create,compare,commonPatches,scopeReport};
+ function scopeReport(report,patch,champion='ALL'){
+  if(!report||(patch==='ALL'&&champion==='ALL'))return report;
+  const base=patch==='ALL'?report:report.byPatch?.find(p=>p.patch===patch)?.report;if(!base)return null;
+  const scoped=champion==='ALL'?base:base.byChampion?.find(c=>c.champion?.toLowerCase()===String(champion).toLowerCase())?.report;
+  if(!scoped||scoped.role!==report.role||!Number.isInteger(scoped.games)||scoped.games<0)return null;
+  return {...scoped,scope:`SoloQ classée · rôle ${scoped.role}${patch!=='ALL'?` · patch ${patch}`:''}${champion!=='ALL'?` · champion ${champion}`:''}`,coverage:{...report.coverage,roleGames:scoped.games,targetReached:scoped.games>=(report.coverage?.target||12)},...(patch!=='ALL'?{selectedPatch:patch}:{}),...(champion!=='ALL'?{selectedChampion:champion}:{})};
+ }
+ return {pair,create,compare,commonPatches,commonChampions,scopeReport};
 })();
 if(typeof module!=='undefined')module.exports=DuelScouting;
