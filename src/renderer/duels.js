@@ -94,6 +94,18 @@ const DuelScouting=(()=>{
   return {role:left.role,games:[left.games,right.games],metrics,intervals:[interval(left),interval(right)],champions:{common,leftOnly:exclusive(a,b),rightOnly:exclusive(b,a)},patches,
    limitations:{partial:[!!left.coverage?.partial,!!right.coverage?.partial],stale:[!!left.window?.stale,!!right.window?.stale]}};
  }
+ function overview(entries=[]){
+  return teams.roles.map(role=>{
+   const entry=entries.find(e=>e?.role===role&&e.pair?.role===role),pair=entry?.pair;
+   const sides=[0,1].map(i=>{
+    const side=pair?.sides[i],stored=entry?.saved?.sides[i],raw=stored?.report;
+    const invalid=raw&&(raw.role!==role||!Number.isInteger(raw.games)||raw.games<0);
+    const reason=side?.reason||(!side?'Équipe ou joueur indisponible.':'')||stored?.error||(invalid?'Rapport incohérent pour ce rôle.':'');
+    return {player:side?.player,account:side?.account,manual:!!side?.manual,report:reason?null:raw||null,reason,status:reason?'unavailable':raw?'loaded':entry?.loading?'loading':'missing'};
+   });
+   return {role,sides,loading:!!entry?.loading,comparison:compare(sides[0].report,sides[1].report)};
+  });
+ }
  function commonPatches(reports){
   if(reports.length!==2||!reports.every(Boolean))return [];
   const valid=(row,role)=>/^\d+\.\d+$/.test(row?.patch||'')&&row.report?.role===role&&Number.isInteger(row.report.games)&&row.report.games>0;
@@ -114,6 +126,6 @@ const DuelScouting=(()=>{
   if(!scoped||scoped.role!==report.role||!Number.isInteger(scoped.games)||scoped.games<0)return null;
   return {...scoped,scope:`SoloQ classée · rôle ${scoped.role}${patch!=='ALL'?` · patch ${patch}`:''}${champion!=='ALL'?` · champion ${champion}`:''}`,coverage:{...report.coverage,roleGames:scoped.games,targetReached:scoped.games>=(report.coverage?.target||12)},...(patch!=='ALL'?{selectedPatch:patch}:{}),...(champion!=='ALL'?{selectedChampion:champion}:{})};
  }
- return {pair,create,createBatch,compare,commonPatches,commonChampions,scopeReport};
+ return {pair,create,createBatch,compare,overview,commonPatches,commonChampions,scopeReport};
 })();
 if(typeof module!=='undefined')module.exports=DuelScouting;
