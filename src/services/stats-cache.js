@@ -7,7 +7,7 @@ function accountKey(account = {}) {
 
 function read(cache, account, now = Date.now()) {
   const hit = cache?.[accountKey(account)];
-  return hit && now - hit.at < TTL ? { ...hit.value, cachedAt: hit.at } : null;
+  return hit && Number.isFinite(now) && Number.isFinite(hit.at) && hit.at>=0 && now>=hit.at && now-hit.at<TTL ? { ...hit.value, cachedAt: hit.at } : null;
 }
 
 function write(cache, account, value, now = Date.now()) {

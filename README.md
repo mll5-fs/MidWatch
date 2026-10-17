@@ -1,4 +1,10 @@
-# MidPulse 5.15.1 — rank loading follows the selected team
+# MidPulse 5.15.2 — validated detailed MID samples
+
+In **Équipes OUAT → MID player → detailed scouting report**, matches with incomplete, non-finite, negative or invalid required aggregate statistics are excluded and counted in the visible collection coverage. Authoritative teamPosition takes precedence over individualPosition. Excluded matches cannot contribute to aggregate means, champion/patch groups, sample dates, timeline requests or the twelve-game target. Measured zero values stay valid; positive-duration rates use actual total minutes. This brings detailed MID collection in line with the existing strict five-role report validator, without extending timeline analysis to other roles.
+
+MID trend badges now describe observed CS, damage, vision, deaths and assists, without inferring discipline, resource priority or collective participation. A new detailed-report cache namespace prevents old zero-filled reports being reused. All shared statistical caches reject invalid or future cache timestamps, including after clock reversal. No additional API calls or retries are triggered merely by rendering; the first new detailed MID report requires an explicit collection and a valid key.
+
+## Rank loading follows the selected team
 
 The **Équipes OUAT → Suivi des rangs SoloQ** panel distinguishes verified ranked/unranked results, pending, partial, failed, stale, missing-account and inconsistent states for each declared player. Its counts are not the five-role coverage of the team mean or confirmation of starters. Expand the details to see each player's status and last usable check timestamp.
 

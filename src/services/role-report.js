@@ -8,8 +8,9 @@ function participantForRole(match,puuid,role){
  const actual=normalizeRole(p?.teamPosition)||normalizeRole(p?.individualPosition);
  return p&&actual===normalizeRole(role)?p:null;
 }
+function validRoleStats(p){return !!p&&typeof p.win==='boolean'&&['kills','deaths','assists','timePlayed','totalMinionsKilled','neutralMinionsKilled','totalDamageDealtToChampions','goldEarned','visionScore'].every(k=>Number.isFinite(p[k])&&p[k]>=0)&&p.timePlayed>0;}
 function summarizeRole(matches,puuid,role,sampledAt=Date.now(),includePatchReports=true,includeChampionReports=true){
- const accepted=(matches||[]).map(match=>({match,p:participantForRole(match,puuid,role)})).filter(({p})=>p&&typeof p.win==='boolean'&&['kills','deaths','assists','timePlayed','totalMinionsKilled','neutralMinionsKilled','totalDamageDealtToChampions','goldEarned','visionScore'].every(k=>Number.isFinite(p[k])&&p[k]>=0)&&p.timePlayed>0);
+ const accepted=(matches||[]).map(match=>({match,p:participantForRole(match,puuid,role)})).filter(({p})=>validRoleStats(p));
  const rows=accepted.map(x=>x.p),games=rows.length,wins=rows.filter(p=>p.win).length;
  const report={role:normalizeRole(role),games,wins,limited:games<3,scope:`SoloQ classée · rôle ${normalizeRole(role)}`,window:sampleWindow(accepted.map(x=>x.match),sampledAt),sampledAt};
  if(!games)return {...report,champions:[],patches:[]};
@@ -47,4 +48,4 @@ async function collectRoleReport(riot,account,role,{patchOnly=false,now=Date.now
  if(invalidGames)report.coverage.partial=true;
  return report;
 }
-module.exports={participantForRole,summarizeRole,collectRoleReport};
+module.exports={participantForRole,validRoleStats,summarizeRole,collectRoleReport};
