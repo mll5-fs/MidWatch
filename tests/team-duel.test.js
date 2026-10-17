@@ -56,7 +56,7 @@ test('navigation, account or role change discards late success and late failure'
 test('standard mid comparison cache cannot shadow detailed timeline reports',async()=>{
  const source=fs.readFileSync('src/main.js','utf8'),fn=source.slice(source.indexOf('async function playerRoleStats('),source.indexOf('async function rankBatch('));let cacheRead,cacheWrite;
  const ctx=vm.createContext({document:{querySelectorAll:()=>[]},key:()=>true,require:p=>p.includes('ouat-roles')?{normalizeRole:r=>r}:{collectRoleReport:async()=>report()},Riot:function(){},statsCache:{read:()=>null,write:()=>({})},store:{get:k=>{cacheRead=k;return {};},set:k=>cacheWrite=k}});
- vm.runInContext(fn,ctx);await ctx.playerRoleStats(account('x'),'MID');assert.equal(cacheRead,'roleStatsCacheV3');assert.equal(cacheWrite,'roleStatsCacheV3');
+ vm.runInContext(fn,ctx);await ctx.playerRoleStats(account('x'),'MID');assert.equal(cacheRead,'roleStatsCacheV4');assert.equal(cacheWrite,'roleStatsCacheV4');
 });
 test('team comparator UI launches selected role and renders both samples with limits',async()=>{
  const app=fs.readFileSync('src/renderer/app.js','utf8'),nodes={},$=id=>nodes[id]??={value:'MID',innerHTML:''},opp=team('opp'),home=team('home');let calls=0,html='';

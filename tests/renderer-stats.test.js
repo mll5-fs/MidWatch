@@ -78,12 +78,12 @@ test("manual account check never converts a Riot rank failure to unranked", () =
 });
 
 test("scouting reports expose collection coverage and weak lane samples", () => {
-  assert.match(app, /function coverageReport\(c=\{\}\)/);
+  assert.match(app, /function coverageReport\(c=\{\},normalization=\{\}\)/);
   assert.match(app, /ÉCHANTILLON PARTIEL/);
   assert.match(app, /historique chargé/);
   assert.match(app, /timelines/);
   assert.match(app, /l\.games<3\?" · échantillon faible"/);
-  assert.match(app, /coverageReport\(s\?\.coverage\)/);
+  assert.match(app, /coverageReport\(s\?\.coverage,s\?\.normalization\)/);
 });
 
 test("renders lane-at-ten median and gold-ahead frequency with a strict definition", () => {

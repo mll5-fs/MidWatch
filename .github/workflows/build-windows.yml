@@ -68,6 +68,6 @@ jobs:
           if ($exists) {
             Write-Host "Release $tag already exists. Preserving its installer; bump package.json to publish changes."
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Actualisation reelle du comparateur OUAT : le bouton Actualiser depuis Riot et les reprises de collectes partielles contournent le cache disque des rapports. Les cinq roles complets en memoire restent reutilises ; navigation et filtres sans appel supplementaire. Quotas, arrets et ordonnanceur Riot conserves. Contenu Electron de cet installateur inspecte automatiquement ; aucun essai dans un client LoL reel. Source commit: ${{ github.sha }}."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Statistiques OUAT : les compteurs numeriques omis sont normalises a zero selon la convention officielle Riot, sans accepter les valeurs nulles ou invalides. Provenance et nombre de champs/parties concernes dans les rapports, filtres et export. Collecteur patch MID partage avec les cinq roles ; nouveaux caches pour recollecter. Contenu Electron de cet installateur inspecte automatiquement ; aucun essai dans un client LoL reel. Source commit: ${{ github.sha }}."
             if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           }

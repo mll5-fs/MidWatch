@@ -10,38 +10,31 @@ function create(){store.init();const found=spectate.detect(store.get("leaguePath
 
 async function playerStats(a){
  if(!key())throw new Error("Ajoute ta clé Riot dans Settings.");
- const {participantForRole,validRoleStats}=require("./services/role-report");
- const cached=statsCache.read(store.get("statsCacheV2",{}),a);if(cached)return cached;
+ const {participantForRole,normalizeRoleStats,normalizationSummary}=require("./services/role-report");
+ const cached=statsCache.read(store.get("statsCacheV3",{}),a);if(cached)return cached;
  const riot=new Riot(key()),acc=await riot.resolveAccount(a),ids=await riot.matchIds(acc.platform,acc.puuid,20,420),recent=(ids||[]).slice(0,20),rows=[],matches=[],samples=[],tracking={requested:recent.length,target:12,matchAttempts:0,matchesLoaded:0,midGames:0,timelineAttempts:0,timelinesLoaded:0,matchErrors:0,timelineErrors:0,stop:"complete"};
  let invalidGames=0;
- for(const id of recent){tracking.matchAttempts++;try{const m=await riot.match(acc.platform,id);tracking.matchesLoaded++;const x=participantForRole(m,acc.puuid,"MID");if(x){if(!validRoleStats(x)){invalidGames++;continue;}rows.push(x);matches.push(m);tracking.midGames++;tracking.timelineAttempts++;try{samples.push({match:m,timeline:await riot.timeline(acc.platform,id)});tracking.timelinesLoaded++}catch(e){tracking.timelineErrors++;if([401,403].includes(e.status)){tracking.stop="auth";break}if(e.status===429){tracking.stop="rate_limit";break}}if(rows.length>=12){tracking.stop="target";break}}}catch(e){tracking.matchErrors++;if([401,403].includes(e.status)){tracking.stop="auth";break}if(e.status===429){tracking.stop="rate_limit";break}}}
+ for(const id of recent){tracking.matchAttempts++;try{const m=await riot.match(acc.platform,id);tracking.matchesLoaded++;const raw=participantForRole(m,acc.puuid,"MID");if(raw){const x=normalizeRoleStats(raw);if(!x){invalidGames++;continue;}const measured={...m,info:{...m.info,participants:m.info.participants.map(p=>p===raw?x:p)}};rows.push(x);matches.push(measured);tracking.midGames++;tracking.timelineAttempts++;try{samples.push({match:measured,timeline:await riot.timeline(acc.platform,id)});tracking.timelinesLoaded++}catch(e){tracking.timelineErrors++;if([401,403].includes(e.status)){tracking.stop="auth";break}if(e.status===429){tracking.stop="rate_limit";break}}if(rows.length>=12){tracking.stop="target";break}}}catch(e){tracking.matchErrors++;if([401,403].includes(e.status)){tracking.stop="auth";break}if(e.status===429){tracking.stop="rate_limit";break}}}
  const coverage=buildCoverage(tracking),sampledAt=Date.now();
- coverage.invalidGames=invalidGames;if(invalidGames)coverage.partial=true;
- if(!rows.length){const empty={games:0,champions:[],window:sampleWindow([],sampledAt),coverage,sampledAt,scope:"SoloQ classée · rôle mid"};store.set("statsCacheV2",statsCache.write(store.get("statsCacheV2",{}),a,empty,sampledAt));return empty}
+ const normalization=normalizationSummary(rows);coverage.invalidGames=invalidGames;if(invalidGames)coverage.partial=true;
+ if(!rows.length){const empty={games:0,champions:[],window:sampleWindow([],sampledAt),coverage,normalization,sampledAt,scope:"SoloQ classée · rôle mid"};store.set("statsCacheV3",statsCache.write(store.get("statsCacheV3",{}),a,empty,sampledAt));return empty}
  const games=rows.length,wins=rows.filter(x=>x.win).length,kills=rows.reduce((s,x)=>s+x.kills,0),deaths=rows.reduce((s,x)=>s+x.deaths,0),assists=rows.reduce((s,x)=>s+x.assists,0),cs=rows.reduce((s,x)=>s+(x.totalMinionsKilled||0)+(x.neutralMinionsKilled||0),0),mins=rows.reduce((s,x)=>s+(x.timePlayed||0)/60,0),dmg=rows.reduce((s,x)=>s+(x.totalDamageDealtToChampions||0),0),gold=rows.reduce((s,x)=>s+(x.goldEarned||0),0),vision=rows.reduce((s,x)=>s+(x.visionScore||0),0);
  const cm={};for(const x of rows){const n=x.championName||"?";cm[n]??={name:n,games:0,wins:0,k:0,d:0,a:0};const q=cm[n];q.games++;q.wins+=x.win?1:0;q.k+=x.kills;q.d+=x.deaths;q.a+=x.assists}
  const champions=Object.values(cm).sort((a,b)=>b.games-a.games).slice(0,6).map(x=>({...x,winrate:Math.round(100*x.wins/x.games),interval:winrateInterval(x.wins,x.games),kda:+((x.k+x.a)/Math.max(1,x.d)).toFixed(2)}));
  const avgCs=+(cs/mins).toFixed(1),avgDpm=Math.round(dmg/mins),avgVision=+(vision/games).toFixed(1),avgDeaths=+(deaths/games).toFixed(1),avgAssists=+(assists/games).toFixed(1),habits=[];
  if(avgCs>=7.5)habits.push("CS/min moyens ≥ 7,5 dans cet échantillon");if(avgDpm>=700)habits.push("Dégâts/min moyens ≥ 700 dans cet échantillon");if(avgVision>=20)habits.push("Score de vision moyen ≥ 20 dans cet échantillon");if(avgDeaths<=4.5)habits.push("Morts moyennes ≤ 4,5 dans cet échantillon");if(avgAssists>=8)habits.push("Assists moyennes ≥ 8 dans cet échantillon");if(champions[0]&&champions[0].games>=Math.ceil(games*.4))habits.push("Pool récent concentré autour de "+champions[0].name);
  const lane5=laneAt5(samples,acc.puuid),transition=laneTransition(samples,acc.puuid),early=earlyHabits(samples,acc.puuid);early.lane5=lane5;early.laneTransition=transition;
- const report={games,wins,winrate:Math.round(100*wins/games),interval:winrateInterval(wins,games),window:sampleWindow(matches,sampledAt),kda:+((kills+assists)/Math.max(1,deaths)).toFixed(2),kills:+(kills/games).toFixed(1),deaths:avgDeaths,assists:avgAssists,cspm:avgCs,dpm:avgDpm,gpm:Math.round(gold/mins),vision:avgVision,champions,patches:patchBreakdown(matches,acc.puuid),matchups:matchupBreakdown(matches,acc.puuid),championLanes:championLaneBreakdown(samples,acc.puuid),championTransitions:championTransitionBreakdown(samples,acc.puuid),opponentLanes:opponentLaneBreakdown(samples,acc.puuid),opponentTransitions:opponentTransitionBreakdown(samples,acc.puuid),habits,lane5,laneTransition:transition,lane10:laneAt10(samples,acc.puuid),early,coverage,sampledAt,scope:"SoloQ classée · rôle mid"};
- store.set("statsCacheV2",statsCache.write(store.get("statsCacheV2",{}),a,report,report.sampledAt));return report;
+ const report={games,wins,winrate:Math.round(100*wins/games),interval:winrateInterval(wins,games),window:sampleWindow(matches,sampledAt),kda:+((kills+assists)/Math.max(1,deaths)).toFixed(2),kills:+(kills/games).toFixed(1),deaths:avgDeaths,assists:avgAssists,cspm:avgCs,dpm:avgDpm,gpm:Math.round(gold/mins),vision:avgVision,champions,patches:patchBreakdown(matches,acc.puuid),matchups:matchupBreakdown(matches,acc.puuid),championLanes:championLaneBreakdown(samples,acc.puuid),championTransitions:championTransitionBreakdown(samples,acc.puuid),opponentLanes:opponentLaneBreakdown(samples,acc.puuid),opponentTransitions:opponentTransitionBreakdown(samples,acc.puuid),habits,lane5,laneTransition:transition,lane10:laneAt10(samples,acc.puuid),early,coverage,normalization,sampledAt,scope:"SoloQ classée · rôle mid"};
+ store.set("statsCacheV3",statsCache.write(store.get("statsCacheV3",{}),a,report,report.sampledAt));return report;
 }
 
-async function playerPatchStats(a){
- if(!key())throw new Error("Ajoute ta clé Riot dans Settings.");
- const cached=statsCache.read(store.get("patchStatsCache",{}),a);if(cached)return cached;
- const riot=new Riot(key()),acc=await riot.resolveAccount(a),ids=await riot.matchIds(acc.platform,acc.puuid,60,420),recent=(ids||[]).slice(0,60),matches=[],tracking={requested:recent.length,target:30,matchAttempts:0,matchesLoaded:0,midGames:0,timelineAttempts:0,timelinesLoaded:0,matchErrors:0,timelineErrors:0,stop:"complete"};
- for(const id of recent){tracking.matchAttempts++;try{const match=await riot.match(acc.platform,id);tracking.matchesLoaded++;if(participantForScouting(match,acc.puuid)){matches.push(match);tracking.midGames++;if(matches.length>=30){tracking.stop="target";break}}}catch(e){tracking.matchErrors++;if([401,403].includes(e.status)){tracking.stop="auth";break}if(e.status===429){tracking.stop="rate_limit";break}}}
- const sampledAt=Date.now(),report={games:matches.length,patches:patchBreakdown(matches,acc.puuid),window:sampleWindow(matches,sampledAt),coverage:buildCoverage(tracking),sampledAt,scope:"SoloQ classée · rôle mid · analyse par patch"};
- store.set("patchStatsCache",statsCache.write(store.get("patchStatsCache",{}),a,report,sampledAt));return report;
-}
+async function playerPatchStats(a){return playerRoleStats(a,"MID",true);}
 
 async function playerRoleStats(a,role,patchOnly=false,refresh=false){
  if(!key())throw new Error("Configure une clé Riot valide dans Réglages.");
  role=require("./services/ouat-roles").normalizeRole(role);
  if(!role)throw new Error("Rôle de scouting inconnu.");
- const cacheName=patchOnly?"patchStatsCache":"roleStatsCacheV3",account={...a,scoutingRole:role};
+ const cacheName=patchOnly?"rolePatchStatsCacheV2":"roleStatsCacheV4",account={...a,scoutingRole:role};
  const cached=refresh===true?null:statsCache.read(store.get(cacheName,{}),account);if(cached)return cached;
  const report=await require("./services/role-report").collectRoleReport(new Riot(key()),a,role,{patchOnly});
  store.set(cacheName,statsCache.write(store.get(cacheName,{}),account,report,report.sampledAt));return report;
