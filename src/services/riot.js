@@ -1,5 +1,6 @@
 const{net}=require("electron");
 const {retryAfterMs}=require("./retry-after");
+const backoff=require("./riot-backoff").createRiotBackoff();
 
 function friendly(status,raw="",delay=0){
   const t=String(raw||"");
@@ -8,11 +9,12 @@ function friendly(status,raw="",delay=0){
   return new Error(t||`Riot API ${status}`);
 }
 async function json(url,key){
+  backoff.assertAllowed(key);
   const c=new AbortController(),t=setTimeout(()=>c.abort(),12000);
   try{
     const r=await net.fetch(url,{headers:{"X-Riot-Token":key,"User-Agent":"MidWatch/2.1"},signal:c.signal});
     let d={};try{d=await r.json()}catch(_){}
-    if(!r.ok){const delay=retryAfterMs(r.headers.get("retry-after")),e=friendly(r.status,d?.status?.message,delay);e.status=r.status;e.retryAfterMs=delay;throw e}
+    if(!r.ok){const delay=retryAfterMs(r.headers.get("retry-after"))||(r.status===429?120000:0),e=friendly(r.status,d?.status?.message,delay);e.status=r.status;e.retryAfterMs=delay;if(r.status===429)e.retryAt=backoff.block(key,delay);throw e}
     return d;
   }catch(e){if(e?.name==="AbortError")throw new Error("Riot API n’a pas répondu dans les 12 secondes.");throw e}finally{clearTimeout(t)}
 }

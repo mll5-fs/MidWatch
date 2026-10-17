@@ -107,9 +107,10 @@ async function loadBatch(riot, players, { cache = {}, accountCache = {}, priorit
       cache[key] = { rank, status: solo ? "ranked" : "unranked", checkedAt: now, nextCheck: now + TTL };
     } catch (error) {
       const delay = error.status === 429 && Number.isFinite(error.retryAfterMs) && error.retryAfterMs > 0 ? error.retryAfterMs : RETRY;
-      cache[key] = { ...cache[key], status: "error", error: String(error.message || error), nextCheck: now + delay };
+      const nextCheck=Math.max(now+delay,Number(error.retryAt)||0);
+      cache[key] = { ...cache[key], status: "error", error: String(error.message || error), nextCheck };
       if (error.status === 404) delete accountCache[key];
-      if ([429, 401, 403].includes(error.status)) { retryAt = now + delay; blockedStatus = error.status; }
+      if ([429, 401, 403].includes(error.status)) { retryAt = nextCheck; blockedStatus = error.status; }
     }
     for (const linked of players.filter(p => (p.accounts || []).some(a => a?.gameName && a?.tagLine && accountKey(a) === key))) affected.add(linked.id);
     if (retryAt) break;

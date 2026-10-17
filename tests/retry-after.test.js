@@ -7,8 +7,8 @@ test("parses Retry-After seconds and HTTP dates", () => {
   assert.equal(retryAfterMs("Thu, 01 Jan 1970 00:00:21 GMT", 1000), 20000);
 });
 
-test("rejects invalid delays and caps pathological cooldowns", () => {
+test("rejects invalid delays without shortening a valid Riot cooldown", () => {
   assert.equal(retryAfterMs("not-a-delay"), 0);
   assert.equal(retryAfterMs("-2"), 0);
-  assert.equal(retryAfterMs("99999"), 10 * 60 * 1000);
+  assert.equal(retryAfterMs("99999"), 99999000);
 });
