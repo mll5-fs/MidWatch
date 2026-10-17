@@ -6,7 +6,7 @@ const ReportBuilder=(()=>{
  const reasons={covered:'couvert',missing:'joueur absent',ambiguous:'plusieurs joueurs, aucun choix local',selection_missing:'choix local absent de l’effectif',account_missing:'compte non relié',duplicate:'compte partagé entre rôles',error:'erreur Riot',partial:'rang partiel',rank_missing:'rang absent ou non classé',stale:'rang périmé ou date invalide'};
  const key=a=>`${a?.platform||'EUW1'}|${a?.gameName||''}#${a?.tagLine||''}`.toLowerCase();
  function account(p){return p.accounts?.find(a=>key(a)===key(p.bestRankAccount))||p.accounts?.[0];}
- function build({team,home,lineups={},version='',ouat={},duel=null,now=Date.now()}){
+ function build({team,home,lineups={},version='',ouat={},duel=null,duels=null,now=Date.now()}){
   if(!team)throw new Error('Aucune équipe sélectionnée.');
   const lines=[`MIDPULSE ${clean(version)} — RAPPORT DE PRÉPARATION`,`${clean(team.name)} / ${clean(home?.name||'UWU GANG introuvable')}`,`Généré : ${date(now)}`,`Effectif LEA : ${clean(ouat.season||'saison inconnue')} · actualisé ${date(ouat.updatedAt)}`,'Source effectifs : https://api.leamateur.pro · rangs et parties : API Riot.'];
   if(ouat.warning)lines.push('Attention : l’effectif chargé comporte un avertissement de collecte.');
@@ -22,13 +22,14 @@ const ReportBuilder=(()=>{
    }
   }
   lines.push('','Moyenne descriptive, pas le MMR réel : 100 points/division, 400/palier + LP ; Master/Grandmaster/Challenger = base Master + LP. Compte distinct et rang complet vérifié depuis moins de 15 min requis. Les rôles manquants, ambigus, partiels ou périmés sont exclus. Une moyenne partielle ne représente pas cinq joueurs.');
-  const reports=duel?.reports||[],pair=duel?.pair;
-  if(pair){
-   lines.push('',`ANALYSE SOLOQ CHARGÉE : ${clean(pair.role)} · ${duel.patch&&duel.patch!=='ALL'?`patch ${clean(duel.patch)}`:'toutes les parties retenues'}`);
-   if(duel.loading)lines.push('Collecte encore en cours : ce rapport est un instantané partiel.');
+  const analyses=(Array.isArray(duels)?duels:[duel]).filter(a=>a?.pair&&T.roles.includes(a.pair.role)),roles=new Set();
+  for(const analysis of analyses){
+   const reports=analysis.reports||[],pair=analysis.pair;if(roles.has(pair.role))continue;roles.add(pair.role);
+   lines.push('',`ANALYSE SOLOQ CHARGÉE : ${clean(pair.role)} · ${analysis.patch&&analysis.patch!=='ALL'?`patch ${clean(analysis.patch)}`:'toutes les parties retenues'}`);
+   if(analysis.loading)lines.push('Collecte encore en cours : ce rapport est un instantané partiel.');
    pair.sides.forEach((side,i)=>{
     lines.push(`${clean(side.teamName)} · ${clean(side.player?.name||'joueur non sélectionné')}`);
-    const raw=reports[i],s=raw?.role===pair.role?D.scopeReport(raw,duel.patch||'ALL'):null;
+    const raw=reports[i],s=raw?.role===pair.role?D.scopeReport(raw,analysis.patch||'ALL'):null;
     if(!s||!Number.isInteger(s.games)||s.games<=0){lines.push('  Rapport non chargé ou aucune partie exploitable.');return;}
     lines.push(`  ${s.games} parties au rôle ${clean(s.role)} · période ${date(s.window?.oldestAt)} → ${date(s.window?.newestAt)} · collecte ${date(s.sampledAt)}`);
     if(s.coverage?.partial)lines.push('  COLLECTE PARTIELLE : erreurs, quota ou données incomplètes.');
@@ -38,8 +39,10 @@ const ReportBuilder=(()=>{
     lines.push(`  Champions observés : ${(s.champions||[]).filter(c=>c.name&&Number.isFinite(c.games)&&c.games>0).map(c=>`${clean(c.name)} (${c.games}G)`).join(', ')||'indisponibles'}`);
     lines.push(`  Patchs observés : ${(s.patches||[]).filter(p=>p.patch&&Number.isFinite(p.games)&&p.games>0).map(p=>`${clean(p.patch)} (${p.games}G)`).join(', ')||'indisponibles'}`);
    });
-   lines.push('Les autres rôles ne disposent pas d’une analyse SoloQ dans ce rapport.');
-  }else lines.push('','Aucune comparaison SoloQ chargée : seuls les effectifs et les rangs disponibles sont rapportés.');
+   if(!Array.isArray(duels))lines.push('Les autres rôles ne disposent pas d’une analyse SoloQ dans ce rapport.');
+  }
+  if(Array.isArray(duels)&&roles.size)lines.push('Rôles sans analyse mémorisée : '+(T.roles.filter(r=>!roles.has(r)).join(', ')||'aucun'));
+  if(!analyses.length)lines.push('','Aucune comparaison SoloQ chargée : seuls les effectifs et les rangs disponibles sont rapportés.');
   lines.push('','LIMITES : jusqu’à 12 parties au rôle parmi les 20 dernières SoloQ de chaque compte. Historiques individuels, pas des confrontations directes. Périodes, champions, adversaires et coéquipiers peuvent différer. Filtrer un patch ne prouve pas son effet causal. Aucun pronostic, classement alternatif ou analyse de micro-gameplay.','Instantané à revérifier avant le match. Contient des noms et Riot IDs publics ainsi que vos choix locaux ; aucune clé Riot ni configuration privée.');
   return lines.join('\n');
  }

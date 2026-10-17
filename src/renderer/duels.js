@@ -16,14 +16,17 @@ const DuelScouting=(()=>{
   const key=JSON.stringify([role,hasKey,...sides.map(s=>[s.teamId,s.player?.id,s.account?.platform||'EUW1',s.account?.gameName,s.account?.tagLine,s.reason])]);
   return {key,role,sides,ready:hasKey&&sides.every(s=>!s.reason)};
  }
- function create(){
-  const state={key:'',request:0,loading:false,sides:[]};
-  function sync(key){if(key!==state.key){state.key=key;state.request++;state.loading=false;state.sides=[];}return state;}
-  function cancel(){state.request++;state.loading=false;state.key='';state.sides=[];}
+ function create({now=Date.now}={}){
+  const cache=new Map(),maxAge=15*60*1000;
+  const state={key:'',request:0,loading:false,sides:[],loadedAt:null,reused:false};
+  function peek(key){const value=cache.get(key),age=value?now()-value.loadedAt:Infinity;if(age<0||age>=maxAge){cache.delete(key);return null;}return value?{...value,sides:value.sides.slice()}:null;}
+  function remember(){state.loadedAt=now();cache.delete(state.key);cache.set(state.key,{key:state.key,sides:state.sides.slice(),loadedAt:state.loadedAt});while(cache.size>30)cache.delete(cache.keys().next().value);}
+  function sync(key){if(key!==state.key||(!state.loading&&state.loadedAt!==null&&!peek(key))){const saved=peek(key);state.key=key;state.request++;state.loading=false;state.sides=saved?.sides||[];state.loadedAt=saved?.loadedAt??null;state.reused=!!saved;}return state;}
+  function cancel(){state.request++;state.loading=false;state.key='';state.sides=[];state.loadedAt=null;state.reused=false;}
   async function load(pair,fetchReport,onUpdate=()=>{}){
    if(!pair?.ready)return;
    sync(pair.key);if(state.loading)return;
-   const request=++state.request;state.loading=true;state.sides=[];onUpdate();
+   const request=++state.request;state.loading=true;state.sides=[];state.loadedAt=null;state.reused=false;cache.delete(pair.key);onUpdate();
    const current=()=>request===state.request&&state.key===pair.key;
    try{
     for(const [i,side]of pair.sides.entries()){
@@ -32,7 +35,7 @@ const DuelScouting=(()=>{
       const report=await fetchReport(side.account,pair.role);
       if(!current())return;
       if(report?.role!==pair.role||!Number.isInteger(report.games)||report.games<0)throw new Error('Rapport incohérent pour le rôle demandé.');
-      state.sides[i]={report};onUpdate();
+      state.sides[i]={report};remember();onUpdate();
       if(['auth','rate_limit'].includes(report.coverage?.stop)){
        if(i===0)state.sides[1]={error:'Non chargé : collecte interrompue par Riot. Relance après vérification de la clé ou du quota.'};break;
       }
@@ -42,9 +45,9 @@ const DuelScouting=(()=>{
       if(i===0)state.sides[1]={error:'Non chargé après l’erreur du premier compte. Relance pour réessayer.'};break;
      }
     }
-   }finally{if(current()){state.loading=false;onUpdate();}}
+   }finally{if(current()){state.loading=false;remember();onUpdate();}}
   }
-  return {state,sync,cancel,load};
+  return {state,sync,cancel,load,peek};
  }
  function compare(left,right){
   if(!Number.isInteger(left?.games)||left.games<=0||!Number.isInteger(right?.games)||right.games<=0||left.role!==right.role)return null;
