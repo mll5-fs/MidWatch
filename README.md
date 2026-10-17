@@ -1,4 +1,10 @@
-# MidPulse 5.14 — five-role OUAT preparation
+# MidPulse 5.15 — five-role OUAT overview
+
+In **Équipes OUAT → opponent → Vue d’ensemble SoloQ · 5 rôles**, view all five independent role comparisons at once after loading them. Each side shows the selected player/account, sample size and dates, win rate, KDA, CS/damage per minute, vision per game and up to three most-played champions in that sample (with a truncation label). Missing metrics stay absent, never zero-filled. Small, partial and stale samples are marked per player. A role count indicates how many rows have non-empty samples on both sides, not statistical certainty or complete collection coverage.
+
+The overview always uses **all retained games, patches and champions**, independently of the detailed comparator's filters. Common champion and common patch lists do not imply that the champion/patch intersection is available. Open **Voir TOP/JUNGLE/MID/ADC/SUPPORT** to inspect a role and apply its existing filters. Rendering or opening a loaded row makes no additional Riot request. Expired memory and changed account/lineup keys cannot show the old role report as current. No player ranking, prediction, MMR estimate, causal or micro-gameplay conclusion is created.
+
+## Five-role preparation
 
 In **Équipes OUAT → opponent → Analyses mémorisées · 5 rôles**, use **Charger les 5 rôles** to collect the five role comparisons against UWU GANG. The current local lineups and selected linked accounts are respected. Missing/ambiguous slots are labelled and skipped, never filled with invented players. The batch loads at most ten individual match-only reports sequentially; complete session samples younger than 15 minutes are reused without changing their collection timestamps. Partial/error reports are retried on an explicit new batch. Any error or Riot authentication/rate-limit stop halts the remaining roles without automatic retry.
 
