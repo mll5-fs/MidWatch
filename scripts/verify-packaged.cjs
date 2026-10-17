@@ -71,4 +71,10 @@ assert.match(read('src/services/live-status.js'),/\[401,403,429\].includes\(erro
 assert.match(read('src/main.js'),/checked:updates.length/);
 assert.match(read('src/renderer/app.js'),/reprise dans.*rankCooldownAt/);
 assert.match(read('src/services/ranks.js'),/Number\(error.retryAt\)\|\|0/);
+assert.match(read('src/renderer/duels.js'),/function peek\(key\)/);
+assert.match(read('src/renderer/duels.js'),/cache.size>30/);
+assert.match(read('src/renderer/app.js'),/ANALYSES MÉMORISÉES · 5 RÔLES/);
+assert.match(read('src/renderer/app.js'),/data-saved-role/);
+assert.match(read('src/renderer/app.js'),/duels\}\)/);
+assert.match(read('src/renderer/report.js'),/for\(const analysis of analyses\)/);
 console.log(JSON.stringify({archive,version:expected,players:roster.players.length,roles:Object.fromEntries(roles.map(role=>[role,roster.players.filter(p=>p.role===role).length])),uwu:roster.players.filter(p=>p.team.trim().toUpperCase()==='UWU GANG').map(p=>({name:p.name,role:p.role,division:p.division,group:p.group})),packagedTeamUI:true,packagedRoleReports:true,versionFromElectron:true},null,2));
