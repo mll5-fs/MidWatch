@@ -66,7 +66,7 @@ test("automatic live detection covers every linked account and identifies the ac
   assert.match(main, /p\.accounts\?\.some\(a=>a\?\.gameName&&a\?\.tagLine\)/);
   assert.match(main, /checkLiveAccounts\(riot,p\.accounts/);
   assert.match(main, /liveAccount:status\.account/);
-  assert.match(app, /liveMeta\[u\.id\]=\{identity:u\.identity,liveAccount:u\.liveAccount\|\|null\}/);
+  assert.match(app, /liveMeta\[u\.id\]=\{identity:u\.identity,liveAccount:u\.liveAccount\|\|null,liveCheckedAt:u\.checkedAt,liveError:u\.error\|\|null\}/);
   assert.match(app, /sameRiotAccount\(a,p\.liveAccount\)/);
 });
 

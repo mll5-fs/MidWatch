@@ -29,19 +29,19 @@ test('local choice never bypasses freshness or shared-account exclusions',()=>{
 test('lineup IPC persists validated choices and data returns them after reload',async()=>{
  const fs=require('node:fs'),vm=require('node:vm'),source=fs.readFileSync('src/main.js','utf8'),state={},handlers={};
  const store={get:(k,d)=>state[k]??d,set:(k,v)=>state[k]=v};
- const ctx=vm.createContext({TeamScouting:T,DuelScouting:require("../src/renderer/duels"),ReportBuilder:require("../src/renderer/report"),store,data:()=>({ouatPlayers:roster()}),ipcMain:{handle:(name,fn)=>handlers[name]=fn}});
+ const ctx=vm.createContext({LiveMonitor:require("../src/renderer/live-monitor"),TeamScouting:T,DuelScouting:require("../src/renderer/duels"),ReportBuilder:require("../src/renderer/report"),store,data:()=>({ouatPlayers:roster()}),ipcMain:{handle:(name,fn)=>handlers[name]=fn}});
  vm.runInContext(source.split('\n').find(l=>l.startsWith('ipcMain.handle("team:lineup"')),ctx);
  handlers['team:lineup']({},'1','TOP','0');assert.equal(state.lineups['1'].TOP,'0');
  assert.throws(()=>handlers['team:lineup']({},'1','TOP','made-up'));assert.equal(state.lineups['1'].TOP,'0');
  const dataLine=source.split('\n').find(l=>l.startsWith('function data()'));
- const reload=vm.createContext({store,app:{getVersion:()=> 'test'},selectRoster:()=>({players:[]}),bundledOuat:{},ranks:{hydrate:x=>x},applyOverrides:x=>x,key:()=>'',spectate:{detect:()=>''}});
+ const reload=vm.createContext({LiveMonitor:require("../src/renderer/live-monitor"),store,app:{getVersion:()=> 'test'},selectRoster:()=>({players:[]}),bundledOuat:{},ranks:{hydrate:x=>x},applyOverrides:x=>x,key:()=>'',spectate:{detect:()=>''}});
  vm.runInContext(dataLine,reload);assert.equal(reload.data().lineups['1'].TOP,'0');
  handlers['team:lineup']({},'1','TOP','');assert.equal(state.lineups['1'].TOP,undefined);
 });
 test('lineup selector saves through IPC and preserves earlier choices on write failure',async()=>{
  const fs=require('node:fs'),vm=require('node:vm'),app=fs.readFileSync('src/renderer/app.js','utf8'),nodes={},ps=roster();
  ps.push({...ps[0],id:'sub'});const $=id=>nodes[id]??={value:'',innerHTML:'',textContent:'',hidden:false};let selects=[],fail=false,notice='';
- const S={ouat:{},lineups:{}},ctx=vm.createContext({TeamScouting:T,DuelScouting:require("../src/renderer/duels"),ReportBuilder:require("../src/renderer/report"),allPlayers:()=>ps,$,S,esc:String,queryMatch:()=>true,playerRankLabel:()=>'',rankPlaceholder:()=>'',scoutingAccount:p=>p.accounts[0],notice:s=>notice=s,window:{mw:{setLineup:async(t,r,p)=>{if(fail)throw Error('disk full');return T.updateLineup(S.lineups,ps,t,r,p)}}},document:{querySelectorAll:selector=>{
+ const S={ouat:{},lineups:{}},ctx=vm.createContext({LiveMonitor:require("../src/renderer/live-monitor"),TeamScouting:T,DuelScouting:require("../src/renderer/duels"),ReportBuilder:require("../src/renderer/report"),allPlayers:()=>ps,$,S,esc:String,queryMatch:()=>true,playerRankLabel:()=>'',rankPlaceholder:()=>'',scoutingAccount:p=>p.accounts[0],notice:s=>notice=s,window:{mw:{setLineup:async(t,r,p)=>{if(fail)throw Error('disk full');return T.updateLineup(S.lineups,ps,t,r,p)}}},document:{querySelectorAll:selector=>{
   if(selector!=='[data-lineup-team]')return [];
   selects=[...nodes['#grid'].innerHTML.matchAll(/data-lineup-team="([^"]+)" data-lineup-role="([^"]+)"/g)].map(m=>({dataset:{lineupTeam:m[1],lineupRole:m[2]},value:''}));return selects;
  }},render:()=>ctx.renderTeamSection(),refreshRanks:()=>{}});
@@ -77,7 +77,7 @@ test('team screen renders five roles, opponent comparison, filters and selectabl
  const fs=require('node:fs'),vm=require('node:vm'),app=fs.readFileSync('src/renderer/app.js','utf8');
  const ps=roster();ps.push(...roster().map(p=>({...p,id:'op-'+p.id,team:'Opponent',teamId:2})));
  const nodes={},$=id=>nodes[id]??={value:'',innerHTML:'',textContent:'',hidden:false};let opened;
- const ctx=vm.createContext({TeamScouting:T,DuelScouting:require("../src/renderer/duels"),ReportBuilder:require("../src/renderer/report"),allPlayers:()=>ps,$,S:{ouat:{}},esc:String,queryMatch:()=>true,playerRankLabel:()=> 'GOLD II',rankPlaceholder:()=>'',scoutingAccount:p=>p.accounts[0],document:{querySelectorAll:()=>[]},render:()=>ctx.renderTeamSection(),refreshRanks:()=>{},openPlayer:id=>opened=id});
+ const ctx=vm.createContext({LiveMonitor:require("../src/renderer/live-monitor"),TeamScouting:T,DuelScouting:require("../src/renderer/duels"),ReportBuilder:require("../src/renderer/report"),allPlayers:()=>ps,$,S:{ouat:{}},esc:String,queryMatch:()=>true,playerRankLabel:()=> 'GOLD II',rankPlaceholder:()=>'',scoutingAccount:p=>p.accounts[0],document:{querySelectorAll:()=>[]},render:()=>ctx.renderTeamSection(),refreshRanks:()=>{},openPlayer:id=>opened=id});
  vm.runInContext(app.slice(app.indexOf('let teamDivision='),app.indexOf('\nfunction render(){')),ctx);
  ctx.renderTeamSection();assert.match(nodes['#grid'].innerHTML,/UWU GANG/);assert.match(nodes['#hero'].innerHTML,/teamGroup/);
  nodes['#teamSelect'].onchange({target:{value:'2'}});const html=nodes['#grid'].innerHTML;
@@ -119,7 +119,7 @@ test('group shortcut and comparison-table buttons switch to the actual team grou
  const $=id=>nodes[id]??={value:'',innerHTML:'',textContent:'',hidden:false};
  const ps=roster();ps.push(...roster().map(p=>({...p,id:'op-'+p.id,team:'Opponent',teamId:2})));
  let buttons=[];
- const ctx=vm.createContext({TeamScouting:T,DuelScouting:require("../src/renderer/duels"),ReportBuilder:require("../src/renderer/report"),allPlayers:()=>ps,$,S:{ouat:{}},esc:String,queryMatch:()=>true,playerRankLabel:()=> 'GOLD II',rankPlaceholder:()=>'',scoutingAccount:p=>p.accounts[0],document:{querySelectorAll:selector=>{
+ const ctx=vm.createContext({LiveMonitor:require("../src/renderer/live-monitor"),TeamScouting:T,DuelScouting:require("../src/renderer/duels"),ReportBuilder:require("../src/renderer/report"),allPlayers:()=>ps,$,S:{ouat:{}},esc:String,queryMatch:()=>true,playerRankLabel:()=> 'GOLD II',rankPlaceholder:()=>'',scoutingAccount:p=>p.accounts[0],document:{querySelectorAll:selector=>{
   if(selector!=='[data-group-team]')return [];
   buttons=[...nodes['#grid'].innerHTML.matchAll(/data-group-team="([^"]+)"/g)].map(m=>({dataset:{groupTeam:m[1]}}));return buttons;
  }},render:()=>ctx.renderTeamSection(),refreshRanks:()=>{},openPlayer:()=>{}});

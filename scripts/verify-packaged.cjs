@@ -56,4 +56,12 @@ assert.match(read('src/renderer/app.js'),/async function reloadAccountIdentity/)
 assert.match(read('src/renderer/app.js'),/rankReloadPending=true/);
 assert.match(read('src/services/ranks.js'),/identity:fingerprint\(player\)/);
 assert.match(read('src/main.js'),/identity:PlayerIdentity.fingerprint\(p\)/);
+assert.match(read('src/renderer/index.html'),/src="live-monitor.js"/);
+assert.match(read('src/renderer/live-monitor.js'),/const TTL=120000/);
+assert.match(read('src/renderer/app.js'),/LiveMonitor.project\(p,/);
+assert.match(read('src/renderer/app.js'),/LiveMonitor.label\(p\).*vérifié à/);
+assert.match(read('src/renderer/app.js'),/LiveMonitor.priority\(scope,/);
+assert.match(read('src/services/live-queue.js'),/function createLiveQueue/);
+assert.match(read('src/main.js'),/liveQueue.select\(withAccounts,priorityIds\)/);
+assert.match(read('src/preload.js'),/liveBatch:ids=>ipcRenderer.invoke\("riot:liveBatch",ids\)/);
 console.log(JSON.stringify({archive,version:expected,players:roster.players.length,roles:Object.fromEntries(roles.map(role=>[role,roster.players.filter(p=>p.role===role).length])),uwu:roster.players.filter(p=>p.team.trim().toUpperCase()==='UWU GANG').map(p=>({name:p.name,role:p.role,division:p.division,group:p.group})),packagedTeamUI:true,packagedRoleReports:true,versionFromElectron:true},null,2));

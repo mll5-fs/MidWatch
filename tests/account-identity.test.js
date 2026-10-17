@@ -12,14 +12,14 @@ test('account identity is order/duplicate/case insensitive but changes for name,
 });
 test('old rank and LIVE metadata cannot follow the player ID onto a replacement account',()=>{
  const old=player('Old'),current=player('New'),identity=PlayerIdentity.fingerprint(old);
- const c=vm.createContext({PlayerIdentity,S:{ouatPlayers:[current]},rankMeta:{[old.id]:{identity,rankStatus:'ranked'}},rankState:{[old.id]:{tier:'DIAMOND'}},liveMeta:{[old.id]:{identity,liveAccount:old.accounts[0]}},liveState:{[old.id]:true}});
+ const c=vm.createContext({LiveMonitor:require("../src/renderer/live-monitor"),PlayerIdentity,S:{ouatPlayers:[current]},rankMeta:{[old.id]:{identity,rankStatus:'ranked'}},rankState:{[old.id]:{tier:'DIAMOND'}},liveMeta:{[old.id]:{identity,liveCheckedAt:Date.now(),liveAccount:old.accounts[0]}},liveState:{[old.id]:true}});
  vm.runInContext(app.slice(app.indexOf('function applyLive('),app.indexOf('function rankPlaceholder(')),c);
- const result=c.allPlayers()[0];assert.equal(result.bestRank,undefined);assert.equal(result.live,undefined);assert.equal(result.rankStatus,undefined);
+ const result=c.allPlayers()[0];assert.equal(result.bestRank,undefined);assert.equal(result.live,null);assert.equal(result.rankStatus,undefined);
  c.S.ouatPlayers=[old];assert.equal(c.allPlayers()[0].bestRank.tier,'DIAMOND');assert.equal(c.allPlayers()[0].live,true);
 });
 function harness(){
  const current=player('New'),ranks=[],lives=[];
- const c=vm.createContext({PlayerIdentity,S:{hasKey:true,ouatPlayers:[current]},rankBusy:false,rankReloadPending:false,rankCooldownAt:0,rankFollowup:null,rankState:{},rankMeta:{},liveState:{},liveMeta:{},view:'OUAT',
+ const c=vm.createContext({LiveMonitor:require("../src/renderer/live-monitor"),PlayerIdentity,S:{hasKey:true,ouatPlayers:[current]},rankBusy:false,rankReloadPending:false,rankCooldownAt:0,rankFollowup:null,rankState:{},rankMeta:{},liveState:{},liveMeta:{},view:'OUAT',
  document:{querySelectorAll:()=>[]},listForView:()=>[current],render:()=>{},renderNav:()=>{},setTimeout:()=>1,clearTimeout:()=>{},
  window:{mw:{rankBatch:()=>new Promise(resolve=>ranks.push(resolve)),liveBatch:()=>new Promise(resolve=>lives.push(resolve))}}});
  vm.runInContext(app.slice(app.indexOf('async function refreshRanks('),app.indexOf('async function refresh(){')),c);

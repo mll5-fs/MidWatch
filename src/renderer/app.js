@@ -9,7 +9,7 @@ function playerRankLabel(p={}){const label=rankLabel(p.bestRank);if(!label)retur
 function rankScore(p){const o={CHALLENGER:10,GRANDMASTER:9,MASTER:8,DIAMOND:7,EMERALD:6,PLATINUM:5,GOLD:4,SILVER:3,BRONZE:2,IRON:1};const r=p.bestRank||{};const tier=o[String(r.tier||"").toUpperCase()]||0;if(!tier)return 0;const apex=tier>=8,division=apex?0:({IV:0,III:1,II:2,I:3}[r.rank]||0),rawLp=Number(r.leaguePoints??r.lp??0),lp=Number.isFinite(rawLp)?Math.max(0,Math.min(rawLp,apex?99999:999)):0;return tier*100000+division*1000+lp}
 function sameRiotAccount(a={},b={}){return String(a.gameName||"").trim().toLowerCase()===String(b.gameName||"").trim().toLowerCase()&&String(a.tagLine||"").trim().toLowerCase()===String(b.tagLine||"").trim().toLowerCase()&&String(a.platform||"EUW1").toUpperCase()===String(b.platform||"EUW1").toUpperCase()}
 function scoutingAccount(p={}){const accounts=p.accounts||[],preferred=p.bestRankAccount;return(preferred&&accounts.find(a=>sameRiotAccount(a,preferred)))||accounts[0]}
-function applyLive(list){return(list||[]).map(original=>{const rank=PlayerIdentity.matches(original,rankMeta[original.id]),live=PlayerIdentity.matches(original,liveMeta[original.id]),p={...original,...(rank?rankMeta[original.id]:{}),...(live?liveMeta[original.id]:{})};const x=!live||liveState[p.id]===undefined?p:{...p,live:liveState[p.id]};return !rank||rankState[p.id]===undefined?x:{...x,bestRank:rankState[p.id]||{}}})}function allPlayers(){return applyLive(S.ouatPlayers)}
+function applyLive(list){return(list||[]).map(original=>{const rank=PlayerIdentity.matches(original,rankMeta[original.id]),live=PlayerIdentity.matches(original,liveMeta[original.id]),p={...original,...(rank?rankMeta[original.id]:{}),...(live?liveMeta[original.id]:{})};const x=LiveMonitor.project(p,live?liveState[p.id]:undefined,live?liveMeta[p.id]:{});return !rank||rankState[p.id]===undefined?x:{...x,bestRank:rankState[p.id]||{}}})}function allPlayers(){return applyLive(S.ouatPlayers)}
 function rankPlaceholder(p){
   const account=scoutingAccount(p);if(!account?.gameName||!account?.tagLine)return"COMPTE NON RELIÉ";
   if(p.rankStatus==="unranked")return"NON CLASSÉ SOLOQ";
@@ -17,7 +17,7 @@ function rankPlaceholder(p){
   return S.hasKey?"RANG À CHARGER":"CLÉ RIOT REQUISE";
 }
 function tracked(p){return p.source==="DPM public data"||p.source==="live"||p.live===true}
-function stateOf(p){if(p.live===true)return"live";if(p.live===false)return"offline";return tracked(p)?"offline":"unknown"}
+function stateOf(p){if(p.live===true)return"live";if(p.live===false)return"offline";return"unknown"}
 function dpmUrl(p){const a=scoutingAccount(p);if(p.region==="OUAT"){if(a?.gameName&&a?.tagLine)return`https://dpm.lol/${encodeURIComponent(a.gameName)}-${encodeURIComponent(a.tagLine)}`;return"https://dpm.lol/"}return`https://dpm.lol/pro/${encodeURIComponent(p.name)}`}
 
 function setView(next){teamDuel.cancel();patchRequest++;patchLoading=false;view=next;liveOnly=false;$("#qTop").value="";renderNav();render();refreshRanks()}
@@ -55,7 +55,7 @@ function listForView(){
 function avatar(p,cls="avatar"){const pic=p.avatar||"";const initials=String(p.name||"?").slice(0,2).toUpperCase();return`<div class="${cls}">${pic?`<img src="${esc(pic)}" alt="">`:esc(initials)}</div>`}
 function card(p){
   const state=stateOf(p),rank=playerRankLabel(p),fav=S.favorites.includes(p.id),account=scoutingAccount(p);
-  const status=state==="live"?"● EN GAME":state==="offline"?"○ HORS LIGNE":p.accounts?.length?"◌ COMPTE LIÉ":"◌ NON SUIVI";
+  const status=p.accounts?.length?LiveMonitor.label(p):"◌ COMPTE NON RELIÉ";
   return`<article class="player-card ${state}" data-id="${esc(p.id)}">
     <div class="card-top"><span class="card-scope">${esc(p.region)}${p.division?" · "+esc(p.division):""}</span><button class="star-btn ${fav?"on":""}" data-star="${esc(p.id)}">★</button></div>
     <div class="player-main">${avatar(p)}<div><div class="player-name-line"><div class="player-name">${esc(p.name)}</div>${rank?`<span class="elo-badge ${rankClass(p.bestRank)}">${esc(rank)}</span>`:`<span class="elo-badge unranked">${esc(rankPlaceholder(p))}</span>`}</div><div class="player-team">${esc(p.team)}</div></div></div>
@@ -70,7 +70,7 @@ function bindCards(){
 function ouatBrowser(players){
  const rows=[...players].sort((a,b)=>rankScore(b)-rankScore(a)||String(a.team||"").localeCompare(String(b.team||"")));
  return `<section class="scout-board"><div class="scout-board-head"><span>JOUEUR</span><span>ÉQUIPE</span><span>DIVISION</span><span>SOLOQ</span><span>RIOT ID</span><span>STATUT</span></div>
- ${rows.map((p,i)=>{const a=scoutingAccount(p),state=stateOf(p),rank=playerRankLabel(p);return`<button class="scout-row" data-id="${esc(p.id)}"><span class="scout-player"><em>${String(i+1).padStart(2,"0")}</em>${avatar(p,"ouat-avatar")}<strong>${esc(p.name)}</strong></span><span class="scout-team">${esc(p.team||"—")}</span><span><i>${esc(p.division||"—")}</i></span><span>${rank?`<b class="elo-badge ${rankClass(p.bestRank)}">${esc(rank)}</b>`:`<b class="elo-badge unranked">${esc(rankPlaceholder(p))}</b>`}</span><span class="scout-riot">${a?.gameName?`${esc(a.gameName)}#${esc(a.tagLine||"")}`:"Non relié"}</span><span class="scout-status ${state}">${state==="live"?"● EN GAME":a?.gameName?"● SUIVI":"○ INCOMPLET"}</span></button>`}).join("")}</section>`;
+ ${rows.map((p,i)=>{const a=scoutingAccount(p),state=stateOf(p),rank=playerRankLabel(p);return`<button class="scout-row" data-id="${esc(p.id)}"><span class="scout-player"><em>${String(i+1).padStart(2,"0")}</em>${avatar(p,"ouat-avatar")}<strong>${esc(p.name)}</strong></span><span class="scout-team">${esc(p.team||"—")}</span><span><i>${esc(p.division||"—")}</i></span><span>${rank?`<b class="elo-badge ${rankClass(p.bestRank)}">${esc(rank)}</b>`:`<b class="elo-badge unranked">${esc(rankPlaceholder(p))}</b>`}</span><span class="scout-riot">${a?.gameName?`${esc(a.gameName)}#${esc(a.tagLine||"")}`:"Non relié"}</span><span class="scout-status ${state}">${esc(a?.gameName?LiveMonitor.label(p):"○ COMPTE NON RELIÉ")}</span></button>`}).join("")}</section>`;
 }
 
 function hero(){
@@ -78,7 +78,7 @@ function hero(){
   if(view==="OUAT"&&!$("#qTop").value){
     const divisions=["ALL",...new Set(S.ouatPlayers.map(p=>String(p.division||"Sans division")).filter(Boolean).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})))];
     const teams=new Set((ouatDivision==="ALL"?S.ouatPlayers:S.ouatPlayers.filter(p=>String(p.division||"Sans division")===ouatDivision)).map(p=>p.team)).size;
-    const ranked=S.ouatPlayers.filter(p=>rankScore(p)>0).length,masters=S.ouatPlayers.filter(p=>rankScore(p)>=800000).length,live=S.ouatPlayers.filter(p=>p.live===true).length;$("#hero").innerHTML=`<div class="scouting-hero"><div class="scouting-intro"><div class="panel-kicker">OUATVENTURE · SCOUTING DATABASE</div><h2>Scoute les joueurs OUAT.</h2><p>Classement SoloQ, champion pool, forme récente et rapports de jeu réunis dans une seule base.</p></div><div class="scouting-kpis"><div><strong>${S.ouatPlayers.length}</strong><span>JOUEURS</span></div><div><strong>${ranked}</strong><span>CLASSÉS</span></div><div><strong>${masters}</strong><span>MASTER+</span></div><div><strong>${live}</strong><span>LIVE</span></div></div><div class="division-strip">${divisions.map(d=>`<button data-division="${esc(d)}" class="${ouatDivision===d?"on":""}">${d==="ALL"?"Toutes divisions":esc(d)}</button>`).join("")}</div></div>`;
+    const ranked=allPlayers().filter(p=>rankScore(p)>0).length,masters=allPlayers().filter(p=>rankScore(p)>=800000).length,live=allPlayers().filter(p=>p.live===true).length;$("#hero").innerHTML=`<div class="scouting-hero"><div class="scouting-intro"><div class="panel-kicker">OUATVENTURE · SCOUTING DATABASE</div><h2>Scoute les joueurs OUAT.</h2><p>Classement SoloQ, champion pool, forme récente et rapports de jeu réunis dans une seule base.</p></div><div class="scouting-kpis"><div><strong>${S.ouatPlayers.length}</strong><span>JOUEURS</span></div><div><strong>${ranked}</strong><span>CLASSÉS</span></div><div><strong>${masters}</strong><span>MASTER+</span></div><div><strong>${live}</strong><span>LIVE</span></div></div><div class="division-strip">${divisions.map(d=>`<button data-division="${esc(d)}" class="${ouatDivision===d?"on":""}">${d==="ALL"?"Toutes divisions":esc(d)}</button>`).join("")}</div></div>`;
     document.querySelectorAll("[data-division]").forEach(b=>b.onclick=()=>{ouatDivision=b.dataset.division;render()});
     return;
   }
@@ -167,7 +167,7 @@ function renderTeamSection(){
  if(!visible.some(t=>t.id===selectedTeam))selectedTeam=visible.find(t=>t.id===home?.id)?.id||visible[0]?.id||"";
  const team=visible.find(t=>t.id===selectedTeam),summary=team?TeamScouting.summarize(team.players,Date.now(),TeamScouting.lineup(S.lineups,team.id)):null,homeSummary=home?TeamScouting.summarize(home.players,Date.now(),TeamScouting.lineup(S.lineups,home.id)):null;
  const option=(value,label,selected)=>`<option value="${esc(value)}" ${value===selected?"selected":""}>${esc(label)}</option>`;
- $("#hero").innerHTML=`<div class="panel"><div class="panel-title">SCOUTING D’ÉQUIPE · TOP / JUNGLE / MID / ADC / SUPPORT</div><div class="team-filters"><label>Division<select id="teamDivision" class="fullinput">${option("ALL","Toutes divisions",teamDivision)+divisions.map(d=>option(d,d,teamDivision)).join("")}</select></label><label>Groupe<select id="teamGroup" class="fullinput">${option("ALL","Tous groupes",teamGroup)+groups.map(g=>option(g,g,teamGroup)).join("")}</select></label><label>Équipe<select id="teamSelect" class="fullinput">${visible.map(t=>option(t.id,t.name,selectedTeam)).join("")}</select></label></div><p class="sample-note">Effectifs LEA · ${esc(S.ouat.season||"")} · ${S.ouat.updatedAt?esc(new Date(S.ouat.updatedAt).toLocaleString("fr-FR")):"date inconnue"}. ${esc(S.ouat.warning||"")} Les rôles LEA ne garantissent pas une composition titulaire. Plusieurs joueurs au même rôle restent affichés. Choisis une composition locale pour les moyennes et la comparaison : ce choix personnel ne confirme pas les titulaires officiels LEA.</p></div>`;
+ $("#hero").innerHTML=`<div class="panel"><div class="panel-title">SCOUTING D’ÉQUIPE · TOP / JUNGLE / MID / ADC / SUPPORT</div><div class="team-filters"><label>Division<select id="teamDivision" class="fullinput">${option("ALL","Toutes divisions",teamDivision)+divisions.map(d=>option(d,d,teamDivision)).join("")}</select></label><label>Groupe<select id="teamGroup" class="fullinput">${option("ALL","Tous groupes",teamGroup)+groups.map(g=>option(g,g,teamGroup)).join("")}</select></label><label>Équipe<select id="teamSelect" class="fullinput">${visible.map(t=>option(t.id,t.name,selectedTeam)).join("")}</select></label></div><p class="sample-note">LIVE : équipe sélectionnée et UWU GANG prioritaires, huit joueurs maximum par passe. Un statut de plus de deux minutes devient « à revérifier », pas « hors ligne ». Les délais Riot peuvent ralentir le suivi. Effectifs LEA · ${esc(S.ouat.season||"")} · ${S.ouat.updatedAt?esc(new Date(S.ouat.updatedAt).toLocaleString("fr-FR")):"date inconnue"}. ${esc(S.ouat.warning||"")} Les rôles LEA ne garantissent pas une composition titulaire. Plusieurs joueurs au même rôle restent affichés. Choisis une composition locale pour les moyennes et la comparaison : ce choix personnel ne confirme pas les titulaires officiels LEA.</p></div>`;
  if(home&&home.division!=="Sans division"&&home.group!=="Groupe non publié"){
   $("#hero").innerHTML+='<button id="uwuGroup" class="action primary">Voir le groupe d’UWU GANG</button>';
   $("#uwuGroup").onclick=()=>{teamDivision=home.division;teamGroup=home.group;selectedTeam=home.id;$("#qTop").value="";render();refreshRanks()};
@@ -181,7 +181,7 @@ function renderTeamSection(){
  const rosterRows=(roster,compare=false)=>TeamScouting.roles.map(role=>{
   const ps=roster.players.filter(p=>p.role===role),selection=TeamScouting.lineup(S.lineups,roster.id),chosen=selection[role];
   const picker=`<label class="lineup-picker">Composition locale · ${role}<select class="fullinput" data-lineup-team="${esc(roster.id)}" data-lineup-role="${role}"><option value="">${ps.length===1?"Automatique · seul joueur déclaré":"Aucun choix · rôle exclu"}</option>${chosen&&!ps.some(p=>p.id===chosen)?`<option value="${esc(chosen)}" selected>Choix précédent absent · à revoir</option>`:""}${ps.map(p=>`<option value="${esc(p.id)}" ${chosen===p.id?"selected":""}>${esc(p.name)} · choix personnel</option>`).join("")}</select></label>`;
-  return `<div class="team-role"><b>${role}</b><div>${picker}${chosen?'<small>COMPOSITION LOCALE · non confirmée par LEA</small>':""}${ps.length?ps.map(p=>`<button class="team-player" data-team-player="${esc(p.id)}"><strong>${esc(p.name)}</strong><span>${esc(playerRankLabel(p)||rankPlaceholder(p))}</span><small>${esc((scoutingAccount(p)?.gameName||"Compte non relié")+(scoutingAccount(p)?.tagLine?"#"+scoutingAccount(p).tagLine:""))}</small></button>`).join(""):"<p>Joueur non renseigné par LEA</p>"}${ps.length>1?'<small>Plusieurs joueurs déclarés · titulaire non confirmé</small>':""}</div></div>`;
+  return `<div class="team-role"><b>${role}</b><div>${picker}${chosen?'<small>COMPOSITION LOCALE · non confirmée par LEA</small>':""}${ps.length?ps.map(p=>`<button class="team-player" data-team-player="${esc(p.id)}"><strong>${esc(p.name)}</strong><span>${esc(playerRankLabel(p)||rankPlaceholder(p))}</span><small>${esc(LiveMonitor.label(p))}${p.liveCheckedAt?" · vérifié à "+esc(new Date(p.liveCheckedAt).toLocaleTimeString("fr-FR")):""}</small><small>${esc((scoutingAccount(p)?.gameName||"Compte non relié")+(scoutingAccount(p)?.tagLine?"#"+scoutingAccount(p).tagLine:""))}</small></button>`).join(""):"<p>Joueur non renseigné par LEA</p>"}${ps.length>1?'<small>Plusieurs joueurs déclarés · titulaire non confirmé</small>':""}</div></div>`;
  }).join("");
  const average=(s)=>`${esc(s.label)} · ${s.covered}/5 rôles couverts${s.complete?"":" · MOYENNE PARTIELLE"}`;
  $("#grid").innerHTML=`<div class="team-scouting"><div class="panel"><div class="panel-title">RANG SOLOQ MOYEN OBSERVÉ</div><h2>${average(summary)}</h2><p class="sample-note">Résumé descriptif des rangs officiels : 100 points par division, 400 par palier, plus les LP ; Master/Grandmaster/Challenger partagent la base Master + LP. Ce n’est pas le MMR. Un seul joueur déclaré ou choisi localement par rôle, compte distinct, rang complet vérifié depuis moins de 15 min. Rangs manquants, partiels ou périmés exclus. ${summary.excluded} rôle(s) exclu(s). Une moyenne partielle ne représente pas les cinq joueurs.</p></div><div class="team-columns"><div class="panel"><div class="panel-title">${esc(team.name)}</div>${rosterRows(team)}</div><div class="panel"><div class="panel-title">COMPARAISON · UWU GANG</div>${home?`<p>${average(homeSummary)}</p>${home.id===team.id?"<p>Sélectionne une autre équipe pour comparer les effectifs.</p>":rosterRows(home)}`:"<p>UWU GANG introuvable dans l’effectif LEA chargé. Aucune composition inventée.</p>"}</div></div></div>`;
@@ -384,12 +384,13 @@ async function refreshRanks(){
   }catch(_){}finally{rankBusy=false;if(rankReloadPending){rankReloadPending=false;refreshRanks()}}
 }
 async function refreshLive(){
-  if(!S.hasKey)return;
+  if(!S.hasKey){renderNav();render();return;}
   try{
-    const r=await window.mw.liveBatch();
-    for(const u of r.updates||[]){if(!S.ouatPlayers.some(p=>p.id===u.id&&PlayerIdentity.matches(p,u)))continue;if(Object.prototype.hasOwnProperty.call(u,"live")){liveState[u.id]=u.live;liveMeta[u.id]={identity:u.identity,liveAccount:u.liveAccount||null}}}
-    renderNav();render();
-  }catch(_){}
+    const scope=view==="TEAMS"?[]:listForView().slice(0,20);
+    const ids=LiveMonitor.priority(scope,view==="TEAMS"?selectedTeam:"",view==="TEAMS"?TeamScouting.group(allPlayers()):[]);
+    const r=await window.mw.liveBatch(ids);
+    for(const u of r.updates||[]){if(!S.ouatPlayers.some(p=>p.id===u.id&&PlayerIdentity.matches(p,u)))continue;if(Object.prototype.hasOwnProperty.call(u,"live")){liveState[u.id]=u.live;liveMeta[u.id]={identity:u.identity,liveAccount:u.liveAccount||null,liveCheckedAt:u.checkedAt,liveError:u.error||null}}}
+  }catch(_){}finally{renderNav();render();}
 }
 async function refresh(){
   if(busy)return;busy=true;$("#refresh").innerHTML='<span class="spinner">↻</span>';
