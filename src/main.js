@@ -37,12 +37,12 @@ async function playerPatchStats(a){
  store.set("patchStatsCache",statsCache.write(store.get("patchStatsCache",{}),a,report,sampledAt));return report;
 }
 
-async function playerRoleStats(a,role,patchOnly=false){
+async function playerRoleStats(a,role,patchOnly=false,refresh=false){
  if(!key())throw new Error("Configure une clé Riot valide dans Réglages.");
  role=require("./services/ouat-roles").normalizeRole(role);
  if(!role)throw new Error("Rôle de scouting inconnu.");
  const cacheName=patchOnly?"patchStatsCache":"roleStatsCacheV3",account={...a,scoutingRole:role};
- const cached=statsCache.read(store.get(cacheName,{}),account);if(cached)return cached;
+ const cached=refresh===true?null:statsCache.read(store.get(cacheName,{}),account);if(cached)return cached;
  const report=await require("./services/role-report").collectRoleReport(new Riot(key()),a,role,{patchOnly});
  store.set(cacheName,statsCache.write(store.get(cacheName,{}),account,report,report.sampledAt));return report;
 }
@@ -101,7 +101,7 @@ ipcMain.handle("settings:pickLeague",async()=>{const r=await dialog.showOpenDial
 ipcMain.handle("settings:diagnoseLeague",async()=>{const result=await spectate.diagnose(store.get("leaguePath",""));store.set("leaguePath",result.root);return result});
 ipcMain.handle("ouat:refresh",async(_e,url)=>{try{const r=await ouat.refresh(String(url||store.get("ouat",{}).url||""));if(r.players?.length)store.set("ouat",r);return r}catch(e){const saved=store.get("ouat",{});const fallback=selectRoster(saved,bundledOuat);if(fallback.players?.length)return{...fallback,warning:`LEA live indisponible : ${e.message}. Snapshot local conservé.`};throw e}});
 ipcMain.handle("ouat:url",(_e,url)=>{const o=store.get("ouat",{});o.url=String(url||"").trim();store.set("ouat",o);return o.url});
-ipcMain.handle("riot:roleStats",(_e,a,role,patchOnly)=>foregroundRiot(()=>playerRoleStats(a,role,patchOnly===true)));
+ipcMain.handle("riot:roleStats",(_e,a,role,patchOnly,refresh)=>foregroundRiot(()=>playerRoleStats(a,role,patchOnly===true,refresh===true)));
 ipcMain.handle("riot:stats",(_e,a)=>foregroundRiot(()=>playerStats(a)));
 ipcMain.handle("riot:patchStats",(_e,a)=>foregroundRiot(()=>playerPatchStats(a)));
 ipcMain.handle("riot:liveBatch",(_e,ids)=>liveBatch(ids));
