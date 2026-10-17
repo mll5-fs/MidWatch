@@ -27,6 +27,7 @@ async function checkLiveAccounts(riot, accounts = [], { accountCache = {}, now =
       const status = await checkLiveAccount(riot, account, { accountCache, now });
       if (status.live) return { ...status, account };
     } catch (error) {
+      if ([401,403,429].includes(error.status)) throw error;
       firstError ||= error;
     }
   }

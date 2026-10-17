@@ -39,7 +39,7 @@ test("keeps a cached rank visible but marks it for verification after a refresh 
 
 test("rank refresh prioritizes the current view and reacts to Riot cooldowns", () => {
   assert.match(app, /listForView\(\)\.slice\(0,20\)/);
-  assert.match(app, /rankCooldownAt=Number\(r\.retryAt\)\|\|0/);
+  assert.match(app, /rankCooldownAt=Math.max\(rankCooldownAt,Number\(r\.retryAt\)\|\|0\)/);
   assert.match(app, /\[401,403\]\.includes\(r\.blockedStatus\)/);
   assert.match(app, /Rechargement des rangs lancé/);
 });

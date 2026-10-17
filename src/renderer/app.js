@@ -208,7 +208,7 @@ function render(){
 }
 function status(){
   $("#apiDot").classList.toggle("ok",S.hasKey);
-  $("#apiText").textContent=!S.hasKey?"Riot API à configurer":Date.now()<rankCooldownAt?"Riot API limitée · reprise auto":"Riot API connectée";
+  $("#apiText").textContent=!S.hasKey?"Riot API à configurer":Date.now()<rankCooldownAt?`Riot API limitée · reprise dans ${Math.max(1,Math.ceil((rankCooldownAt-Date.now())/1000))} s`:"Riot API connectée";
 }
 function notice(t=""){const n=$("#notice");n.textContent=t;n.classList.toggle("hidden",!t)}
 function closeDrawer(){drawerRequest++;$("#drawer").classList.add("hidden");$("#shade").classList.add("hidden")}
@@ -376,7 +376,7 @@ async function refreshRanks(){
     const groupPriority=view==="TEAMS"?TeamScouting.groupBoard(TeamScouting.group(allPlayers()),selectedTeam,Date.now(),S.lineups).rows.flatMap(row=>row.team.players.map(p=>p.id)):[];
     const visible=[...new Set([...onScreen,...groupPriority,...listForView().slice(0,20).map(p=>p.id)])];
     const r=await window.mw.rankBatch(visible);
-    rankCooldownAt=Number(r.retryAt)||0;
+    rankCooldownAt=Math.max(rankCooldownAt,Number(r.retryAt)||0);
     if([401,403].includes(r.blockedStatus))S.hasKey=false;
     for(const u of r.updates||[]){if(!S.ouatPlayers.some(p=>p.id===u.id&&PlayerIdentity.matches(p,u)))continue;if(rankMeta[u.id]?.identity!==u.identity)delete rankState[u.id];if(u.rank!==undefined)rankState[u.id]=u.rank;rankMeta[u.id]={identity:u.identity,rankStatus:u.status,rankCheckedAt:u.checkedAt,rankError:u.error,...(u.rankAccount?{bestRankAccount:u.rankAccount}:{})}}
     render();
@@ -384,11 +384,13 @@ async function refreshRanks(){
   }catch(_){}finally{rankBusy=false;if(rankReloadPending){rankReloadPending=false;refreshRanks()}}
 }
 async function refreshLive(){
-  if(!S.hasKey){renderNav();render();return;}
+  if(!S.hasKey||Date.now()<rankCooldownAt){renderNav();render();return;}
   try{
     const scope=view==="TEAMS"?[]:listForView().slice(0,20);
     const ids=LiveMonitor.priority(scope,view==="TEAMS"?selectedTeam:"",view==="TEAMS"?TeamScouting.group(allPlayers()):[]);
     const r=await window.mw.liveBatch(ids);
+    rankCooldownAt=Math.max(rankCooldownAt,Number(r.retryAt)||0);
+    if([401,403].includes(r.blockedStatus))S.hasKey=false;
     for(const u of r.updates||[]){if(!S.ouatPlayers.some(p=>p.id===u.id&&PlayerIdentity.matches(p,u)))continue;if(Object.prototype.hasOwnProperty.call(u,"live")){liveState[u.id]=u.live;liveMeta[u.id]={identity:u.identity,liveAccount:u.liveAccount||null,liveCheckedAt:u.checkedAt,liveError:u.error||null}}}
   }catch(_){}finally{renderNav();render();}
 }

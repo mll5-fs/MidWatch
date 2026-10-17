@@ -68,6 +68,6 @@ jobs:
           if ($exists) {
             Write-Host "Release $tag already exists. Preserving its installer; bump package.json to publish changes."
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Suivi LIVE des equipes OUAT : priorite a l’equipe consultee et UWU GANG dans le budget de huit joueurs par passe, statut et heure de verification par role. Les observations de plus de deux minutes deviennent a reverifier, sans faux hors-ligne. Delais Riot possibles. Contenu Electron de cet installateur inspecte automatiquement ; aucun essai dans un client LoL reel. Source commit: ${{ github.sha }}."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Correctif de fiabilite Riot : pause Retry-After partagee par cle entre LIVE, rangs et historiques. Arret du lot LIVE sur 401/403/429 ; aucune requete refusee relancee automatiquement. Delais longs respectes, compteur de reprise visible et statuts indisponibles non assimiles a hors-ligne. Contenu Electron de cet installateur inspecte automatiquement ; aucun essai dans un client LoL reel. Source commit: ${{ github.sha }}."
             if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           }

@@ -66,16 +66,18 @@ async function liveBatchWork(priorityIds=[]){
   const withAccounts=players.filter(p=>p.accounts?.some(a=>a?.gameName&&a?.tagLine));
   if(!withAccounts.length)return{updates:[],checked:0};
   const cache=store.get("riotAccountCache",{}),riot=new Riot(key()),updates=[],batch=liveQueue.select(withAccounts,priorityIds);
+  let retryAt=0,blockedStatus=0;
   for(const p of batch){
     try{
       const status=await checkLiveAccounts(riot,p.accounts,{accountCache:cache});
       updates.push({id:p.id,identity:PlayerIdentity.fingerprint(p),live:status.live,liveAccount:status.account,checkedAt:status.checkedAt,gameId:status.gameId});
     }catch(e){
       updates.push({id:p.id,identity:PlayerIdentity.fingerprint(p),live:null,checkedAt:Date.now(),error:String(e.message||e)});
+      if([401,403,429].includes(e.status)){blockedStatus=e.status;if(e.status===429)retryAt=Number(e.retryAt)||Date.now()+(Number(e.retryAfterMs)>0?Number(e.retryAfterMs):120000);break;}
     }
   }
   store.set("riotAccountCache",cache);
-  return{updates,checked:batch.length,total:withAccounts.length};
+  return{updates,checked:updates.length,total:withAccounts.length,retryAt,blockedStatus};
 }
 function liveBatch(priorityIds=[]){
   if(riotScheduler.shouldDeferBackground())return Promise.resolve({updates:[],checked:0,deferred:"foreground_request"});
