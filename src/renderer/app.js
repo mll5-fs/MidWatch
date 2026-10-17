@@ -172,6 +172,10 @@ function bindDuel(team,home){
  if($("#duelRole"))$("#duelRole").onchange=e=>{duelRole=e.target.value;duelPatch="ALL";duelChampion="ALL";render()};
  if($("#loadDuel")){if(teamBatch.state.running)$("#loadDuel").disabled=true;$("#loadDuel").onclick=()=>{if(teamBatch.state.running)return;return teamDuel.load(DuelScouting.pair(team,home,duelRole,S.lineups,S.hasKey),(account,role)=>window.mw.roleStats(account,role),()=>{if(view==="TEAMS")render()});};}
 }
+function rankProgressPanel(team,home){
+ const rosters=[team,...(home&&home.id!==team?.id?[home]:[])].filter(Boolean);
+ return `<section class="panel group-board"><div class="panel-title">SUIVI DES RANGS SOLOQ</div><p class="sample-note">Priorité : joueurs sélectionnés par rôle dans l’équipe consultée, son effectif déclaré, puis UWU GANG, les joueurs visibles et le reste du groupe. Cinq comptes maximum par passe, cache de 15 min et délais Riot conservés. Ce suivi compte les joueurs déclarés, pas les cinq titulaires ni la couverture de la moyenne. ${!S.hasKey?'Configure une clé Riot valide dans Réglages.':''}</p>${rosters.map(t=>{const progress=TeamScouting.rankProgress(t.players),counts=Object.entries(progress.counts).filter(([,n])=>n).map(([key,n])=>`${n} ${progress.labels[key]}`).join(' · ');return `<h3>${esc(t.name)} · ${progress.total} joueurs déclarés</h3><p>${esc(counts||'Aucun joueur déclaré.')}</p><details><summary>Détail des rangs et blocages · ${esc(t.name)}</summary>${progress.rows.map(row=>`<p>${esc(row.player.role||'Rôle inconnu')} · ${esc(row.player.name)} : <b>${esc(row.label)}</b>${row.checkedAt?' · dernière vérification '+esc(new Date(row.checkedAt).toLocaleString('fr-FR')):''}</p>`).join('')}</details>`;}).join('')}<p class="sample-note">Un non-classé est confirmé uniquement par une réponse SoloQ sans rang. Une erreur n’est pas un non-classé ; ouvre la fiche du joueur pour vérifier son Riot ID. Les résultats partiels et périmés restent exclus de la moyenne.</p></section>`;
+}
 function groupBoardHtml(board){
  if(!board.known)return '<div class="panel group-board"><p>Groupe LEA non publié : comparaison du groupe indisponible.</p></div>';
  const reasons={selection_missing:"choix local absent de l’effectif",missing:"joueur absent",ambiguous:"titulaire non confirmé",account_missing:"compte absent",duplicate:"compte partagé",error:"erreur Riot",partial:"rang partiel",rank_missing:"rang absent / non classé",stale:"rang périmé"};
@@ -216,7 +220,7 @@ function renderTeamSection(){
  const average=(s)=>`${esc(s.label)} · ${s.covered}/5 rôles couverts${s.complete?"":" · MOYENNE PARTIELLE"}`;
  $("#grid").innerHTML=`<div class="team-scouting"><div class="panel"><div class="panel-title">RANG SOLOQ MOYEN OBSERVÉ</div><h2>${average(summary)}</h2><p class="sample-note">Résumé descriptif des rangs officiels : 100 points par division, 400 par palier, plus les LP ; Master/Grandmaster/Challenger partagent la base Master + LP. Ce n’est pas le MMR. Un seul joueur déclaré ou choisi localement par rôle, compte distinct, rang complet vérifié depuis moins de 15 min. Rangs manquants, partiels ou périmés exclus. ${summary.excluded} rôle(s) exclu(s). Une moyenne partielle ne représente pas les cinq joueurs.</p></div><div class="team-columns"><div class="panel"><div class="panel-title">${esc(team.name)}</div>${rosterRows(team)}</div><div class="panel"><div class="panel-title">COMPARAISON · UWU GANG</div>${home?`<p>${average(homeSummary)}</p>${home.id===team.id?"<p>Sélectionne une autre équipe pour comparer les effectifs.</p>":rosterRows(home)}`:"<p>UWU GANG introuvable dans l’effectif LEA chargé. Aucune composition inventée.</p>"}</div></div></div>`;
  const duelHtml=duelPanel(team,home);
- $("#grid").innerHTML=groupBoardHtml(TeamScouting.groupBoard(teams,team.id,Date.now(),S.lineups))+preparationPanel(team,home)+roleMemoryPanel(team,home)+teamOverviewPanel(team,home)+duelHtml+$("#grid").innerHTML;
+ $("#grid").innerHTML=rankProgressPanel(team,home)+groupBoardHtml(TeamScouting.groupBoard(teams,team.id,Date.now(),S.lineups))+preparationPanel(team,home)+roleMemoryPanel(team,home)+teamOverviewPanel(team,home)+duelHtml+$("#grid").innerHTML;
  bindDuel(team,home);bindPreparation();
  document.querySelectorAll("[data-lineup-team]").forEach(select=>select.onchange=async()=>{select.disabled=true;try{S.lineups=await window.mw.setLineup(select.dataset.lineupTeam,select.dataset.lineupRole,select.value);render();refreshRanks()}catch(e){notice("Composition non enregistrée : "+String(e.message||e));render()}});
  document.querySelectorAll("[data-team-player]").forEach(b=>b.onclick=()=>openPlayer(b.dataset.teamPlayer));
@@ -403,8 +407,8 @@ async function refreshRanks(){
     const onScreen=[...document.querySelectorAll(".player-card,.scout-row,[data-team-player]")].filter(node=>{
       const rect=node.getBoundingClientRect();return rect.bottom>0&&rect.top<window.innerHeight;
     }).map(node=>node.dataset.teamPlayer||node.dataset.id);
-    const groupPriority=view==="TEAMS"?TeamScouting.groupBoard(TeamScouting.group(allPlayers()),selectedTeam,Date.now(),S.lineups).rows.flatMap(row=>row.team.players.map(p=>p.id)):[];
-    const visible=[...new Set([...onScreen,...groupPriority,...listForView().slice(0,20).map(p=>p.id)])];
+    const fallback=listForView().slice(0,20).map(p=>p.id);
+    const visible=view==="TEAMS"?TeamScouting.rankPriority(allPlayers(),selectedTeam,onScreen,fallback,Date.now(),S.lineups):[...new Set([...onScreen,...fallback])];
     const r=await window.mw.rankBatch(visible);
     rankCooldownAt=Math.max(rankCooldownAt,Number(r.retryAt)||0);
     if([401,403].includes(r.blockedStatus))S.hasKey=false;

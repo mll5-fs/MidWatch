@@ -47,6 +47,22 @@ const TeamScouting = (()=>{
   for(const row of rows)row.position=row.summary.complete?1+rows.filter(r=>r.summary.complete&&r.summary.score>row.summary.score).length:null;
   return {known:true,division:selected.division,group:selected.group,rows};
  }
- return {roles,points,label,summarize,group,groupBoard,lineup,updateLineup};
+ function rankPriority(players,selectedId,onScreen=[],fallback=[],now=Date.now(),choices={}){
+  const teams=group(players),selected=teams.find(t=>t.id===selectedId),home=teams.find(t=>t.name.trim().toUpperCase()==='UWU GANG');
+  const ids=t=>!t?[]:[...summarize(t.players,now,lineup(choices,t.id)).slots.flatMap(s=>s.players.length===1?s.players:[]),...t.players].map(p=>p.id);
+  const groupIds=groupBoard(teams,selectedId,now,choices).rows.flatMap(row=>row.team.players.map(p=>p.id)),known=new Set(players.map(p=>p.id));
+  return [...new Set([...ids(selected),...ids(home),...onScreen,...groupIds,...fallback])].filter(id=>known.has(id)).slice(0,100);
+ }
+ function rankProgress(players,now=Date.now()){
+  const labels={ranked:'classé vérifié',unranked:'non classé vérifié',pending:'à charger',error:'erreur Riot',partial:'résultat partiel',stale:'vérification périmée',account_missing:'compte absent',invalid:'rang incohérent'};
+  const rows=players.map(player=>{
+   const linked=(player.accounts||[]).some(a=>a?.gameName&&a?.tagLine),at=player.rankCheckedAt;
+   const fresh=Number.isFinite(at)&&at>0&&at<=now&&now-at<15*60*1000;
+   const status=!linked?'account_missing':player.rankStatus==='error'?'error':player.rankStatus==='partial'?'partial':player.rankStatus==='ranked'&&points(player.bestRank)===null?'invalid':['ranked','unranked'].includes(player.rankStatus)?fresh?player.rankStatus:'stale':'pending';
+   return {player,status,label:labels[status],checkedAt:Number.isFinite(at)&&at>0&&at<=now?at:null};
+  });
+  return {rows,total:rows.length,counts:Object.fromEntries(Object.keys(labels).map(key=>[key,rows.filter(r=>r.status===key).length])),labels};
+ }
+ return {roles,points,label,summarize,group,groupBoard,lineup,updateLineup,rankPriority,rankProgress};
 })();
 if(typeof module!=="undefined")module.exports=TeamScouting;

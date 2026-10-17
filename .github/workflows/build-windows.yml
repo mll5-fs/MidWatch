@@ -68,6 +68,6 @@ jobs:
           if ($exists) {
             Write-Host "Release $tag already exists. Preserving its installer; bump package.json to publish changes."
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Scouting equipe OUAT : nouvelle Vue d'ensemble SoloQ des cinq roles face a UWU GANG. Joueurs/comptes, statistiques, echantillons et dates, champions observes et avertissements sont regroupes dans un seul tableau. Raccourcis vers le detail de chaque role ; aucun appel Riot supplementaire pour consulter les analyses deja chargees. Vue globale sur toutes les parties retenues, independante des filtres du detail, sans classement ni pronostic. Contenu Electron de cet installateur inspecte automatiquement ; aucun essai dans un client LoL reel. Source commit: ${{ github.sha }}."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Correctif rangs OUAT : l'ordre de priorite est maintenant respecte, avec equipe selectionnee puis UWU GANG avant le reste du groupe. Nouveau Suivi des rangs SoloQ : verification, non-classe, attente, erreur, resultat partiel, perime ou compte absent, avec detail par joueur. Cinq comptes par passe, cache et pauses Riot conserves ; aucun contournement ni rang invente. Contenu Electron de cet installateur inspecte automatiquement ; aucun essai dans un client LoL reel. Source commit: ${{ github.sha }}."
             if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           }
