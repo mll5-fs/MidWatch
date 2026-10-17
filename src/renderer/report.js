@@ -25,11 +25,11 @@ const ReportBuilder=(()=>{
   const analyses=(Array.isArray(duels)?duels:[duel]).filter(a=>a?.pair&&T.roles.includes(a.pair.role)&&(!Array.isArray(duels)||(a.reports||[]).some(r=>r?.role===a.pair.role&&Number.isInteger(r.games)&&r.games>=0))),roles=new Set();
   for(const analysis of analyses){
    const reports=analysis.reports||[],pair=analysis.pair;if(roles.has(pair.role))continue;roles.add(pair.role);
-   lines.push('',`ANALYSE SOLOQ CHARGÉE : ${clean(pair.role)} · ${analysis.patch&&analysis.patch!=='ALL'?`patch ${clean(analysis.patch)}`:'toutes les parties retenues'}`);
+   lines.push('',`ANALYSE SOLOQ CHARGÉE : ${clean(pair.role)} · ${analysis.patch&&analysis.patch!=='ALL'?`patch ${clean(analysis.patch)}`:'toutes les parties retenues'}${analysis.champion&&analysis.champion!=='ALL'?' · champion '+clean(analysis.champion):''}`);
    if(analysis.loading)lines.push('Collecte encore en cours : ce rapport est un instantané partiel.');
    pair.sides.forEach((side,i)=>{
     lines.push(`${clean(side.teamName)} · ${clean(side.player?.name||'joueur non sélectionné')}`);
-    const raw=reports[i],s=raw?.role===pair.role?D.scopeReport(raw,analysis.patch||'ALL'):null;
+    const raw=reports[i],s=raw?.role===pair.role?D.scopeReport(raw,analysis.patch||'ALL',analysis.champion||'ALL'):null;
     if(!s||!Number.isInteger(s.games)||s.games<=0){lines.push('  Rapport non chargé ou aucune partie exploitable.');return;}
     lines.push(`  ${s.games} parties au rôle ${clean(s.role)} · période ${date(s.window?.oldestAt)} → ${date(s.window?.newestAt)} · collecte ${date(s.sampledAt)}`);
     if(s.coverage?.partial)lines.push('  COLLECTE PARTIELLE : erreurs, quota ou données incomplètes.');

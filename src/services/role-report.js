@@ -8,7 +8,7 @@ function participantForRole(match,puuid,role){
  const actual=normalizeRole(p?.teamPosition)||normalizeRole(p?.individualPosition);
  return p&&actual===normalizeRole(role)?p:null;
 }
-function summarizeRole(matches,puuid,role,sampledAt=Date.now(),includePatchReports=true){
+function summarizeRole(matches,puuid,role,sampledAt=Date.now(),includePatchReports=true,includeChampionReports=true){
  const accepted=(matches||[]).map(match=>({match,p:participantForRole(match,puuid,role)})).filter(({p})=>p&&typeof p.win==='boolean'&&['kills','deaths','assists','timePlayed','totalMinionsKilled','neutralMinionsKilled','totalDamageDealtToChampions','goldEarned','visionScore'].every(k=>Number.isFinite(p[k])&&p[k]>=0)&&p.timePlayed>0);
  const rows=accepted.map(x=>x.p),games=rows.length,wins=rows.filter(p=>p.win).length;
  const report={role:normalizeRole(role),games,wins,limited:games<3,scope:`SoloQ classée · rôle ${normalizeRole(role)}`,window:sampleWindow(accepted.map(x=>x.match),sampledAt),sampledAt};
@@ -18,6 +18,10 @@ function summarizeRole(matches,puuid,role,sampledAt=Date.now(),includePatchRepor
  const result={...report,winrate:Math.round(100*wins/games),interval:winrateInterval(wins,games),kills:round(sum('kills')/games),deaths:round(sum('deaths')/games),assists:round(sum('assists')/games),kda:round((sum('kills')+sum('assists'))/Math.max(1,sum('deaths'))),cspm:round((sum('totalMinionsKilled')+sum('neutralMinionsKilled'))/minutes),dpm:Math.round(sum('totalDamageDealtToChampions')/minutes),gpm:Math.round(sum('goldEarned')/minutes),vision:round(sum('visionScore')/games),
  champions:[...champions.values()].sort((a,b)=>b.games-a.games||a.name.localeCompare(b.name)).map(c=>({...c,winrate:Math.round(100*c.wins/c.games),interval:winrateInterval(c.wins,c.games)})),
  patches:patchBreakdown(accepted.map(x=>x.match),puuid,role).map(p=>({...p,role:normalizeRole(role)}))};
+ if(includeChampionReports){
+  const groups=new Map();for(const {match,p}of accepted){if(typeof p.championName!=='string'||!p.championName.trim())continue;const champion=p.championName.trim(),key=champion.toLowerCase();if(!groups.has(key))groups.set(key,{champion,matches:[]});groups.get(key).matches.push(match);}
+  result.byChampion=[...groups.values()].sort((a,b)=>a.champion.localeCompare(b.champion)).map(g=>({champion:g.champion,report:summarizeRole(g.matches,puuid,role,sampledAt,false,false)}));
+ }
  if(includePatchReports){
   const groups=new Map();for(const {match}of accepted){const v=String(match.info.gameVersion||'').match(/^(\d+)\.(\d+)/);if(!v)continue;const patch=`${Number(v[1])}.${Number(v[2])}`;if(!groups.has(patch))groups.set(patch,[]);groups.get(patch).push(match);}
   result.byPatch=[...groups].sort(([a],[b])=>b.localeCompare(a,undefined,{numeric:true})).map(([patch,ms])=>({patch,report:summarizeRole(ms,puuid,role,sampledAt,false)}));

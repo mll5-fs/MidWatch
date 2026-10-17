@@ -68,6 +68,6 @@ jobs:
           if ($exists) {
             Write-Host "Release $tag already exists. Preserving its installer; bump package.json to publish changes."
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Preparation OUAT multi-roles : les rapports deja charges restent consultables quinze minutes via ANALYSES MEMORISEES, sans nouvelle requete lors du changement de role. Le rapport d’equipe copie inclut tous les roles memorises pour les comptes actuellement choisis, avec echantillons, patchs et limites. Collectes explicites, quotas Riot respectes. Contenu Electron de cet installateur inspecte automatiquement ; aucun essai dans un client LoL reel. Source commit: ${{ github.sha }}."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Comparateur OUAT : nouveau filtre Champion commun, combinable au patch, avec recalcul des rapports et echantillons depuis les parties deja collectees. Aucun appel Riot supplementaire au filtrage. Le rapport copie indique le champion et le patch du role courant. Nouveau cache de rapports par champion ; limites et absence de pronostic conservees. Contenu Electron de cet installateur inspecte automatiquement ; aucun essai dans un client LoL reel. Source commit: ${{ github.sha }}."
             if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           }
