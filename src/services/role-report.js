@@ -53,11 +53,20 @@ function summarizeRole(matches,puuid,role,sampledAt=Date.now(),includePatchRepor
 async function collectRoleReport(riot,account,role,{patchOnly=false,now=Date.now}={}){
  role=normalizeRole(role);if(!role)throw new Error('Rôle de scouting inconnu.');
  const acc=await riot.resolveAccount(account),requested=patchOnly?60:20,target=patchOnly?30:12;
- const ids=(await riot.matchIds(acc.platform,acc.puuid,requested,420)||[]).slice(0,requested),matches=[];
+ const history=await riot.matchIds(acc.platform,acc.puuid,requested,420);
+ if(!Array.isArray(history))throw new Error('Historique Riot incohérent : liste de parties indisponible.');
+ const listed=history.slice(0,requested),seen=new Set(),ids=[],matches=[];
+ let duplicateIds=0,invalidIds=0,identityErrors=0;
+ for(const id of listed){
+  if(typeof id!=='string'||!id.trim()||id!==id.trim()){invalidIds++;continue;}
+  if(seen.has(id)){duplicateIds++;continue;}
+  seen.add(id);ids.push(id);
+ }
  const tracking={requested:ids.length,target,matchAttempts:0,matchesLoaded:0,midGames:0,timelineAttempts:0,timelinesLoaded:0,matchErrors:0,timelineErrors:0,stop:'complete'};
  let invalidGames=0;
  for(const id of ids){tracking.matchAttempts++;try{
   const match=await riot.match(acc.platform,id);tracking.matchesLoaded++;
+  if(match?.metadata&&Object.hasOwn(match.metadata,'matchId')&&(typeof match.metadata.matchId!=='string'||!match.metadata.matchId.trim()||match.metadata.matchId!==id)){identityErrors++;continue;}
   if(participantForRole(match,acc.puuid,role)){
    if(!summarizeRole([match],acc.puuid,role,now()).games){invalidGames++;continue;}
    matches.push({...match,scoutingMatchId:id});tracking.midGames++;
@@ -65,8 +74,8 @@ async function collectRoleReport(riot,account,role,{patchOnly=false,now=Date.now
   }
  }catch(e){tracking.matchErrors++;if([401,403].includes(e.status)){tracking.stop='auth';break;}if(e.status===429){tracking.stop='rate_limit';break;}}}
  const report=summarizeRole(matches,acc.puuid,role,now());
- report.coverage={...buildCoverage(tracking),role,roleGames:matches.length,invalidGames};
- if(invalidGames)report.coverage.partial=true;
+ report.coverage={...buildCoverage(tracking),role,roleGames:matches.length,invalidGames,historyEntries:listed.length,duplicateIds,invalidIds,identityErrors};
+ if(invalidGames||duplicateIds||invalidIds||identityErrors)report.coverage.partial=true;
  return report;
 }
 module.exports={participantForRole,normalizeRoleStats,normalizationSummary,evidenceRows,validRoleStats,summarizeRole,collectRoleReport};

@@ -29,7 +29,7 @@ test('collector records a real requested Match-v5 ID when metadata omits it, wit
  const r=await role.collectRoleReport(api,account,'MID',{now:()=>at});assert.equal(calls,1);assert.equal(r.evidence[0].matchId,'EUW1_987');assert.equal(r.evidence[0].idSource,'request');assert.equal(JSON.stringify(m),original);
 });
 test('auth and quota partial reports preserve only the sources already collected',async()=>{
- for(const status of [403,429]){const api={resolveAccount:async()=>({...account,puuid:'p'}),matchIds:async()=>['EUW1_1','EUW1_2','EUW1_3'],match:async(_p,id)=>{if(id==='EUW1_1')return match();throw Object.assign(Error('blocked'),{status});}};const r=await role.collectRoleReport(api,account,'MID',{now:()=>at});assert.equal(r.games,1);assert.equal(r.evidence.length,1);assert.equal(r.coverage.partial,true);assert.equal(r.coverage.matchAttempts,2);}
+ for(const status of [403,429]){const api={resolveAccount:async()=>({...account,puuid:'p'}),matchIds:async()=>['EUW1_1','EUW1_2','EUW1_3'],match:async(_p,id)=>{if(id==='EUW1_1')return match('MIDDLE',id);throw Object.assign(Error('blocked'),{status});}};const r=await role.collectRoleReport(api,account,'MID',{now:()=>at});assert.equal(r.games,1);assert.equal(r.evidence.length,1);assert.equal(r.coverage.partial,true);assert.equal(r.coverage.matchAttempts,2);}
 });
 function evidenceUI(){
  const app=fs.readFileSync('src/renderer/app.js','utf8'),esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),c=vm.createContext({esc});vm.runInContext(app.slice(app.indexOf('function matchEvidenceReport('),app.indexOf('function sampleWindowReport(')),c);return c;
