@@ -40,7 +40,7 @@ test('actual evidence UI is expandable, escaped, dated and transparent about leg
 });
 test('team export uses scoped evidence IDs and excludes arbitrary raw fields and other patch samples',()=>{
  const r=role.summarizeRole([match('MIDDLE','EUW1_1'),match('MIDDLE','EUW1_2','Syndra','16.19.1')],'p','MID',at),team=id=>({id,name:id,players:[]}),pair={role:'MID',sides:[{teamName:'Opponent',player:{name:'Fixture'}},{teamName:'UWU GANG',player:{name:'Home'}}]};r.evidence[0].secret='SHOULD-NOT-SHOW';
- const text=R.build({team:team('op'),home:team('home'),duels:[{pair,reports:[r,r],patch:'16.20',champion:'Ahri'}]});assert.match(text,/PARTIES SOURCES/);assert.match(text,/EUW1_1/);assert.doesNotMatch(text,/EUW1_2|SHOULD-NOT-SHOW|PRIVATE-PUUID/);
+ const text=R.build({team:team('op'),home:team('home'),duels:[{pair,reports:[r,r],patch:'16.20',champion:'Ahri'}]}),[detail,pools]=text.split('POOLS OBSERVÉS · PRÉPARATION DRAFT');assert.match(detail,/PARTIES SOURCES/);assert.match(detail,/EUW1_1/);assert.doesNotMatch(detail,/EUW1_2/);assert.match(pools,/tous les patchs retenus/);assert.match(pools,/EUW1_2/);assert.doesNotMatch(text,/SHOULD-NOT-SHOW|PRIVATE-PUUID/);
 });
 test('detailed MID report keeps the same evidence and request identity as its validated aggregates',async()=>{
  const m=match(),store={},api={resolveAccount:async()=>({...account,puuid:'p'}),matchIds:async()=>['EUW1_42'],match:async()=>m,timeline:async()=>({info:{frames:[]}})};delete m.metadata.matchId;

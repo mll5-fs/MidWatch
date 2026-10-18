@@ -62,7 +62,10 @@ const ReportBuilder=(()=>{
     if(row.restoredAfterError)lines.push('  RAPPORT RESTAURÉ APRÈS ÉCHEC : dates d’origine, pas une actualisation réussie.');
     if(side.poolStatus!=='loaded'){lines.push('  '+({unobserved:'Aucune partie observée sur ce patch dans cet échantillon.',empty:'Aucune partie exploitable.',invalid:'Pool incohérent : fréquences indisponibles.'}[side.poolStatus]||'Rapport non chargé ou indisponible.'));return;}
     const s=side.report;lines.push(`  ${s.games} parties · champions identifiés ${side.identifiedGames}/${s.games} · période ${date(s.window?.oldestAt)} → ${date(s.window?.newestAt)} · collecte ${date(s.sampledAt)}${s.coverage?.partial?' · COLLECTE PARTIELLE':''}${s.window?.stale?' · DONNÉES ANCIENNES':''}`);
-    for(const c of side.champions)lines.push(`  ${clean(c.name)} : ${c.games}/${s.games} (${c.share}%) · ${c.wins===null?'résultats indisponibles':c.wins+'/'+c.games+' victoires ('+c.winrate+'%)'}${c.limited?' · moins de 3 parties':''}`);
+    for(const c of side.champions){lines.push(`  ${clean(c.name)} : ${c.games}/${s.games} (${c.share}%) · ${c.wins===null?'résultats indisponibles':c.wins+'/'+c.games+' victoires ('+c.winrate+'%)'}${c.limited?' · moins de 3 parties':''}`);
+     const trace=c.trace||{status:'unavailable',rows:[]};lines.push('    PARTIES SOURCES DU POOL : '+trace.rows.length+'/'+c.games+' · '+({complete:'sources disponibles',partial:'TRAÇABILITÉ PARTIELLE',unavailable:'sources indisponibles, recollecter',inconsistent:'SOURCES INCOHÉRENTES, lien non vérifiable'}[trace.status]));
+     for(const m of trace.rows)lines.push('      '+clean(m.matchId||'identifiant indisponible')+' · '+date(m.startedAt)+' · '+clean(c.name)+' · patch '+clean(m.patch||'indisponible')+' · '+(m.win?'victoire':'défaite')+' · '+(m.seconds===null?'durée indisponible':m.seconds+' s jouées')+' · K/D/A '+[m.kills,m.deaths,m.assists].map(v=>Number.isFinite(v)?v:'—').join('/'));
+    }
    });
   }
   if(!analyses.length)lines.push('','Aucune comparaison SoloQ chargée : seuls les effectifs et les rangs disponibles sont rapportés.');
