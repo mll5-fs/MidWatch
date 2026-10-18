@@ -80,7 +80,7 @@ assert.match(read('src/renderer/report.js'),/for\(const analysis of analyses\)/)
 assert.match(read('src/services/role-report.js'),/result.byChampion=/);
 assert.match(read('src/renderer/duels.js'),/function commonChampions/);
 assert.match(read('src/renderer/app.js'),/id="duelChampion"/);
-assert.match(read('src/renderer/app.js'),/scopeReport\(stored.report,duelPatch,duelChampion\)/);
+assert.match(read('src/renderer/app.js'),/scopeReport\(stored.report,duelPatch,duelChampionFor\(i\)\)/);
 assert.match(read('src/renderer/report.js'),/analysis.champion/);
 assert.match(read('src/renderer/duels.js'),/function createBatch/);
 assert.match(read('src/renderer/duels.js'),/target.save\(p.key,sides\)/);
@@ -141,4 +141,9 @@ assert.match(read('src/renderer/app.js'),/id="restoreDuel"/);
 assert.match(read('src/renderer/app.js'),/Revenir au rapport précédent \(daté\)/);
 assert.match(read('src/renderer/app.js'),/restoredAfterError:!!saved.restoredAfterError/);
 assert.match(read('src/renderer/report.js'),/RAPPORT PRÉCÉDENT RESTAURÉ APRÈS ÉCHEC/);
+assert.match(read('src/renderer/duels.js'),/function championChoices/);
+assert.match(read('src/renderer/app.js'),/id="duelChampionMode"/);
+assert.match(read('src/renderer/app.js'),/Un champion par joueur/);
+assert.match(read('src/renderer/app.js'),/duelSideChampions.slice\(\)/);
+assert.match(read('src/renderer/report.js'),/CHAMPIONS SÉLECTIONNÉS SÉPARÉMENT/);
 console.log(JSON.stringify({archive,version:expected,players:roster.players.length,roles:Object.fromEntries(roles.map(role=>[role,roster.players.filter(p=>p.role===role).length])),uwu:roster.players.filter(p=>p.team.trim().toUpperCase()==='UWU GANG').map(p=>({name:p.name,role:p.role,division:p.division,group:p.group})),packagedTeamUI:true,packagedRoleReports:true,versionFromElectron:true},null,2));

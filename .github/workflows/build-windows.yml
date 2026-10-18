@@ -68,6 +68,6 @@ jobs:
           if ($exists) {
             Write-Host "Release $tag already exists. Preserving its installer; bump package.json to publish changes."
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Comparateur OUAT : retour explicite au rapport precedent date apres echec ou collecte partielle dune actualisation de role. Les deux anciens rapports sont restaures ensemble, sans appel Riot et sans renouveler leur expiration. Avertissement conserve dans la synthese, les pools draft et lexport. Nouvelle collecte reussie et changement de contexte invalident le secours. Contenu Electron de cet installateur inspecte automatiquement ; aucun essai dans un client LoL reel. Source commit: ${{ github.sha }}."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Comparateur OUAT : nouveau mode Un champion par joueur pour choisir separement les champions observes de ladversaire et de UWU GANG. Intersection role/champion/patch propre a chaque cote, synthese descriptive, parties sources et export coherents. Sans appel Riot supplementaire au filtrage ; pas des confrontations directes ni un winrate de matchup. Le mode Champion commun reste disponible. Contenu Electron du veritable installateur inspecte automatiquement ; aucun essai interactif Windows/LoL. Source commit: ${{ github.sha }}."
             if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           }
