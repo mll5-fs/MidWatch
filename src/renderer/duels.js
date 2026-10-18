@@ -126,6 +126,27 @@ const DuelScouting=(()=>{
   if(!scoped||scoped.role!==report.role||!Number.isInteger(scoped.games)||scoped.games<0)return null;
   return {...scoped,scope:`SoloQ classée · rôle ${scoped.role}${patch!=='ALL'?` · patch ${patch}`:''}${champion!=='ALL'?` · champion ${champion}`:''}`,coverage:{...report.coverage,roleGames:scoped.games,targetReached:scoped.games>=(report.coverage?.target||12)},...(patch!=='ALL'?{selectedPatch:patch}:{}),...(champion!=='ALL'?{selectedChampion:champion}:{})};
  }
- return {pair,create,createBatch,compare,overview,commonPatches,commonChampions,scopeReport};
+ function draftPatches(entries=[]){
+  return [...new Set(overview(entries).flatMap(row=>row.sides.flatMap(side=>(Array.isArray(side.report?.byPatch)?side.report.byPatch:[]).filter(p=>/^\d+\.\d+$/.test(p?.patch||'')&&p.report?.role===row.role&&Number.isInteger(p.report.games)&&p.report.games>0).map(p=>p.patch))))].sort((a,b)=>b.localeCompare(a,undefined,{numeric:true}));
+ }
+ function draftPools(entries=[],patch='ALL'){
+  return overview(entries).map(row=>({...row,sides:row.sides.map(side=>{
+   const original=side.report,scoped=original&&(patch==='ALL'||Array.isArray(original.byPatch))?scopeReport(original,patch):null;
+   if(!original)return {...side,poolStatus:'missing',champions:[]};
+   if(!scoped)return {...side,poolStatus:'unobserved',champions:[],report:null};
+   if(!scoped.games)return {...side,poolStatus:'empty',champions:[],report:scoped};
+   const seen=new Set(),champions=[];let identifiedGames=0,invalid=false;
+   for(const c of Array.isArray(scoped.champions)?scoped.champions:[]){
+    if(typeof c?.name!=='string'||!c.name.trim()||['inconnu','?'].includes(c.name.trim().toLowerCase()))continue;
+    if(!Number.isInteger(c.games)||c.games<=0||c.games>scoped.games){invalid=true;continue;}
+    const name=c.name.trim(),key=name.toLowerCase();if(seen.has(key)){invalid=true;continue;}seen.add(key);identifiedGames+=c.games;
+    const wins=Number.isInteger(c.wins)&&c.wins>=0&&c.wins<=c.games?c.wins:null;
+    champions.push({name,games:c.games,share:Math.round(1000*c.games/scoped.games)/10,wins,winrate:wins===null?null:Math.round(100*wins/c.games),limited:c.games<3});
+   }
+   if(invalid||identifiedGames>scoped.games)return {...side,poolStatus:'invalid',champions:[],report:scoped,identifiedGames:0};
+   return {...side,poolStatus:'loaded',report:scoped,identifiedGames,champions:champions.sort((a,b)=>b.games-a.games||a.name.localeCompare(b.name))};
+  })}));
+ }
+ return {pair,create,createBatch,compare,overview,commonPatches,commonChampions,scopeReport,draftPatches,draftPools};
 })();
 if(typeof module!=='undefined')module.exports=DuelScouting;
