@@ -68,6 +68,6 @@ jobs:
           if ($exists) {
             Write-Host "Release $tag already exists. Preserving its installer; bump package.json to publish changes."
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Pools draft OUAT : Voir les parties sous chaque champion, avec dates, identifiants disponibles, patch, resultat, duree et KDA. Sources filtrees au role/champion/patch des pools et incluses dans leur export, sans nouvel appel Riot. Tracabilite partielle, sources absentes ou incoherentes explicitement distinguees ; aucune ligne inventee. Perimetre independant du comparateur detaille. Installateur Electron inspecte automatiquement ; aucun essai interactif Windows/LoL. Source commit: ${{ github.sha }}."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Nouveau bouton Copier les rangs du groupe dans Equipes OUAT : toutes les equipes du groupe LEA, cinq roles, moyennes observees avec couverture, rangs dates et exclusions. Apercu texte et fraicheur reevaluee au clic sans nouvel appel Riot. Equipes incompletes sans position ; pas un classement du tournoi ni du MMR. Aucun rang invente. Installateur Electron inspecte automatiquement ; aucun essai interactif Windows/LoL. Source commit: ${{ github.sha }}."
             if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           }

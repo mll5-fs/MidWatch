@@ -72,6 +72,25 @@ const ReportBuilder=(()=>{
   lines.push('','LIMITES : jusqu’à 12 parties au rôle parmi les 20 dernières SoloQ de chaque compte. Historiques individuels, pas des confrontations directes. Périodes, champions, adversaires et coéquipiers peuvent différer. Filtrer un patch ne prouve pas son effet causal. Aucun pronostic, classement alternatif ou analyse de micro-gameplay.','Instantané à revérifier avant le match. Contient des noms et Riot IDs publics ainsi que vos choix locaux ; aucune clé Riot ni configuration privée.');
   return lines.join('\n');
  }
- return {build};
+ function buildGroup({teams=[],selectedId,lineups={},version='',ouat={},now=Date.now()}){
+  const board=T.groupBoard(teams,selectedId,now,lineups);
+  if(!board.known)throw new Error('Groupe LEA non publié : export indisponible.');
+  const complete=board.rows.filter(r=>r.summary.complete).length;
+  const lines=[`MIDPULSE ${clean(version)} — RANGS SOLOQ DU GROUPE`,`${clean(board.division)} · ${clean(board.group)}`,`Généré : ${date(now)}`,`Effectif LEA : ${clean(ouat.season||'saison inconnue')} · actualisé ${date(ouat.updatedAt)}`,'Sources : https://api.leamateur.pro (effectifs déclarés) · API Riot (rangs SoloQ officiels).',`${board.rows.length} équipes du groupe · ${complete} avec 5/5 rôles couverts · ${board.rows.length-complete} incomplètes.`, 'Ordre descriptif des moyennes complètes uniquement ; équipes incomplètes ensuite par nom, ex æquo conservés. Pas un classement du tournoi, pas le MMR réel.'];
+  if(ouat.warning)lines.push('ATTENTION : avertissement de collecte des effectifs LEA.');
+  for(const {team,summary:s,position}of board.rows){
+   lines.push('',`ÉQUIPE : ${clean(team.name)}${team.name.trim().toUpperCase()==='UWU GANG'?' · UWU GANG (repère)':''}`,`Ordre SoloQ : ${position??'non attribué'} · moyenne observée : ${s.label} · ${s.covered}/5 rôles couverts${s.complete?' · COMPLET':' · PARTIEL'}`);
+   for(const slot of s.slots){
+    const p=slot.players.length===1?slot.players[0]:null;
+    lines.push(`${slot.role} : ${p?clean(p.name):'non sélectionné'} · ${slot.manual?'composition locale non confirmée par LEA':'effectif déclaré, titularisation non confirmée'} · ${reasons[slot.status]||'indisponible'}`);
+    if(p){const a=account(p),r=p.bestRank;lines.push(`  Riot ID : ${a?.gameName&&a?.tagLine?`${clean(a.gameName)}#${clean(a.tagLine)} (${clean(a.platform||'EUW1')})`:'non relié'}`);
+     lines.push(`  ${slot.status==='covered'?'Rang':'Dernier rang connu, exclu de la moyenne'} : ${T.points(r)!==null?`${clean(r.tier)} ${clean(r.rank||'')} · ${r.leaguePoints??r.lp} LP`:'indisponible'} · vérifié ${date(p.rankCheckedAt)}`);
+    }else if(slot.declared.length)lines.push(`  Joueurs déclarés : ${slot.declared.map(p=>clean(p.name)).join(', ')}`);
+   }
+  }
+  lines.push('','Conversion descriptive : 100 points/division, 400/palier + LP ; Master/Grandmaster/Challenger = base Master + LP. Ce n’est pas le MMR réel. Un compte distinct par rôle et un rang complet vérifié depuis moins de 15 min sont requis. Rôles absents, ambigus, comptes partagés, rangs partiels ou périmés exclus ; une moyenne partielle ne représente pas cinq joueurs.', 'Périmètre : toutes les équipes du groupe LEA sélectionné, indépendamment de la recherche et des filtres de parties. UWU GANG n’est inclus que si présent dans ce groupe. Pas de nouvelle collecte Riot ; les rangs absents ne sont pas inventés. Instantané à revérifier avant le match. Contient noms, Riot IDs publics et choix locaux ; aucune clé ni configuration privée.');
+  return lines.join('\n');
+ }
+ return {build,buildGroup};
 })();
 if(typeof module!=='undefined')module.exports=ReportBuilder;
