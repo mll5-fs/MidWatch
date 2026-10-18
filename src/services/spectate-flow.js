@@ -9,7 +9,7 @@ function failure(error, phase = "inconnue") {
   if ([401, 403].includes(error.status)) return new Error(`Session League locale refusée. Relance le client League, connecte-toi puis réessaie.${observed}`);
   if (!error.status) return error;
   if ([400, 409, 422].includes(error.status)) return new Error(`Données Spectate refusées par le client League (HTTP ${error.status}). Elles peuvent être expirées ou incompatibles avec l’état actuel ; actualise le statut LIVE puis réessaie.${observed}`);
-  if (error.status === 429) return new Error(`Client League momentanément occupé (HTTP 429). Attends quelques secondes avant de réessayer ; aucune seconde demande n’a été envoyée.${observed}`);
+  if (error.status === 429) return Object.assign(new Error(`Client League momentanément occupé (HTTP 429). Respecte la pause affichée avant de réessayer ; aucune seconde demande n’a été envoyée.${observed}`), { spectateBusy: true, retryAfterMs: error.retryAfterMs });
   if (error.status >= 500) return new Error(`Service Spectate du client League indisponible (HTTP ${error.status}). Relance le client si l’erreur persiste ; le lancement n’est pas confirmé.${observed}`);
   return new Error(`League refuse la demande Spectate (HTTP ${error.status}). Réessaie depuis le client League ; le lancement n'est pas confirmé.${observed}`);
 }

@@ -404,18 +404,22 @@ async function checkAccount(p,i){
   try{const r=await window.mw.check(a),solo=(r.ranked||[]).find(x=>x.queueType==="RANKED_SOLO_5x5");box.className="result"+(r.active?" live":"");box.textContent=r.active?`● EN GAME · ${solo?rankLabel(solo):"SoloQ"}`:`○ HORS LIGNE · ${solo?rankLabel(solo):"non classé"}`}
   catch(e){const raw=String(e.message||e).replace(/^Error invoking remote method [^:]+:\s*Error:\s*/,"");box.innerHTML=p.region==="OUAT"&&/not found|no results/i.test(raw)?"Riot ne trouve plus ce compte. Le Riot ID LEA est probablement ancien — corrige-le plus bas.":esc(raw)}
 }
-let spectatePending=false,spectateRetryAt=0,spectateTimer=null;
+let spectatePending=false,spectateRetryAt=0,spectateTimer=null,spectatePauseReason="";
 function syncSpectateButtons(){
- const paused=Date.now()<spectateRetryAt;
- document.querySelectorAll("[data-spec]").forEach(b=>{b.disabled=spectatePending||paused;b.textContent=spectatePending?"Demande en cours…":paused?"Vérifie le client…":"▶ SPECTATE";b.title=paused?"Une demande a été acceptée. Vérifie le client avant de relancer.":""});
+ const paused=Date.now()<spectateRetryAt,seconds=Math.max(0,Math.ceil((spectateRetryAt-Date.now())/1000));
+ const reasons={accepted:"Demande acceptée : vérifie le lancement dans League.",uncertain:"Lancement non confirmé : vérifie le client avant de réessayer.",busy:"Client League occupé : respecte la pause avant de réessayer."};
+ document.querySelectorAll("[data-spec]").forEach(b=>{b.disabled=spectatePending||paused;b.textContent=spectatePending?"Demande en cours…":paused?`Pause · ${seconds} s`:"▶ SPECTATE";b.title=paused?(reasons[spectatePauseReason]||"Vérifie le client avant de réessayer."):""});
  if(spectateTimer)clearTimeout(spectateTimer);
- if(paused)spectateTimer=setTimeout(syncSpectateButtons,Math.max(1,spectateRetryAt-Date.now()));
+ if(paused)spectateTimer=setTimeout(syncSpectateButtons,Math.min(1000,Math.max(1,spectateRetryAt-Date.now())));
 }
 async function spectateAccount(p,i){
   if(spectatePending||Date.now()<spectateRetryAt)return;
   const a=p.accounts[i],box=$(`#res-${i}`);if(!box)return;box.className="result";box.textContent="Recherche de la partie…";
   spectatePending=true;syncSpectateButtons();
-  try{const r=await window.mw.spectate(a),route=String(r.endpoint||"").split("/").filter(Boolean).slice(0,1).join("")||"LCU",phase=r.phase||"inconnue";spectateRetryAt=Number(r.retryAt)||0;box.className="result live";box.textContent=`✓ Demande acceptée · phase ${phase} · route ${route}. Vérifie le lancement dans le client. Attends la fin de la pause avant toute nouvelle demande.`}catch(e){box.textContent=String(e.message||e).replace(/^Error invoking remote method [^:]+:\s*Error:\s*/,"")}
+  try{const r=await window.mw.spectate(a),route=String(r.endpoint||"").split("/").filter(Boolean).slice(0,1).join("")||"LCU",phase=r.phase||"inconnue";spectateRetryAt=Number(r.retryAt)||0;spectatePauseReason=r.pauseReason||"accepted";box.className="result live";box.textContent=`✓ Demande acceptée · phase ${phase} · route ${route}. Vérifie le lancement dans le client. Attends la fin de la pause avant toute nouvelle demande.`}catch(e){
+   box.textContent=String(e.message||e).replace(/^Error invoking remote method [^:]+:\s*Error:\s*/,"");
+   try{if(typeof window.mw.spectateStatus==="function"){const status=await window.mw.spectateStatus();spectateRetryAt=Number.isFinite(status?.retryAt)?status.retryAt:0;spectatePauseReason=status?.pauseReason||"";if(Date.now()<spectateRetryAt)box.textContent+=" Pause Spectate active : vérifie le client ; aucune relance automatique.";}}catch(_){}
+  }
   finally{spectatePending=false;syncSpectateButtons();}
 }
 function settings(){

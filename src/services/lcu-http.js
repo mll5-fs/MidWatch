@@ -1,4 +1,5 @@
 const https = require("https");
+const { retryAfterMs } = require("./retry-after");
 
 function requestLocal(auth, method, endpoint, body, { request = https.request, timeoutMs = 12000 } = {}) {
   return new Promise((resolve, reject) => {
@@ -30,7 +31,7 @@ function requestLocal(auth, method, endpoint, body, { request = https.request, t
           let parsed = out;
           try { parsed = JSON.parse(out); } catch (_) {}
           if (res.statusCode >= 200 && res.statusCode < 300) finish(null, { status: res.statusCode, data: parsed, auth: auth.source });
-          else finish(Object.assign(new Error(`Client League: HTTP ${res.statusCode}`), { status: res.statusCode, endpoint }));
+          else finish(Object.assign(new Error(`Client League: HTTP ${res.statusCode}`), { status: res.statusCode, endpoint, ...(res.statusCode === 429 ? { retryAfterMs: retryAfterMs(res.headers?.["retry-after"]) } : {}) }));
         });
       });
       req.on("error", () => finish(new Error("Connexion au client League impossible. Laisse League ouvert et connecté puis réessaie.")));
