@@ -153,4 +153,9 @@ assert.match(read('src/main.js'),/ipcMain.handle\("spectate:status",\(\)=>specta
 assert.match(read('src/preload.js'),/spectateStatus:\(\)=>ipcRenderer.invoke\("spectate:status"\)/);
 assert.match(read('src/renderer/app.js'),/Pause · \$\{seconds\} s/);
 assert.match(read('src/renderer/app.js'),/await window.mw.spectateStatus\(\)/);
+assert.match(read('src/renderer/duels.js'),/function createFilterMemory/);
+assert.match(read('src/renderer/duels.js'),/reports.some\(\(r,i\)=>r!==old.reports\[i\]\)/);
+assert.match(read('src/renderer/app.js'),/PÉRIMÈTRES MÉMORISÉS · 5 RÔLES/);
+assert.match(read('src/renderer/app.js'),/id="resetTeamFilters"/);
+assert.match(read('src/renderer/app.js'),/const f=roleFilters.read\(pair.key,saved\)/);
 console.log(JSON.stringify({archive,version:expected,players:roster.players.length,roles:Object.fromEntries(roles.map(role=>[role,roster.players.filter(p=>p.role===role).length])),uwu:roster.players.filter(p=>p.team.trim().toUpperCase()==='UWU GANG').map(p=>({name:p.name,role:p.role,division:p.division,group:p.group})),packagedTeamUI:true,packagedRoleReports:true,versionFromElectron:true},null,2));
