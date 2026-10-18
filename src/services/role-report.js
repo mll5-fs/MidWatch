@@ -23,10 +23,17 @@ function normalizeRoleStats(p){
 }
 function validRoleStats(p){return !!normalizeRoleStats(p);}
 function normalizationSummary(rows){return {games:rows.filter(p=>p.riotOmittedStats.length).length,fields:rows.reduce((s,p)=>s+p.riotOmittedStats.length,0),policy:'riot-omitted-numeric-zero',source:'https://developer.riotgames.com/docs/portal#response-codes'};}
+function evidenceRows(accepted,role,sampledAt){
+ const id=value=>typeof value==='string'&&/^[A-Z0-9]+_[0-9]+$/.test(value)?value:null;
+ return accepted.map(({match,p})=>{
+  const metadataId=id(match.metadata?.matchId),requestId=id(match.scoutingMatchId),version=String(match.info.gameVersion||'').match(/^(\d+)\.(\d+)/);
+  return {matchId:metadataId||requestId,idSource:metadataId?'metadata':requestId?'request':null,startedAt:sampleWindow([match],sampledAt).oldestAt??null,role:normalizeRole(role),champion:typeof p.championName==='string'&&p.championName.trim()?p.championName.trim():null,patch:version?`${Number(version[1])}.${Number(version[2])}`:null,win:p.win,seconds:p.timePlayed,kills:p.kills,deaths:p.deaths,assists:p.assists,omittedStats:p.riotOmittedStats.slice()};
+ });
+}
 function summarizeRole(matches,puuid,role,sampledAt=Date.now(),includePatchReports=true,includeChampionReports=true){
  const accepted=(matches||[]).map(match=>({match,p:normalizeRoleStats(participantForRole(match,puuid,role))})).filter(({p})=>p);
  const rows=accepted.map(x=>x.p),games=rows.length,wins=rows.filter(p=>p.win).length;
- const report={role:normalizeRole(role),games,wins,normalization:normalizationSummary(rows),limited:games<3,scope:`SoloQ classée · rôle ${normalizeRole(role)}`,window:sampleWindow(accepted.map(x=>x.match),sampledAt),sampledAt};
+ const report={role:normalizeRole(role),games,wins,evidence:evidenceRows(accepted,role,sampledAt),normalization:normalizationSummary(rows),limited:games<3,scope:`SoloQ classée · rôle ${normalizeRole(role)}`,window:sampleWindow(accepted.map(x=>x.match),sampledAt),sampledAt};
  if(!games)return {...report,champions:[],patches:[]};
  const sum=k=>rows.reduce((s,p)=>s+p[k],0),minutes=sum('timePlayed')/60,round=n=>Math.round(n*10)/10;
  const champions=new Map();for(const p of rows){const name=p.championName||'Inconnu';if(!champions.has(name))champions.set(name,{name,games:0,wins:0});const c=champions.get(name);c.games++;c.wins+=p.win?1:0;}
@@ -53,7 +60,7 @@ async function collectRoleReport(riot,account,role,{patchOnly=false,now=Date.now
   const match=await riot.match(acc.platform,id);tracking.matchesLoaded++;
   if(participantForRole(match,acc.puuid,role)){
    if(!summarizeRole([match],acc.puuid,role,now()).games){invalidGames++;continue;}
-   matches.push(match);tracking.midGames++;
+   matches.push({...match,scoutingMatchId:id});tracking.midGames++;
    if(matches.length>=target){tracking.stop='target';break;}
   }
  }catch(e){tracking.matchErrors++;if([401,403].includes(e.status)){tracking.stop='auth';break;}if(e.status===429){tracking.stop='rate_limit';break;}}}
@@ -62,4 +69,4 @@ async function collectRoleReport(riot,account,role,{patchOnly=false,now=Date.now
  if(invalidGames)report.coverage.partial=true;
  return report;
 }
-module.exports={participantForRole,normalizeRoleStats,normalizationSummary,validRoleStats,summarizeRole,collectRoleReport};
+module.exports={participantForRole,normalizeRoleStats,normalizationSummary,evidenceRows,validRoleStats,summarizeRole,collectRoleReport};

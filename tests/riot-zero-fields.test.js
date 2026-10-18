@@ -37,12 +37,12 @@ function mainHarness(matches){
 }
 test('detailed MID uses normalized combat values consistently in totals, champions and patches',async()=>{
  const m=match('MIDDLE',['kills','deaths','neutralMinionsKilled']),before=JSON.stringify(m),h=mainHarness([m]),r=await h.c.playerStats(account);
- assert.equal(r.games,1);assert.equal(r.kills,0);assert.equal(r.deaths,0);assert.equal(r.kda,6);assert.equal(r.patches[0].games,1);assert.equal(r.patches[0].kda,6);assert.equal(r.champions[0].kda,6);assert.equal(r.normalization.fields,3);assert.equal(r.coverage.invalidGames,0);assert.equal(h.calls.timeline,1);assert.equal(JSON.stringify(m),before);assert.ok(h.data.statsCacheV3);
+ assert.equal(r.games,1);assert.equal(r.kills,0);assert.equal(r.deaths,0);assert.equal(r.kda,6);assert.equal(r.patches[0].games,1);assert.equal(r.patches[0].kda,6);assert.equal(r.champions[0].kda,6);assert.equal(r.normalization.fields,3);assert.equal(r.coverage.invalidGames,0);assert.equal(h.calls.timeline,1);assert.equal(JSON.stringify(m),before);assert.ok(h.data.statsCacheV4);
 });
 test('dedicated MID patch screen uses the same normalization without timeline calls or old report caches',async()=>{
  const h=mainHarness([match('MIDDLE',['kills'])]);h.data.patchStatsCache=cache.write({},account,{games:99});h.data.roleStatsCacheV3=cache.write({},{...account,scoutingRole:'MID'},{games:99});
- const r=await h.c.playerPatchStats(account);assert.equal(r.games,1);assert.equal(r.normalization.fields,1);assert.equal(r.patches[0].games,1);assert.deepEqual(h.calls.ids,[60]);assert.equal(h.calls.timeline,0);assert.ok(h.data.rolePatchStatsCacheV2);
- const comparison=await h.c.playerRoleStats(account,'MID');assert.equal(comparison.games,1);assert.ok(h.data.roleStatsCacheV4);assert.deepEqual(h.calls.ids,[60,20]);
+ const r=await h.c.playerPatchStats(account);assert.equal(r.games,1);assert.equal(r.normalization.fields,1);assert.equal(r.patches[0].games,1);assert.deepEqual(h.calls.ids,[60]);assert.equal(h.calls.timeline,0);assert.ok(h.data.rolePatchStatsCacheV3);
+ const comparison=await h.c.playerRoleStats(account,'MID');assert.equal(comparison.games,1);assert.ok(h.data.roleStatsCacheV5);assert.deepEqual(h.calls.ids,[60,20]);
 });
 test('actual coverage UI and scoped team export disclose the zero convention and its sample counts',()=>{
  const app=fs.readFileSync('src/renderer/app.js','utf8'),c=vm.createContext({esc:String});vm.runInContext(app.slice(app.indexOf('function coverageReport('),app.indexOf('function roleStatReport(')),c);
