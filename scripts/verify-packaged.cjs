@@ -134,4 +134,11 @@ assert.match(read('src/renderer/app.js'),/draftPoolPanel\(team,home\)\+preparati
 assert.match(read('src/renderer/app.js'),/duels,draftPatch\}\)/);
 assert.match(read('src/renderer/report.js'),/D.draftPools\(entries,draftPatch\)/);
 assert.match(read('src/renderer/style.css'),/\.draft-pool-list/);
+assert.match(read('src/renderer/duels.js'),/function restorePrevious/);
+assert.match(read('src/renderer/duels.js'),/age>=0&&age<maxAge/);
+assert.match(read('src/renderer/duels.js'),/!saved.restoredAfterError/);
+assert.match(read('src/renderer/app.js'),/id="restoreDuel"/);
+assert.match(read('src/renderer/app.js'),/Revenir au rapport précédent \(daté\)/);
+assert.match(read('src/renderer/app.js'),/restoredAfterError:!!saved.restoredAfterError/);
+assert.match(read('src/renderer/report.js'),/RAPPORT PRÉCÉDENT RESTAURÉ APRÈS ÉCHEC/);
 console.log(JSON.stringify({archive,version:expected,players:roster.players.length,roles:Object.fromEntries(roles.map(role=>[role,roster.players.filter(p=>p.role===role).length])),uwu:roster.players.filter(p=>p.team.trim().toUpperCase()==='UWU GANG').map(p=>({name:p.name,role:p.role,division:p.division,group:p.group})),packagedTeamUI:true,packagedRoleReports:true,versionFromElectron:true},null,2));

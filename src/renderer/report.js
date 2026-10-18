@@ -27,6 +27,7 @@ const ReportBuilder=(()=>{
    const reports=analysis.reports||[],pair=analysis.pair;if(roles.has(pair.role))continue;roles.add(pair.role);
    lines.push('',`ANALYSE SOLOQ CHARGÉE : ${clean(pair.role)} · ${analysis.patch&&analysis.patch!=='ALL'?`patch ${clean(analysis.patch)}`:'toutes les parties retenues'}${analysis.champion&&analysis.champion!=='ALL'?' · champion '+clean(analysis.champion):''}`);
    if(analysis.loading)lines.push('Collecte encore en cours : ce rapport est un instantané partiel.');
+   if(analysis.restoredAfterError)lines.push('RAPPORT PRÉCÉDENT RESTAURÉ APRÈS ÉCHEC : pas une actualisation réussie, dates et expiration d’origine conservées.');
    pair.sides.forEach((side,i)=>{
     lines.push(`${clean(side.teamName)} · ${clean(side.player?.name||'joueur non sélectionné')}`);
     const raw=reports[i],s=raw?.role===pair.role?D.scopeReport(raw,analysis.patch||'ALL',analysis.champion||'ALL'):null;
@@ -51,10 +52,11 @@ const ReportBuilder=(()=>{
   }
   if(Array.isArray(duels)&&roles.size)lines.push('Rôles sans analyse mémorisée : '+(T.roles.filter(r=>!roles.has(r)).join(', ')||'aucun'));
   if(Array.isArray(duels)&&analyses.length){
-   const entries=analyses.map(a=>({role:a.pair.role,pair:a.pair,saved:{sides:(a.reports||[]).map(report=>({report}))}}));
+   const entries=analyses.map(a=>({role:a.pair.role,pair:a.pair,saved:{restoredAfterError:!!a.restoredAfterError,sides:(a.reports||[]).map(report=>({report}))}}));
    lines.push('','POOLS OBSERVÉS · PRÉPARATION DRAFT · '+(draftPatch==='ALL'?'tous les patchs retenus':'patch '+clean(draftPatch)),'Périmètre indépendant des filtres du comparateur détaillé. Fréquence = parties champion / parties retenues au rôle et au patch. Pas le répertoire complet, pas une recommandation de ban.');
    for(const row of D.draftPools(entries,draftPatch))row.sides.forEach((side,i)=>{
     lines.push(`${row.role} · ${clean(i===0?team.name:home?.name||'UWU GANG')} · ${clean(side.player?.name||'joueur non sélectionné')}`);
+    if(row.restoredAfterError)lines.push('  RAPPORT RESTAURÉ APRÈS ÉCHEC : dates d’origine, pas une actualisation réussie.');
     if(side.poolStatus!=='loaded'){lines.push('  '+({unobserved:'Aucune partie observée sur ce patch dans cet échantillon.',empty:'Aucune partie exploitable.',invalid:'Pool incohérent : fréquences indisponibles.'}[side.poolStatus]||'Rapport non chargé ou indisponible.'));return;}
     const s=side.report;lines.push(`  ${s.games} parties · champions identifiés ${side.identifiedGames}/${s.games} · période ${date(s.window?.oldestAt)} → ${date(s.window?.newestAt)} · collecte ${date(s.sampledAt)}${s.coverage?.partial?' · COLLECTE PARTIELLE':''}${s.window?.stale?' · DONNÉES ANCIENNES':''}`);
     for(const c of side.champions)lines.push(`  ${clean(c.name)} : ${c.games}/${s.games} (${c.share}%) · ${c.wins===null?'résultats indisponibles':c.wins+'/'+c.games+' victoires ('+c.winrate+'%)'}${c.limited?' · moins de 3 parties':''}`);
