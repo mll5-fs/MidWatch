@@ -1,3 +1,10 @@
+.team-workspace-nav{grid-column:1/-1}
+.team-workspace-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.team-workspace-links a{display:inline-flex;align-items:center;min-height:40px;padding:9px 13px;border:1px solid #34445c;border-radius:10px;background:#152235;color:#e7edf7;text-decoration:none;font-size:12px;line-height:1.4}
+.team-workspace-links a:hover{background:#20334d;border-color:#799eff}
+.team-workspace-links a:focus-visible,.team-section-anchor:focus-visible{outline:2px solid #86b7ff;outline-offset:4px}
+.team-section-anchor{scroll-margin-top:150px}
+@media(max-width:790px){.team-section-anchor{scroll-margin-top:16px}.team-workspace-links a{flex:1 1 140px}}
 :root{
   --bg:#080b10;
   --surface:#11141b;
