@@ -82,7 +82,7 @@ test('malformed optional champion, patch and metric fields are excluded rather t
 });
 test('rendered synthesis labels direction, common evidence and comparison limits',()=>{
  const app=fs.readFileSync('src/renderer/app.js','utf8'),ctx=vm.createContext({document:{querySelectorAll:()=>[]},DuelScouting:D,esc:String});
- vm.runInContext('let duelPatch="ALL",duelChampion="ALL";'+app.slice(app.indexOf('function duelSynthesis('),app.indexOf('function duelPanel(')),ctx);
+ vm.runInContext('let duelPatch="ALL",duelChampion="ALL",duelChampionMode="COMMON",duelSideChampions=["ALL","ALL"];'+app.slice(app.indexOf('function duelChampionFor('),app.indexOf('let draftPatch='))+app.slice(app.indexOf('function duelSynthesis('),app.indexOf('function duelPanel(')),ctx);
  const p=pair(),state={sides:[{report:rich()},{report:rich('MID',{games:4,winrate:25,champions:[{name:'Ahri',games:2}],patches:[{patch:'16.20',games:3}]})}]},html=ctx.duelSynthesis(p,state);
  assert.match(html,/SYNTHÈSE DES ÉCHANTILLONS/);assert.match(html,/6 parties/);assert.match(html,/Écart descriptif/);assert.match(html,/\+25/);assert.match(html,/Ahri \(3G \/ 2G\)/);assert.match(html,/16\.20 \(4G \/ 3G\)/);assert.match(html,/ne mesurent pas le micro-gameplay/);
 });

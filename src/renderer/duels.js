@@ -126,6 +126,11 @@ const DuelScouting=(()=>{
   const right=new Set(rows[1].map(c=>c.champion.toLowerCase()));
   return [...new Set(rows[0].filter(c=>right.has(c.champion.toLowerCase())).map(c=>c.champion))].sort((a,b)=>a.localeCompare(b));
  }
+ function championChoices(report,patch='ALL'){
+  if(!report||!teams.roles.includes(report.role))return [];
+  const scoped=scopeReport(report,patch);
+  return [...new Set((Array.isArray(scoped?.byChampion)?scoped.byChampion:[]).filter(c=>typeof c?.champion==='string'&&c.champion.trim()&&c.champion!=='ALL'&&c.report?.role===report.role&&Number.isInteger(c.report.games)&&c.report.games>0).map(c=>c.champion))].sort((a,b)=>a.localeCompare(b));
+ }
  function scopeReport(report,patch,champion='ALL'){
   if(!report||(patch==='ALL'&&champion==='ALL'))return report;
   const base=patch==='ALL'?report:report.byPatch?.find(p=>p.patch===patch)?.report;if(!base)return null;
@@ -154,6 +159,6 @@ const DuelScouting=(()=>{
    return {...side,poolStatus:'loaded',report:scoped,identifiedGames,champions:champions.sort((a,b)=>b.games-a.games||a.name.localeCompare(b.name))};
   })}));
  }
- return {pair,create,createBatch,compare,overview,commonPatches,commonChampions,scopeReport,draftPatches,draftPools};
+ return {pair,create,createBatch,compare,overview,commonPatches,commonChampions,championChoices,scopeReport,draftPatches,draftPools};
 })();
 if(typeof module!=='undefined')module.exports=DuelScouting;
