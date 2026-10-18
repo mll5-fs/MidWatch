@@ -16,7 +16,7 @@ test("dedicated patch analysis requests a larger match-only mid sample", () => {
   assert.match(collector, /requested=patchOnly\?60:20,target=patchOnly\?30:12/);
   assert.match(collector, /matches\.length>=target/);
   assert.doesNotMatch(source, /riot\.timeline/);
-  assert.match(source, /rolePatchStatsCacheV2/);
+  assert.match(source, /rolePatchStatsCacheV3/);
 });
 
 test("patch analysis has an isolated IPC path from the regular scouting report", () => {

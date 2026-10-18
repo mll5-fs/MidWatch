@@ -18,7 +18,7 @@ test("authentication and rate limits stop collection and remain in coverage", ()
   assert.match(main, /tracking\.stop="auth"/);
   assert.match(main, /tracking\.stop="rate_limit"/);
   assert.match(main, /coverage=buildCoverage\(tracking\)/);
-  assert.match(main, /coverage,normalization,sampledAt,scope/);
+  assert.match(main, /coverage,normalization,evidence,sampledAt,scope/);
 });
 
 test("zero-game coverage is cached to avoid immediately repeating an empty collection", () => {

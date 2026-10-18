@@ -35,6 +35,13 @@ const ReportBuilder=(()=>{
     if(s.normalization?.games)lines.push(`  Convention Riot : ${s.normalization.fields} champ(s) numérique(s) omis traité(s) à zéro dans ${s.normalization.games} partie(s) de cet échantillon. Source : https://developer.riotgames.com/docs/portal#response-codes`);
     if(s.coverage?.partial)lines.push('  COLLECTE PARTIELLE : erreurs, quota ou données incomplètes.');
     if(s.window?.stale)lines.push('  DONNÉES ANCIENNES.');
+    if(Array.isArray(s.evidence)&&s.evidence.length){
+     lines.push('  PARTIES SOURCES · SoloQ retenues dans le périmètre sélectionné :');
+     for(const m of s.evidence.filter(m=>m?.role===s.role&&typeof m.win==='boolean').slice(0,30)){
+      const id=typeof m.matchId==='string'&&/^[A-Z0-9]+_[0-9]+$/.test(m.matchId)?m.matchId:'identifiant indisponible',kda=[m.kills,m.deaths,m.assists].map(v=>Number.isFinite(v)&&v>=0?v:'—').join('/');
+      lines.push(`    ${id} · ${date(m.startedAt)} · ${clean(m.champion||'champion indisponible')} · patch ${clean(m.patch||'indisponible')} · ${m.win?'victoire':'défaite'} · ${Number.isFinite(m.seconds)&&m.seconds>0?m.seconds+' s':'durée indisponible'} jouées · K/D/A ${kda}${m.omittedStats?.length?' · convention Riot : '+m.omittedStats.map(clean).join(', ')+' omis → zéro':''}`);
+     }
+    }else lines.push('  Parties sources indisponibles dans ce rapport ancien : recollecter pour les obtenir.');
     for(const [field,label]of [['winrate','Winrate (%)'],['kda','KDA'],['cspm','CS/min'],['dpm','Dégâts/min'],['gpm','Or/min'],['vision','Vision/partie']])if(Number.isFinite(s[field]))lines.push(`  ${label} : ${s[field]}`);
     if(Number.isFinite(s.interval?.low)&&Number.isFinite(s.interval?.high))lines.push(`  IC95 winrate : ${s.interval.low}–${s.interval.high}%`);
     lines.push(`  Champions observés : ${(s.champions||[]).filter(c=>c.name&&Number.isFinite(c.games)&&c.games>0).map(c=>`${clean(c.name)} (${c.games}G)`).join(', ')||'indisponibles'}`);
