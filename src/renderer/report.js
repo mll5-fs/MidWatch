@@ -6,7 +6,7 @@ const ReportBuilder=(()=>{
  const reasons={covered:'couvert',missing:'joueur absent',ambiguous:'plusieurs joueurs, aucun choix local',selection_missing:'choix local absent de l’effectif',account_missing:'compte non relié',duplicate:'compte partagé entre rôles',error:'erreur Riot',partial:'rang partiel',rank_missing:'rang absent ou non classé',stale:'rang périmé ou date invalide'};
  const key=a=>`${a?.platform||'EUW1'}|${a?.gameName||''}#${a?.tagLine||''}`.toLowerCase();
  function account(p){return p.accounts?.find(a=>key(a)===key(p.bestRankAccount))||p.accounts?.[0];}
- function build({team,home,lineups={},version='',ouat={},duel=null,duels=null,now=Date.now()}){
+ function build({team,home,lineups={},version='',ouat={},duel=null,duels=null,draftPatch='ALL',now=Date.now()}){
   if(!team)throw new Error('Aucune équipe sélectionnée.');
   const lines=[`MIDPULSE ${clean(version)} — RAPPORT DE PRÉPARATION`,`${clean(team.name)} / ${clean(home?.name||'UWU GANG introuvable')}`,`Généré : ${date(now)}`,`Effectif LEA : ${clean(ouat.season||'saison inconnue')} · actualisé ${date(ouat.updatedAt)}`,'Source effectifs : https://api.leamateur.pro · rangs et parties : API Riot.'];
   if(ouat.warning)lines.push('Attention : l’effectif chargé comporte un avertissement de collecte.');
@@ -50,6 +50,16 @@ const ReportBuilder=(()=>{
    if(!Array.isArray(duels))lines.push('Les autres rôles ne disposent pas d’une analyse SoloQ dans ce rapport.');
   }
   if(Array.isArray(duels)&&roles.size)lines.push('Rôles sans analyse mémorisée : '+(T.roles.filter(r=>!roles.has(r)).join(', ')||'aucun'));
+  if(Array.isArray(duels)&&analyses.length){
+   const entries=analyses.map(a=>({role:a.pair.role,pair:a.pair,saved:{sides:(a.reports||[]).map(report=>({report}))}}));
+   lines.push('','POOLS OBSERVÉS · PRÉPARATION DRAFT · '+(draftPatch==='ALL'?'tous les patchs retenus':'patch '+clean(draftPatch)),'Périmètre indépendant des filtres du comparateur détaillé. Fréquence = parties champion / parties retenues au rôle et au patch. Pas le répertoire complet, pas une recommandation de ban.');
+   for(const row of D.draftPools(entries,draftPatch))row.sides.forEach((side,i)=>{
+    lines.push(`${row.role} · ${clean(i===0?team.name:home?.name||'UWU GANG')} · ${clean(side.player?.name||'joueur non sélectionné')}`);
+    if(side.poolStatus!=='loaded'){lines.push('  '+({unobserved:'Aucune partie observée sur ce patch dans cet échantillon.',empty:'Aucune partie exploitable.',invalid:'Pool incohérent : fréquences indisponibles.'}[side.poolStatus]||'Rapport non chargé ou indisponible.'));return;}
+    const s=side.report;lines.push(`  ${s.games} parties · champions identifiés ${side.identifiedGames}/${s.games} · période ${date(s.window?.oldestAt)} → ${date(s.window?.newestAt)} · collecte ${date(s.sampledAt)}${s.coverage?.partial?' · COLLECTE PARTIELLE':''}${s.window?.stale?' · DONNÉES ANCIENNES':''}`);
+    for(const c of side.champions)lines.push(`  ${clean(c.name)} : ${c.games}/${s.games} (${c.share}%) · ${c.wins===null?'résultats indisponibles':c.wins+'/'+c.games+' victoires ('+c.winrate+'%)'}${c.limited?' · moins de 3 parties':''}`);
+   });
+  }
   if(!analyses.length)lines.push('','Aucune comparaison SoloQ chargée : seuls les effectifs et les rangs disponibles sont rapportés.');
   lines.push('','LIMITES : jusqu’à 12 parties au rôle parmi les 20 dernières SoloQ de chaque compte. Historiques individuels, pas des confrontations directes. Périodes, champions, adversaires et coéquipiers peuvent différer. Filtrer un patch ne prouve pas son effet causal. Aucun pronostic, classement alternatif ou analyse de micro-gameplay.','Instantané à revérifier avant le match. Contient des noms et Riot IDs publics ainsi que vos choix locaux ; aucune clé Riot ni configuration privée.');
   return lines.join('\n');
