@@ -344,10 +344,11 @@ function accountHtml(a,i,p){
 }
 function coverageReport(c={},normalization={}){
   const role=c.role?esc(c.role):"mid";
-  if(!c.requested)return"";
+  if(!c.requested&&!c.historyEntries)return"";
+  const integrity=[['duplicateIds','identifiant(s) répété(s) ignoré(s)'],['invalidIds','entrée(s) d’historique invalide(s) ignorée(s)'],['identityErrors','réponse(s) avec identité incohérente exclue(s)']].filter(([k])=>Number.isInteger(c[k])&&c[k]>0).map(([k,label])=>esc(c[k])+' '+label).join(' · ');
   const reason=c.stop==="rate_limit"?" · collecte arrêtée par la limite Riot":c.stop==="auth"?" · clé Riot refusée":c.targetReached?` · objectif de ${esc(c.target)} parties ${role} atteint`:"";
   const timelines=c.timelineAttempts?` · timelines ${c.timelinesLoaded}/${c.timelineAttempts}`:"";
-  return`<p class="sample-note"><b>${c.partial?"ÉCHANTILLON PARTIEL":"COUVERTURE CONTRÔLÉE"}</b> · historique chargé ${c.matchesLoaded}/${c.requested} · parties ${role} ${c.roleGames??c.midGames}${c.invalidGames?` · ${esc(c.invalidGames)} partie(s) incomplète(s) exclue(s)`:""}${timelines}${reason}${normalization.games?` · Convention Riot : ${esc(normalization.fields)} champ(s) numérique(s) omis traité(s) à zéro dans ${esc(normalization.games)} partie(s) de cet échantillon ; valeurs nulles ou invalides exclues`:""}</p>`;
+  return`<p class="sample-note"><b>${c.partial?"ÉCHANTILLON PARTIEL":"COUVERTURE CONTRÔLÉE"}</b> · historique chargé ${c.matchesLoaded}/${c.requested} · parties ${role} ${c.roleGames??c.midGames}${c.invalidGames?` · ${esc(c.invalidGames)} partie(s) incomplète(s) exclue(s)`:""}${integrity?` · INTÉGRITÉ DES PARTIES (collecte d’origine, avant filtres) : ${integrity}`:""}${timelines}${reason}${normalization.games?` · Convention Riot : ${esc(normalization.fields)} champ(s) numérique(s) omis traité(s) à zéro dans ${esc(normalization.games)} partie(s) de cet échantillon ; valeurs nulles ou invalides exclues`:""}</p>`;
 }
 function roleStatReport(s={}){
  const role=s.role||"RÔLE INCONNU";

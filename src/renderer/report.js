@@ -5,6 +5,7 @@ const ReportBuilder=(()=>{
  const date=v=>Number.isFinite(v)&&v>0&&Number.isFinite(new Date(v).getTime())?new Date(v).toISOString():'date indisponible';
  const reasons={covered:'couvert',missing:'joueur absent',ambiguous:'plusieurs joueurs, aucun choix local',selection_missing:'choix local absent de l’effectif',account_missing:'compte non relié',duplicate:'compte partagé entre rôles',error:'erreur Riot',partial:'rang partiel',rank_missing:'rang absent ou non classé',stale:'rang périmé ou date invalide'};
  const key=a=>`${a?.platform||'EUW1'}|${a?.gameName||''}#${a?.tagLine||''}`.toLowerCase();
+ const integrity=c=>[['duplicateIds','identifiant(s) répété(s) ignoré(s)'],['invalidIds','entrée(s) d’historique invalide(s) ignorée(s)'],['identityErrors','réponse(s) avec identité incohérente exclue(s)']].filter(([k])=>Number.isInteger(c?.[k])&&c[k]>0).map(([k,label])=>c[k]+' '+label).join(' · ');
  function account(p){return p.accounts?.find(a=>key(a)===key(p.bestRankAccount))||p.accounts?.[0];}
  function build({team,home,lineups={},version='',ouat={},duel=null,duels=null,draftPatch='ALL',now=Date.now()}){
   if(!team)throw new Error('Aucune équipe sélectionnée.');
@@ -38,6 +39,7 @@ const ReportBuilder=(()=>{
     lines.push(`  ${s.games} parties au rôle ${clean(s.role)} · période ${date(s.window?.oldestAt)} → ${date(s.window?.newestAt)} · collecte ${date(s.sampledAt)}`);
     if(s.normalization?.games)lines.push(`  Convention Riot : ${s.normalization.fields} champ(s) numérique(s) omis traité(s) à zéro dans ${s.normalization.games} partie(s) de cet échantillon. Source : https://developer.riotgames.com/docs/portal#response-codes`);
     if(s.coverage?.partial)lines.push('  COLLECTE PARTIELLE : erreurs, quota ou données incomplètes.');
+    if(integrity(s.coverage))lines.push('  INTÉGRITÉ DES PARTIES (collecte d’origine, avant filtres) : '+integrity(s.coverage));
     if(s.window?.stale)lines.push('  DONNÉES ANCIENNES.');
     if(Array.isArray(s.evidence)&&s.evidence.length){
      lines.push('  PARTIES SOURCES · SoloQ retenues dans le périmètre sélectionné :');
@@ -62,6 +64,7 @@ const ReportBuilder=(()=>{
     if(row.restoredAfterError)lines.push('  RAPPORT RESTAURÉ APRÈS ÉCHEC : dates d’origine, pas une actualisation réussie.');
     if(side.poolStatus!=='loaded'){lines.push('  '+({unobserved:'Aucune partie observée sur ce patch dans cet échantillon.',empty:'Aucune partie exploitable.',invalid:'Pool incohérent : fréquences indisponibles.'}[side.poolStatus]||'Rapport non chargé ou indisponible.'));return;}
     const s=side.report;lines.push(`  ${s.games} parties · champions identifiés ${side.identifiedGames}/${s.games} · période ${date(s.window?.oldestAt)} → ${date(s.window?.newestAt)} · collecte ${date(s.sampledAt)}${s.coverage?.partial?' · COLLECTE PARTIELLE':''}${s.window?.stale?' · DONNÉES ANCIENNES':''}`);
+    if(integrity(s.coverage))lines.push('  INTÉGRITÉ DES PARTIES (collecte d’origine, avant filtres) : '+integrity(s.coverage));
     for(const c of side.champions){lines.push(`  ${clean(c.name)} : ${c.games}/${s.games} (${c.share}%) · ${c.wins===null?'résultats indisponibles':c.wins+'/'+c.games+' victoires ('+c.winrate+'%)'}${c.limited?' · moins de 3 parties':''}`);
      const trace=c.trace||{status:'unavailable',rows:[]};lines.push('    PARTIES SOURCES DU POOL : '+trace.rows.length+'/'+c.games+' · '+({complete:'sources disponibles',partial:'TRAÇABILITÉ PARTIELLE',unavailable:'sources indisponibles, recollecter',inconsistent:'SOURCES INCOHÉRENTES, lien non vérifiable'}[trace.status]));
      for(const m of trace.rows)lines.push('      '+clean(m.matchId||'identifiant indisponible')+' · '+date(m.startedAt)+' · '+clean(c.name)+' · patch '+clean(m.patch||'indisponible')+' · '+(m.win?'victoire':'défaite')+' · '+(m.seconds===null?'durée indisponible':m.seconds+' s jouées')+' · K/D/A '+[m.kills,m.deaths,m.assists].map(v=>Number.isFinite(v)?v:'—').join('/'));

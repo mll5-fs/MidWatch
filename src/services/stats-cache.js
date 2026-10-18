@@ -2,7 +2,7 @@ const TTL = 10 * 60 * 1000;
 const MAX_ENTRIES = 50;
 
 function accountKey(account = {}) {
-  return `ranked-role-v5|${String(account.scoutingRole || "MID").toUpperCase()}|${String(account.platform || "EUW1").toUpperCase()}|${account.gameName || ""}#${account.tagLine || ""}`.toLowerCase();
+  return `ranked-role-v6|${String(account.scoutingRole || "MID").toUpperCase()}|${String(account.platform || "EUW1").toUpperCase()}|${account.gameName || ""}#${account.tagLine || ""}`.toLowerCase();
 }
 
 function read(cache, account, now = Date.now()) {
