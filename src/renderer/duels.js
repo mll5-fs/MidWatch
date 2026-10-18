@@ -159,6 +159,27 @@ const DuelScouting=(()=>{
    return {...side,poolStatus:'loaded',report:scoped,identifiedGames,champions:champions.sort((a,b)=>b.games-a.games||a.name.localeCompare(b.name))};
   })}));
  }
- return {pair,create,createBatch,compare,overview,commonPatches,commonChampions,championChoices,scopeReport,draftPatches,draftPools};
+ function normalizeFilters(reports=[],filters={}){
+  const patch=filters.patch!=='ALL'&&commonPatches(reports).includes(filters.patch)?filters.patch:'ALL',mode=filters.mode==='SIDES'?'SIDES':'COMMON';
+  const champion=commonChampions(reports,patch).includes(filters.champion)?filters.champion:'ALL';
+  const champions=[0,1].map(i=>championChoices(reports[i],patch).includes(filters.champions?.[i])?filters.champions[i]:'ALL');
+  return {patch,mode,champion,champions};
+ }
+ function createFilterMemory(){
+  const memory=new Map(),defaults=()=>({patch:'ALL',mode:'COMMON',champion:'ALL',champions:['ALL','ALL']});
+  function read(key,saved){
+   const old=memory.get(key),reports=saved?.sides?.map(s=>s?.report);
+   if(!old||!saved||old.loadedAt!==saved.loadedAt||!reports||reports.length!==old.reports.length||reports.some((r,i)=>r!==old.reports[i])){memory.delete(key);return defaults();}
+   return normalizeFilters(reports,old.filters);
+  }
+  function remember(key,saved,filters){
+   if(!key||!Number.isFinite(saved?.loadedAt)||!Array.isArray(saved.sides)||!saved.sides.some(s=>s?.report)){memory.delete(key);return;}
+   const reports=saved.sides.map(s=>s?.report);memory.delete(key);memory.set(key,{loadedAt:saved.loadedAt,reports,filters:normalizeFilters(reports,filters)});
+   while(memory.size>30)memory.delete(memory.keys().next().value);
+  }
+  function forget(keys){for(const key of keys)memory.delete(key);}
+  return {read,remember,forget};
+ }
+ return {pair,create,createBatch,compare,overview,commonPatches,commonChampions,championChoices,scopeReport,draftPatches,draftPools,normalizeFilters,createFilterMemory};
 })();
 if(typeof module!=='undefined')module.exports=DuelScouting;
