@@ -141,6 +141,24 @@ const DuelScouting=(()=>{
  function draftPatches(entries=[]){
   return [...new Set(overview(entries).flatMap(row=>row.sides.flatMap(side=>(Array.isArray(side.report?.byPatch)?side.report.byPatch:[]).filter(p=>/^\d+\.\d+$/.test(p?.patch||'')&&p.report?.role===row.role&&Number.isInteger(p.report.games)&&p.report.games>0).map(p=>p.patch))))].sort((a,b)=>b.localeCompare(a,undefined,{numeric:true}));
  }
+ function poolEvidence(report,champion,patch='ALL'){
+  const unavailable={status:'unavailable',rows:[]};
+  if(!Array.isArray(report?.evidence)||!teams.roles.includes(report.role)||!Number.isInteger(champion?.games)||champion.games<=0)return unavailable;
+  const key=String(champion.name||'').trim().toLowerCase(),ids=new Set(),rows=[];let duplicate=false;
+  for(const m of report.evidence){
+   if(m?.role!==report.role||typeof m.champion!=='string'||m.champion.trim().toLowerCase()!==key||typeof m.win!=='boolean'||(patch!=='ALL'&&m.patch!==patch))continue;
+   const matchId=typeof m.matchId==='string'&&/^[A-Z0-9]+_[0-9]+$/.test(m.matchId)?m.matchId:null;
+   if(matchId&&ids.has(matchId))duplicate=true;if(matchId)ids.add(matchId);
+   const startedAt=Number.isFinite(m.startedAt)&&m.startedAt>0&&Number.isFinite(report.sampledAt)&&m.startedAt<=report.sampledAt&&Number.isFinite(new Date(m.startedAt).getTime())?m.startedAt:null;
+   const count=v=>Number.isFinite(v)&&v>=0?v:null;
+   rows.push({matchId,startedAt,champion:champion.name,role:report.role,patch:typeof m.patch==='string'&&/^\d+\.\d+$/.test(m.patch)?m.patch:null,win:m.win,seconds:Number.isFinite(m.seconds)&&m.seconds>0?m.seconds:null,kills:count(m.kills),deaths:count(m.deaths),assists:count(m.assists)});
+  }
+  const wins=rows.filter(m=>m.win).length,knownWins=Number.isInteger(champion.wins)&&champion.wins>=0&&champion.wins<=champion.games;
+  if(duplicate||rows.length>champion.games||(knownWins&&(wins>champion.wins||rows.length-wins>champion.games-champion.wins)))return {status:'inconsistent',rows:[]};
+  if(!rows.length)return unavailable;
+  const complete=rows.length===champion.games&&rows.every(m=>m.matchId&&m.startedAt&&m.patch&&m.seconds&&[m.kills,m.deaths,m.assists].every(Number.isFinite));
+  return {status:complete?'complete':'partial',rows};
+ }
  function draftPools(entries=[],patch='ALL'){
   return overview(entries).map(row=>({...row,sides:row.sides.map(side=>{
    const original=side.report,scoped=original&&(patch==='ALL'||Array.isArray(original.byPatch))?scopeReport(original,patch):null;
@@ -153,7 +171,7 @@ const DuelScouting=(()=>{
     if(!Number.isInteger(c.games)||c.games<=0||c.games>scoped.games){invalid=true;continue;}
     const name=c.name.trim(),key=name.toLowerCase();if(seen.has(key)){invalid=true;continue;}seen.add(key);identifiedGames+=c.games;
     const wins=Number.isInteger(c.wins)&&c.wins>=0&&c.wins<=c.games?c.wins:null;
-    champions.push({name,games:c.games,share:Math.round(1000*c.games/scoped.games)/10,wins,winrate:wins===null?null:Math.round(100*wins/c.games),limited:c.games<3});
+    champions.push({name,games:c.games,share:Math.round(1000*c.games/scoped.games)/10,wins,winrate:wins===null?null:Math.round(100*wins/c.games),limited:c.games<3,trace:poolEvidence(scoped,{name,games:c.games,wins},patch)});
    }
    if(invalid||identifiedGames>scoped.games)return {...side,poolStatus:'invalid',champions:[],report:scoped,identifiedGames:0};
    return {...side,poolStatus:'loaded',report:scoped,identifiedGames,champions:champions.sort((a,b)=>b.games-a.games||a.name.localeCompare(b.name))};
@@ -180,6 +198,6 @@ const DuelScouting=(()=>{
   function forget(keys){for(const key of keys)memory.delete(key);}
   return {read,remember,forget};
  }
- return {pair,create,createBatch,compare,overview,commonPatches,commonChampions,championChoices,scopeReport,draftPatches,draftPools,normalizeFilters,createFilterMemory};
+ return {pair,create,createBatch,compare,overview,commonPatches,commonChampions,championChoices,scopeReport,draftPatches,draftPools,poolEvidence,normalizeFilters,createFilterMemory};
 })();
 if(typeof module!=='undefined')module.exports=DuelScouting;
