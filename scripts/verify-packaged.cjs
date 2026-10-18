@@ -75,7 +75,7 @@ assert.match(read('src/renderer/duels.js'),/function peek\(key\)/);
 assert.match(read('src/renderer/duels.js'),/cache.size>30/);
 assert.match(read('src/renderer/app.js'),/ANALYSES MÉMORISÉES · 5 RÔLES/);
 assert.match(read('src/renderer/app.js'),/data-saved-role/);
-assert.match(read('src/renderer/app.js'),/duels\}\)/);
+assert.match(read('src/renderer/app.js'),/duels,draftPatch\}\)/);
 assert.match(read('src/renderer/report.js'),/for\(const analysis of analyses\)/);
 assert.match(read('src/services/role-report.js'),/result.byChampion=/);
 assert.match(read('src/renderer/duels.js'),/function commonChampions/);
