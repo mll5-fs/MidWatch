@@ -30,9 +30,9 @@ test('clipboard IPC validates payloads and performs exactly one plain-text write
  for(const text of [null,{},'', '   ','x'.repeat(100001)])await assert.rejects(handlers['report:copy']({},text));
  assert.equal(await handlers['report:copy']({},'A real preparation report'),true);assert.deepEqual(writes,['A real preparation report']);
 });
-test('copy button copies preview text and reports a recoverable clipboard failure',async()=>{
+test('copy button regenerates preview text and reports a recoverable clipboard failure',async()=>{
  const app=fs.readFileSync('src/renderer/app.js','utf8'),nodes={'#copyPreparation':{},'#preparationPreview':{textContent:'Prepared snapshot'}},messages=[];let fail=false,copied;
- const ctx=vm.createContext({$:id=>nodes[id],notice:s=>messages.push(s),window:{mw:{copyReport:async text=>{if(fail)throw Error('unavailable');copied=text;}}}});
- vm.runInContext(app.slice(app.indexOf('function bindPreparation('),app.indexOf('function renderTeamSection(')),ctx);ctx.bindPreparation();await nodes['#copyPreparation'].onclick();assert.equal(copied,'Prepared snapshot');assert.match(messages[0],/Rapport copié/);assert.equal(nodes['#copyPreparation'].disabled,false);
+ const ctx=vm.createContext({TeamScouting:{group:()=>[{id:'current'}]},allPlayers:()=>[],ReportBuilder:{build:()=> 'Fresh snapshot'},S:{},preparationAnalyses:()=>[],draftPatch:'ALL',$:id=>nodes[id],notice:s=>messages.push(s),window:{mw:{copyReport:async text=>{if(fail)throw Error('unavailable');copied=text;}}}});
+ vm.runInContext(app.slice(app.indexOf('function bindPreparation('),app.indexOf('function renderTeamSection(')),ctx);ctx.bindPreparation({id:'current'});await nodes['#copyPreparation'].onclick();assert.equal(copied,'Fresh snapshot');assert.equal(nodes['#preparationPreview'].textContent,copied);assert.match(messages[0],/Rapport copié/);assert.equal(nodes['#copyPreparation'].disabled,false);
  fail=true;await nodes['#copyPreparation'].onclick();assert.match(messages[1],/Copie impossible/);assert.equal(nodes['#copyPreparation'].disabled,false);
 });

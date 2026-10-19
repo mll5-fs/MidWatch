@@ -227,7 +227,12 @@ function preparationAnalyses(team,home){
 }
 function bindPreparation(team,home){
  const button=$("#copyPreparation");if(!button)return;
- button.onclick=async()=>{button.disabled=true;try{await window.mw.copyReport($("#preparationPreview").textContent);notice("Rapport copié. Tu peux le coller dans ton document ou ton chat d’équipe.")}catch(_){notice("Copie impossible. Tu peux sélectionner le texte dans l’aperçu du rapport.")}finally{button.disabled=false}};
+ button.onclick=async()=>{button.disabled=true;try{
+  const teams=TeamScouting.group(allPlayers()),current=teams.find(t=>t.id===team?.id),currentHome=teams.find(t=>t.id===home?.id);
+  if(!current)throw new Error('Équipe absente de l’effectif courant.');
+  const text=ReportBuilder.build({team:current,home:currentHome,lineups:S.lineups,version:S.version,ouat:S.ouat,duels:preparationAnalyses(current,currentHome),draftPatch});
+  $("#preparationPreview").textContent=text;await window.mw.copyReport(text);notice("Rapport copié. Rangs, compositions et rapports mémorisés réévalués au clic, sans appel Riot.");
+ }catch(_){notice("Copie impossible. Vérifie l’effectif courant ou sélectionne le texte dans l’aperçu daté du rapport.")}finally{button.disabled=false}};
  const brief=$("#copyTeamBrief");if(!brief)return;
  brief.onclick=async()=>{brief.disabled=true;try{
   const teams=TeamScouting.group(allPlayers()),current=teams.find(t=>t.id===team?.id),currentHome=teams.find(t=>t.id===home?.id);
