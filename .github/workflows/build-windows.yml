@@ -68,6 +68,6 @@ jobs:
           if ($exists) {
             Write-Host "Release $tag already exists. Preserving its installer; bump package.json to publish changes."
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Nouvelle FICHE EXPRESS cinq roles dans Equipes OUAT / Rapport a copier. Identites, rangs dates, moyennes et exclusions, echantillons, trois champions observes et trois sources max par joueur. Suit les filtres memorises ; reevalue effectif, rangs et memoire au clic sans appel Riot. Rapport detaille conserve. Pas de recommandation de ban ni de pronostic. Installateur Electron inspecte automatiquement ; aucun essai interactif Windows/LoL ni appel Riot authentifie. Source commit: ${{ github.sha }}."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Nouveau bouton Actualiser les 5 roles depuis Riot dans Equipes OUAT. Relit les dix rapports possibles sequentiellement, contrairement au chargement qui reutilise la memoire complete. Delais et quotas conserves. Echec/partiel : ancienne paire complete encore valide conservee et signalee comme restauree, dates et expiration inchangees, jamais melangee avec un nouveau cote. Annulation et arrets auth/quota conserves. Installateur Electron inspecte automatiquement ; aucun essai interactif Windows/LoL ni appel Riot authentifie. Source commit: ${{ github.sha }}."
             if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           }
