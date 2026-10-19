@@ -22,6 +22,7 @@ function harness(){
  const c=vm.createContext({LiveMonitor:require("../src/renderer/live-monitor"),PlayerIdentity,S:{hasKey:true,ouatPlayers:[current]},rankBusy:false,rankReloadPending:false,rankCooldownAt:0,rankFollowup:null,rankState:{},rankMeta:{},liveState:{},liveMeta:{},view:'OUAT',
  document:{querySelectorAll:()=>[]},listForView:()=>[current],render:()=>{},renderNav:()=>{},setTimeout:()=>1,clearTimeout:()=>{},
  window:{mw:{rankBatch:()=>new Promise(resolve=>ranks.push(resolve)),liveBatch:()=>new Promise(resolve=>lives.push(resolve))}}});
+ c.renderBackground=c.render; // This harness isolates identity matching from DOM redraws.
  vm.runInContext(app.slice(app.indexOf('async function refreshRanks('),app.indexOf('async function refresh(){')),c);
  return {c,current,ranks,lives};
 }

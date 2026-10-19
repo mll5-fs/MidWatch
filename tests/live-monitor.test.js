@@ -68,6 +68,7 @@ test('actual main batch checks selected accounts and preserves the eight-player 
 test('actual refresh renders expiration even on IPC failure or missing key',async()=>{
  for(const hasKey of [true,false]){
   let renders=0;const c=vm.createContext({rankCooldownAt:0,S:{hasKey},LiveMonitor,view:'OUAT',listForView:()=>[],window:{mw:{liveBatch:async()=>{throw new Error('IPC failure');}}},renderNav:()=>{},render:()=>renders++});
+  c.renderBackground=c.render; // Reading-state behavior is covered separately.
   vm.runInContext(app.slice(app.indexOf('async function refreshLive('),app.indexOf('async function refresh(){')),c);await c.refreshLive();assert.equal(renders,1);
  }
 });
