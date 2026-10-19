@@ -99,6 +99,45 @@ const ReportBuilder=(()=>{
   lines.push('','Conversion descriptive : 100 points/division, 400/palier + LP ; Master/Grandmaster/Challenger = base Master + LP. Ce n’est pas le MMR réel. Un compte distinct par rôle et un rang complet vérifié depuis moins de 15 min sont requis. Rôles absents, ambigus, comptes partagés, rangs partiels ou périmés exclus ; une moyenne partielle ne représente pas cinq joueurs.', 'Périmètre : toutes les équipes du groupe LEA sélectionné, indépendamment de la recherche et des filtres de parties. UWU GANG n’est inclus que si présent dans ce groupe. Pas de nouvelle collecte Riot ; les rangs absents ne sont pas inventés. Instantané à revérifier avant le match. Contient noms, Riot IDs publics et choix locaux ; aucune clé ni configuration privée.');
   return lines.join('\n');
  }
- return {build,buildGroup};
+ function buildBrief({team,home,lineups={},version='',ouat={},duels=[],now=Date.now()}){
+  if(!team)throw new Error('Aucune équipe sélectionnée.');
+  const sides=[team,...(home&&home.id!==team.id?[home]:[])],summaries=sides.map(t=>T.summarize(t.players,now,T.lineup(lineups,t.id)));
+  const lines=[`MIDPULSE ${clean(version)} — FICHE EXPRESS · 5 RÔLES`,`${clean(team.name)} / ${clean(home?.name||'UWU GANG introuvable')}`,`Généré : ${date(now)}`,`LEA : ${clean(ouat.season||'saison inconnue')} · actualisé ${date(ouat.updatedAt)}`,`Division / groupe : ${clean(team.division)} / ${clean(team.group)}`];
+  if(ouat.warning)lines.push('ATTENTION : avertissement de collecte LEA.');
+  sides.forEach((t,i)=>lines.push(`Moyenne ${clean(t.name)} : ${summaries[i].label} · ${summaries[i].covered}/5 rôles${summaries[i].complete?'':' · PARTIEL'}`));
+  const paired=T.rankComparison(team,home,now,lineups);
+  if(paired)lines.push(`Mêmes rôles : ${paired.covered}/5 (${paired.roles.join(', ')||'aucun'}) · ${clean(team.name)} ${paired.means[0].label} / ${clean(home.name)} ${paired.means[1].label}`);
+  const identity=a=>a?.gameName&&a?.tagLine?`${a.platform||'EUW1'}|${a.gameName.trim()}#${a.tagLine.trim()}`.toLowerCase():'';
+  const matches=(a,b)=>!!a&&!!b&&a.role===b.role&&b.sides.every((s,i)=>!s.reason&&String(a.sides?.[i]?.teamId)===String(s.teamId)&&a.sides?.[i]?.player?.id===s.player?.id&&identity(a.sides?.[i]?.account)===identity(s.account));
+  for(const [index,role]of T.roles.entries()){
+   const expected=D.pair(team,home,role,lineups,true),analysis=(Array.isArray(duels)?duels:[]).find(a=>matches(a?.pair,expected));
+   const patch=analysis?.patch||'ALL';lines.push('',`${role} · ${patch==='ALL'?'tous les patchs retenus':'patch '+clean(patch)}`);
+   sides.forEach((t,i)=>{
+    const slot=summaries[i].slots[index],p=slot.players.length===1?slot.players[0]:null;
+    if(!p){lines.push(`${clean(t.name)} : non sélectionné · ${reasons[slot.status]||'indisponible'}${slot.declared.length?' · déclarés : '+slot.declared.map(p=>clean(p.name)).join(', '):''}`);return;}
+    const observation=T.rankObservation(p,now),a=observation.account||p.accounts?.[0],r=slot.status==='account_changed'?null:p.bestRank;
+    lines.push(`${clean(t.name)} : ${clean(p.name)} · ${a?.gameName&&a?.tagLine?clean(a.gameName)+'#'+clean(a.tagLine)+' ('+clean(a.platform||'EUW1')+')':'compte non relié'} · ${slot.manual?'choix local, non confirmé LEA':'déclaré LEA, titulaire non confirmé'}`);
+    lines.push(`  Rang : ${T.points(r)!==null?clean(r.tier)+' '+clean(r.rank||'')+' · '+(r.leaguePoints??r.lp)+' LP':'indisponible'} · ${reasons[slot.status]||'indisponible'} · vérifié ${date(observation.checkedAt)}`);
+    const champion=Array.isArray(analysis?.champions)&&analysis.champions.length===2?analysis.champions[i]:analysis?.champion||'ALL',raw=analysis?.reports?.[i];
+    const s=raw?.role===role&&Number.isInteger(raw.games)&&raw.games>=0?D.scopeReport(raw,patch,champion):null;
+    if(!s||!Number.isInteger(s.games)||s.games<0){lines.push('  SoloQ : rapport non chargé ou indisponible pour ce joueur/compte.');return;}
+    const warnings=[s.games<3?'ÉCHANTILLON FAIBLE (<3)':null,s.coverage?.partial?'COLLECTE PARTIELLE':null,s.window?.stale?'DONNÉES ANCIENNES':null,analysis.loading?'COLLECTE EN COURS':null,analysis.restoredAfterError?'RESTAURÉ APRÈS ÉCHEC, dates d’origine':null].filter(Boolean);
+    lines.push(`  SoloQ : ${s.games} parties · champion ${champion==='ALL'?'tous ceux retenus':clean(champion)} · période ${date(s.window?.oldestAt)} → ${date(s.window?.newestAt)} · collecte ${date(s.sampledAt)}${warnings.length?' · '+warnings.join(' · '):''}`);
+    if(!s.games){lines.push('  Aucune partie exploitable dans ce périmètre ; pas une absence de maîtrise.');return;}
+    const poolSide=D.draftPools([{role,pair:expected,saved:{sides:[0,1].map(n=>n===i?{report:s}:null)}}]).find(row=>row.role===role)?.sides[i];
+    const pool=poolSide?.poolStatus==='loaded'?poolSide.champions:[];
+    const metrics=[['winrate','WR (%)'],['cspm','CS/min'],['kda','KDA']].filter(([k])=>Number.isFinite(s[k])).map(([k,label])=>label+' '+s[k]);
+    lines.push('  '+(metrics.join(' · ')||'Mesures indisponibles')+' · champions observés : '+(poolSide?.poolStatus==='invalid'?'POOL INCOHÉRENT':pool.slice(0,3).map(c=>clean(c.name)+' '+c.games+'/'+s.games+'G').join(', ')||'indisponibles')+(pool.length>3?' · autres dans le rapport détaillé':''));
+    const ids=[...new Set((Array.isArray(s.evidence)?s.evidence:[]).filter(m=>m?.role===role&&typeof m.win==='boolean'&&/^[A-Z0-9]+_[0-9]+$/.test(m.matchId||'')).map(m=>m.matchId))];
+    lines.push('  Sources Match-v5 (3 max listées) : '+(ids.slice(0,3).join(', ')||'indisponibles, recollecter pour les obtenir')+(ids.length>3?' · '+(ids.length-3)+' autres dans le rapport détaillé':''));
+    if(integrity(s.coverage))lines.push('  INTÉGRITÉ : '+integrity(s.coverage));
+   });
+  }
+  lines.push('','Conversion : 100 points/division, 400/palier + LP ; Master/Grandmaster/Challenger = base Master + LP. Pas le MMR réel. Moyennes : compte distinct, rang complet de moins de 15 min ; exclusions explicites. Une moyenne partielle ne représente pas cinq joueurs.',
+   'Filtres : ceux mémorisés par rôle dans le comparateur, pas le filtre indépendant des pools draft. Jusqu’à 12 parties au rôle parmi les 20 dernières SoloQ par compte ; deux historiques individuels, pas des confrontations directes. Fréquences observées, pas le répertoire complet ni une recommandation de ban. Pas de pronostic ni de micro-gameplay.',
+   'Sources : https://api.leamateur.pro (déclarations) · API Riot Match-v5/rangs SoloQ. Rapport détaillé pour toutes les parties et limites. Instantané sans nouvel appel Riot ; noms/Riot IDs publics et choix locaux, aucune clé ou configuration privée.');
+  return lines.join('\n');
+ }
+ return {build,buildGroup,buildBrief};
 })();
 if(typeof module!=='undefined')module.exports=ReportBuilder;

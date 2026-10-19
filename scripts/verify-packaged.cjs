@@ -1,6 +1,10 @@
 const fs=require('node:fs'),assert=require('node:assert/strict'),asar=require('@electron/asar');
 const archive=process.argv[2]||'dist/win-unpacked/resources/app.asar';
 const read=p=>asar.extractFile(archive,require('node:path').normalize(p)).toString('utf8');
+assert.match(read('src/renderer/report.js'),/function buildBrief/);
+assert.match(read('src/renderer/app.js'),/Copier la fiche express/);
+assert.match(read('src/renderer/app.js'),/id="teamBriefPreview"/);
+assert.match(read('src/renderer/app.js'),/bindPreparation\(team,home\)/);
 assert.match(read('src/renderer/teams.js'),/function rankObservation/);
 assert.match(read('src/renderer/app.js'),/COMPTE MODIFIÉ · RANG À RECHARGER/);
 assert.match(read('src/renderer/app.js'),/PÉRIMÉ/);
