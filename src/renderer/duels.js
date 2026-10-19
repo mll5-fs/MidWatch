@@ -21,6 +21,15 @@ const DuelScouting=(()=>{
   const state={key:'',request:0,loading:false,sides:[],loadedAt:null,reused:false,backup:null,restoredAfterError:false};
   function peek(key){const value=cache.get(key),age=value?now()-value.loadedAt:Infinity;if(age<0||age>=maxAge){cache.delete(key);return null;}return value?{...value,sides:value.sides.slice()}:null;}
   function save(key,sides,activate=true){const loadedAt=now();cache.delete(key);cache.set(key,{key,sides:sides.slice(),loadedAt});while(cache.size>30)cache.delete(cache.keys().next().value);if(activate&&state.key===key&&!state.loading){state.sides=sides.slice();state.loadedAt=loadedAt;state.reused=true;state.restoredAfterError=false;state.backup=null;}return loadedAt;}
+  // Transfer an existing session sample without making it younger.
+  function adopt(key,saved){
+   const age=saved?now()-saved.loadedAt:Infinity;
+   if(!saved||saved.key!==key||!Number.isFinite(saved.loadedAt)||saved.loadedAt<0||!Number.isFinite(age)||age<0||age>=maxAge||!Array.isArray(saved.sides)||saved.sides.length!==2||!saved.sides.every(s=>teams.roles.includes(s?.report?.role)&&Number.isInteger(s.report.games)&&s.report.games>=0)||saved.sides[0].report.role!==saved.sides[1].report.role)return false;
+   const value={key,sides:saved.sides.slice(),loadedAt:saved.loadedAt,restoredAfterError:!!saved.restoredAfterError};
+   cache.delete(key);cache.set(key,value);while(cache.size>30)cache.delete(cache.keys().next().value);
+   if(state.key===key&&!state.loading){state.request++;state.sides=value.sides.slice();state.loadedAt=value.loadedAt;state.reused=true;state.restoredAfterError=value.restoredAfterError;state.backup=null;}
+   return true;
+  }
   function remember(){state.loadedAt=save(state.key,state.sides,false);}
   function sync(key){if(key!==state.key||(!state.loading&&state.loadedAt!==null&&!peek(key))){const saved=peek(key);state.key=key;state.request++;state.loading=false;state.sides=saved?.sides||[];state.loadedAt=saved?.loadedAt??null;state.reused=!!saved;state.restoredAfterError=!!saved?.restoredAfterError;state.backup=null;}return state;}
   function cancel(){state.request++;state.loading=false;state.key='';state.sides=[];state.loadedAt=null;state.reused=false;state.backup=null;state.restoredAfterError=false;}
@@ -55,31 +64,35 @@ const DuelScouting=(()=>{
     }
    }finally{if(current()){state.loading=false;remember();if(state.sides.length===2&&state.sides.every(s=>s?.report&&!s.error&&!s.report.coverage?.partial&&!['auth','rate_limit'].includes(s.report.coverage?.stop)))state.backup=null;onUpdate();}}
   }
-  return {state,sync,cancel,load,peek,save,canRestore,restorePrevious};
+  return {state,sync,cancel,load,peek,save,adopt,canRestore,restorePrevious};
  }
- function createBatch(){
-  const state={context:'',running:false,rows:[],stop:''};let request=0,worker=null;
+ function createBatch({now=Date.now}={}){
+  const state={context:'',running:false,rows:[],stop:'',force:false};let request=0,worker=null;
   const context=pairs=>JSON.stringify(pairs.map(p=>p?.key||''));
   function cancel(){request++;worker?.cancel();worker=null;state.running=false;state.stop='cancelled';for(const row of state.rows)if(['waiting','loading'].includes(row.status))row.status='cancelled';}
   function sync(pairs){const key=context(pairs);if(state.context!==key){cancel();state.context=key;state.rows=[];state.stop='';}return state;}
-  async function load(pairs,target,fetchReport,onUpdate=()=>{}){
+  async function load(pairs,target,fetchReport,onUpdate=()=>{},{force=false}={}){
    sync(pairs);if(state.running||target.state.loading)return;
-   const token=++request;state.running=true;state.stop='';state.rows=pairs.map((p,i)=>({role:p?.role||teams.roles[i],status:'waiting',reason:''}));onUpdate();
+   const token=++request;state.running=true;state.stop='';state.force=force===true;state.rows=pairs.map((p,i)=>({role:p?.role||teams.roles[i],status:'waiting',reason:''}));onUpdate();
    try{
     for(const [i,p]of pairs.entries()){
      if(token!==request)return;const row=state.rows[i];
      if(!p?.ready){row.status='blocked';row.reason=p?.sides.map(s=>s.reason).filter(Boolean).join(' · ')||'Clé Riot ou équipe indisponible.';onUpdate();continue;}
      const saved=target.peek(p.key);
-     if(saved?.sides.length===2&&!saved.restoredAfterError&&saved.sides.every(s=>s?.report?.role===p.role&&!s.error&&!s.report.coverage?.partial&&!['auth','rate_limit'].includes(s.report.coverage?.stop))){row.status='reused';onUpdate();continue;}
-     row.status='loading';onUpdate();if(token!==request)return;worker=create();await worker.load(p,fetchReport);
+     const complete=saved?.sides.length===2&&saved.sides.every(s=>s?.report?.role===p.role&&Number.isInteger(s.report.games)&&s.report.games>=0&&!s.error&&!s.report.coverage?.partial&&!['auth','rate_limit'].includes(s.report.coverage?.stop));
+     if(!state.force&&complete&&!saved.restoredAfterError){row.status='reused';onUpdate();continue;}
+     row.status='loading';onUpdate();if(token!==request)return;worker=create({now});if(state.force&&complete)worker.adopt(p.key,saved);await worker.load(p,fetchReport);
      if(token!==request)return;
-     const sides=worker.state.sides;worker=null;target.save(p.key,sides);
+     const sides=worker.state.sides,partial=sides.some(s=>s?.report?.coverage?.partial);
      const stop=sides.map(s=>s?.report?.coverage?.stop).find(s=>['auth','rate_limit'].includes(s));
+     const failed=stop||sides.some(s=>s?.error);let restored=false;
+     if(state.force&&(failed||partial)&&worker.canRestore()){worker.restorePrevious();restored=target.adopt(p.key,worker.peek(p.key));}
+     if(!restored)target.save(p.key,sides);worker=null;
      if(stop||sides.some(s=>s?.error)){
-      row.status='error';row.reason=stop==='auth'?'Clé refusée par Riot.':stop==='rate_limit'?'Quota Riot atteint.':sides.find(s=>s?.error)?.error||'Collecte interrompue.';
+      row.status=restored?'restored':'error';row.reason=(restored?'Actualisation échouée, ancien rapport daté conservé : ':'')+(stop==='auth'?'Clé refusée par Riot.':stop==='rate_limit'?'Quota Riot atteint.':sides.find(s=>s?.error)?.error||'Collecte interrompue.');
       state.stop=stop||'error';for(const next of state.rows.slice(i+1)){next.status='stopped';next.reason='Non lancé après interruption du lot.';}onUpdate();break;
      }
-     row.status=sides.some(s=>s?.report?.coverage?.partial)?'partial':'loaded';onUpdate();
+     row.status=restored?'restored':partial?'partial':'loaded';if(restored)row.reason='Nouvelle collecte partielle : ancien rapport daté conservé, pas une actualisation réussie.';onUpdate();
     }
    }finally{if(token===request){state.running=false;worker=null;onUpdate();}}
   }
