@@ -1,0 +1,17 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const D=require('../src/renderer/duels'),T=require('../src/renderer/teams'),R=require('../src/renderer/report');
+const now=Date.UTC(2026,9,19,21),team=id=>({id,name:id,players:T.roles.map(role=>({id:id+role,name:id+role,role,teamId:id,team:id,accounts:[{gameName:id+role,tagLine:'EUW'}]}))});
+const report=role=>({role,games:3,sampledAt:now,champions:[{name:'Ahri',games:3,wins:1}],coverage:{partial:false}});
+function fixture(mode){const a=team('Opponent'),b=team('UWU GANG');a.players[1].accounts=[{...a.players[0].accounts[0]}];const entries=T.roles.slice(0,3).map(role=>({role,pair:D.pair(a,b,role,{},true),saved:{sides:[{report:report(role)},{report:report(role)}]}}));const side=entries[1].saved.sides[0];let patch='ALL';
+ if(mode==='missing')entries[1].saved=null;
+ if(mode==='error')entries[1].saved.sides[0]={error:'network'};
+ if(mode==='wrongRole')side.report.role='TOP';
+ if(mode==='empty'){side.report.games=0;side.report.champions=[];}
+ if(mode==='unidentified')side.report.champions=[{name:'Inconnu',games:3}];
+ if(mode==='invalid')side.report.champions=[{name:'Ahri',games:4}];
+ if(mode==='patch'){patch='16.20';for(const e of [entries[0],entries[2]])e.saved.sides[0].report.byPatch=[{patch,report:report(e.role)}];}
+ return {a,b,entries,patch};}
+for(const mode of ['missing','error','wrongRole','empty','unidentified','invalid','patch'])test('shared identity remains excluded even when the other role pool is '+mode,()=>{const x=fixture(mode),before=JSON.stringify(x),side=D.multiRolePools(x.entries,x.patch)[0];assert.equal(side.covered,1);assert.equal(side.champions.length,0);assert.ok(side.excluded.includes('TOP'));assert.ok(side.excluded.includes('JUNGLE'));assert.equal(JSON.stringify(x),before);});
+test('shared selected player is excluded even when the counterpart report is missing',()=>{const x=fixture('missing');x.entries[1].pair.sides[0].account={gameName:'Other',tagLine:'EUW'};x.entries[1].pair.sides[0].player.id=x.entries[0].pair.sides[0].player.id;assert.equal(D.multiRolePools(x.entries)[0].covered,1);});
+test('detailed export checks all five selected identities even when a role has no analysis on either side',()=>{const x=fixture('missing'),duels=x.entries.filter(e=>e.saved).map(e=>({pair:e.pair,reports:e.saved.sides.map(s=>s.report)})),text=R.build({team:x.a,home:x.b,duels,now}),section=text.split('CHAMPIONS OBSERVÉS SUR PLUSIEURS RÔLES')[1].split('UWU GANG :')[0];assert.match(section,/Opponent : 1\/5/);assert.doesNotMatch(section,/  Ahri/);});
+test('real renderer and detailed export agree that unavailable shared role cannot validate a multirole champion',()=>{const x=fixture('error'),app=fs.readFileSync('src/renderer/app.js','utf8'),ctx=vm.createContext({DuelScouting:D,TeamScouting:T,esc:String});vm.runInContext(app.slice(app.indexOf('function multiRolePoolPanel('),app.indexOf('function duelPanel(')),ctx);const html=ctx.multiRolePoolPanel(x.entries,x.a,x.b,'ALL').split('<h3>UWU GANG')[0];assert.match(html,/1\/5 rôles avec pool exploitable/);assert.doesNotMatch(html,/<th scope="row">Ahri/);const duels=x.entries.map(e=>({pair:e.pair,reports:e.saved.sides.map(s=>s.report)})),text=R.build({team:x.a,home:x.b,duels,now}),section=text.split('CHAMPIONS OBSERVÉS SUR PLUSIEURS RÔLES')[1].split('UWU GANG :')[0];assert.match(section,/Opponent : 1\/5/);assert.doesNotMatch(section,/  Ahri/);});

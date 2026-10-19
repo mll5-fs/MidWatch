@@ -63,8 +63,15 @@ const ReportBuilder=(()=>{
   if(Array.isArray(duels)&&roles.size)lines.push('Rôles sans analyse mémorisée : '+(T.roles.filter(r=>!roles.has(r)).join(', ')||'aucun'));
   if(Array.isArray(duels)&&analyses.length){
    const entries=analyses.map(a=>({role:a.pair.role,pair:a.pair,saved:{restoredAfterError:!!a.restoredAfterError,sides:(a.reports||[]).map(report=>({report}))}}));
-   lines.push('','CHAMPIONS OBSERVÉS SUR PLUSIEURS RÔLES · '+(draftPatch==='ALL'?'tous les patchs retenus':'patch '+clean(draftPatch)),'Historiques SoloQ individuels de comptes distincts, pas des flex compétitifs confirmés ni une recommandation de ban. Périmètre des pools, indépendant des filtres du comparateur.');
-   D.multiRolePools(entries,draftPatch).forEach((side,i)=>{
+   lines.push('','CHAMPIONS OBSERVÉS SUR PLUSIEURS RÔLES · '+(draftPatch==='ALL'?'tous les patchs retenus':'patch '+clean(draftPatch)),'Historiques SoloQ individuels de comptes distincts, pas des flex compétitifs confirmés ni une recommandation de ban. Compte ou joueur partagé entre rôles exclu même si son autre rapport est absent ou inutilisable. Périmètre des pools, indépendant des filtres du comparateur.');
+   // Include selected identities even when a role has no retained analysis at all.
+   const multiEntries=T.roles.map(role=>{
+    const pair=D.pair(team,home,role,lineups,true),old=entries.find(e=>e.role===role);
+    const same=(a,b)=>a?.player?.id&&a.teamId===b?.teamId&&a.player.id===b.player?.id&&key(a.account)===key(b.account);
+    const saved=old?{...old.saved,sides:[0,1].map(i=>same(pair?.sides[i],old.pair.sides[i])?old.saved.sides[i]:null)}:null;
+    return {role,pair,saved};
+   });
+   D.multiRolePools(multiEntries,draftPatch).forEach((side,i)=>{
     lines.push(`${clean(i===0?team.name:home?.name||'UWU GANG')} : ${side.covered}/5 rôles avec pool exploitable · exclus : ${side.excluded.join(', ')||'aucun'}`);
     if(!side.champions.length)lines.push('  Aucun champion observé sur au moins deux rôles, pas une absence de maîtrise.');
     for(const c of side.champions){lines.push('  '+clean(c.name));for(const v of c.cells)lines.push(`    ${v.role} · ${clean(v.player.name)} : ${v.games}/${v.total} (${v.share}%) · collecte ${date(v.sampledAt)} · période ${date(v.window?.oldestAt)} → ${date(v.window?.newestAt)}${v.limited?' · moins de 3 parties':''}${v.partial?' · COLLECTE PARTIELLE':''}${v.window?.stale?' · DONNÉES ANCIENNES':''}${v.restoredAfterError?' · RESTAURÉ APRÈS ÉCHEC':''}`);}
