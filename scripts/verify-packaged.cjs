@@ -196,4 +196,6 @@ assert.match(read('src/renderer/duels.js'),/trace:poolEvidence\(scoped/);
 assert.match(read('src/renderer/app.js'),/Voir les parties · /);
 assert.match(read('src/renderer/app.js'),/SOURCES INCOHÉRENTES/);
 assert.match(read('src/renderer/report.js'),/PARTIES SOURCES DU POOL/);
+assert.match(read('src/renderer/app.js'),/duels:preparationAnalyses\(current,currentHome\),draftPatch/);
+assert.match(read('src/renderer/app.js'),/compositions et rapports mémorisés réévalués au clic/);
 console.log(JSON.stringify({archive,version:expected,players:roster.players.length,roles:Object.fromEntries(roles.map(role=>[role,roster.players.filter(p=>p.role===role).length])),uwu:roster.players.filter(p=>p.team.trim().toUpperCase()==='UWU GANG').map(p=>({name:p.name,role:p.role,division:p.division,group:p.group})),packagedTeamUI:true,packagedRoleReports:true,versionFromElectron:true},null,2));

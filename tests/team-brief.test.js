@@ -48,7 +48,7 @@ test('ambiguous and departed local selections remain explicit instead of choosin
 function ui(){
  const f=fixture(),nodes={'#copyPreparation':{},'#preparationPreview':{textContent:'detailed unchanged'},'#copyTeamBrief':{},'#teamBriefPreview':{textContent:'old preview'}},messages=[],copies=[];let time=now,ps=[...f.a.players,...f.b.players],fail=false,calls=0;
  const cache=D.create({now:()=>time});cache.save(f.analysis.pair.key,f.analysis.reports.map(report=>({report})));
- const c=vm.createContext({TeamScouting:T,ReportBuilder:{...R,buildBrief:args=>R.buildBrief({...args,now:time})},S:{lineups:{},version:'5.26.0',ouat:{}},roleMemories:(a,b)=>T.roles.map(role=>{const pair=D.pair(a,b,role,{},true);return {role,pair,saved:pair?cache.peek(pair.key):null};}),roleFilters:{read:()=>({patch:'ALL',champion:'ALL',mode:'COMMON'})},duelRole:'MID',teamDuel:{state:{loading:false}},draftPatch:'ALL',allPlayers:()=>ps,$:id=>nodes[id],notice:s=>messages.push(s),window:{mw:{copyReport:async text=>{if(fail)throw Error('clipboard');copies.push(text);},roleStats:()=>{calls++;throw Error('Unexpected Riot request');}}},esc:v=>String(v??'').replaceAll('<','&lt;').replaceAll('>','&gt;')});
+ const c=vm.createContext({TeamScouting:T,ReportBuilder:{...R,build:args=>R.build({...args,now:time}),buildBrief:args=>R.buildBrief({...args,now:time})},S:{lineups:{},version:'5.26.0',ouat:{}},roleMemories:(a,b)=>T.roles.map(role=>{const pair=D.pair(a,b,role,{},true);return {role,pair,saved:pair?cache.peek(pair.key):null};}),roleFilters:{read:()=>({patch:'ALL',champion:'ALL',mode:'COMMON'})},duelRole:'MID',teamDuel:{state:{loading:false}},draftPatch:'ALL',allPlayers:()=>ps,$:id=>nodes[id],notice:s=>messages.push(s),window:{mw:{copyReport:async text=>{if(fail)throw Error('clipboard');copies.push(text);},roleStats:()=>{calls++;throw Error('Unexpected Riot request');}}},esc:v=>String(v??'').replaceAll('<','&lt;').replaceAll('>','&gt;')});
  vm.runInContext(app.slice(app.indexOf('function preparationPanel('),app.indexOf('function bindGroupRanks(')),c);c.bindPreparation(f.a,f.b);
  return {f,c,nodes,messages,copies,calls:()=>calls,advance:n=>time+=n,replace:v=>ps=v,fail:()=>fail=true};
 }
@@ -60,4 +60,28 @@ test('actual brief copy regenerates current ranks and expired report memory at t
 });
 test('clipboard failure or removed current team restores the button and never claims a copy',async()=>{
  const x=ui();x.fail();await x.nodes['#copyTeamBrief'].onclick();assert.equal(x.copies.length,0);assert.match(x.messages[0],/non copiée/);assert.equal(x.nodes['#copyTeamBrief'].disabled,false);const y=ui();y.replace(y.f.b.players);await y.nodes['#copyTeamBrief'].onclick();assert.equal(y.copies.length,0);assert.match(y.messages[0],/non copiée/);assert.equal(y.calls(),0);
+});
+test('detailed copy regenerates ranks and expires reports at click without render or Riot',async()=>{
+ const x=ui();await x.nodes['#copyPreparation'].onclick();assert.match(x.copies[0],/5\/5 rôles/);assert.match(x.copies[0],/Ahri/);x.advance(900000);await x.nodes['#copyPreparation'].onclick();assert.match(x.copies[1],/0\/5 rôles/);assert.doesNotMatch(x.copies[1],/Ahri/);assert.equal(x.nodes['#preparationPreview'].textContent,x.copies[1]);assert.equal(x.calls(),0);assert.equal(x.nodes['#copyPreparation'].disabled,false);
+});
+test('detailed copy uses replacement roster objects, not captured team players',async()=>{
+ const x=ui();const ps=[...x.f.a.players.map(p=>({...p,name:'CURRENT '+p.role})),...x.f.b.players];x.replace(ps);await x.nodes['#copyPreparation'].onclick();assert.match(x.copies[0],/CURRENT TOP/);assert.doesNotMatch(x.copies[0],/Opponent TOP/);assert.equal(x.calls(),0);
+});
+test('detailed copy refuses a removed selected team instead of copying old preview',async()=>{
+ const x=ui();x.replace(x.f.b.players);await x.nodes['#copyPreparation'].onclick();assert.equal(x.copies.length,0);assert.match(x.messages[0],/Copie impossible/);assert.equal(x.nodes['#copyPreparation'].disabled,false);assert.equal(x.calls(),0);
+});
+test('detailed clipboard failure keeps a fresh selectable preview and restores control',async()=>{
+ const x=ui();x.fail();await x.nodes['#copyPreparation'].onclick();assert.equal(x.copies.length,0);assert.notEqual(x.nodes['#preparationPreview'].textContent,'detailed unchanged');assert.match(x.nodes['#preparationPreview'].textContent,/Ahri/);assert.match(x.messages[0],/Copie impossible/);assert.equal(x.nodes['#copyPreparation'].disabled,false);
+});
+test('detailed copy masks a removed rank account at click without mutating source',async()=>{
+ const x=ui();x.f.a.players[0].bestRankAccount={gameName:'REMOVED',tagLine:'EUW'};x.f.a.players[0].bestRank={tier:'CHALLENGER',leaguePoints:1234};const before=JSON.stringify(x.f.a);await x.nodes['#copyPreparation'].onclick();assert.doesNotMatch(x.copies[0],/1234 LP/);assert.equal(JSON.stringify(x.f.a),before);assert.equal(x.calls(),0);
+});
+test('detailed copy uses current composition and drops reports from a replaced account',async()=>{
+ const x=ui();const sub={...x.f.a.players[2],id:'sub',name:'Selected substitute',accounts:[{gameName:'NEW',tagLine:'EUW'}]};x.f.a.players.push(sub);x.replace([...x.f.a.players,...x.f.b.players]);x.c.S.lineups={Opponent:{MID:'sub'}};await x.nodes['#copyPreparation'].onclick();assert.match(x.copies[0],/Selected substitute/);assert.doesNotMatch(x.copies[0],/Ahri/);assert.equal(x.calls(),0);
+});
+test('detailed copy forwards current independent draft patch and stored comparison filters',async()=>{
+ const x=ui();let args;x.c.ReportBuilder.build=value=>{args=value;return 'Current filtered report';};x.c.draftPatch='16.20';x.c.roleFilters.read=()=>({patch:'16.19',champion:'Ahri',mode:'COMMON'});await x.nodes['#copyPreparation'].onclick();assert.equal(args.draftPatch,'16.20');assert.equal(args.duels[0].patch,'16.19');assert.equal(args.duels[0].champion,'Ahri');assert.equal(x.copies[0],'Current filtered report');assert.equal(x.calls(),0);
+});
+test('detailed copy with missing UWU cannot export the captured former opponent',async()=>{
+ const x=ui();x.replace(x.f.a.players);await x.nodes['#copyPreparation'].onclick();assert.match(x.copies[0],/UWU GANG introuvable/);assert.doesNotMatch(x.copies[0],/Yone/);assert.equal(x.calls(),0);
 });
