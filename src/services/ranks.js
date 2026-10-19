@@ -57,7 +57,9 @@ function hydrate(players, cache = {}) {
 function resetErrors(cache = {}) {
   for (const entry of Object.values(cache)) {
     if (entry?.status !== "error") continue;
-    entry.status = entry.rank ? "ranked" : "pending";
+    // A valid API key is not a successful SoloQ rank check. Retain the old
+    // value for display, but keep it excluded until ranked() succeeds again.
+    entry.status = "pending";
     entry.nextCheck = 0;
     delete entry.error;
   }

@@ -68,6 +68,6 @@ jobs:
           if ($exists) {
             Write-Host "Release $tag already exists. Preserving its installer; bump package.json to publish changes."
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Nouveau panneau Rangs compares dans Equipes OUAT : deux moyennes sur les memes roles exploitables, couverture commune sur cinq, details et exclusions. Roles incomplets retires des deux cotes ; comptes partages entre equipes exclus. Export coherent, moyennes individuelles et tableau du groupe inchanges. Aucun appel Riot supplementaire, pas de MMR ni pronostic. Installateur Electron inspecte automatiquement ; aucun essai interactif Windows/LoL. Source commit: ${{ github.sha }}."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Correctif des rangs apres validation dune nouvelle cle Riot : les anciennes valeurs en erreur deviennent reessayables, pas verifiees. Valeur et date conservees, statut partiel et exclusion des moyennes jusqua une lecture SoloQ reussie. Message explicite dans Reglages et Suivi des rangs. Comptes sains, budget et quotas inchanges. Installateur Electron inspecte automatiquement ; aucun essai interactif Windows/LoL ni appel Riot authentifie. Source commit: ${{ github.sha }}."
             if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           }
