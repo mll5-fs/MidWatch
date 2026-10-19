@@ -1,6 +1,9 @@
 const fs=require('node:fs'),assert=require('node:assert/strict'),asar=require('@electron/asar');
 const archive=process.argv[2]||'dist/win-unpacked/resources/app.asar';
 const read=p=>asar.extractFile(archive,require('node:path').normalize(p)).toString('utf8');
+assert.match(read('src/services/ranks.js'),/entry.status = "pending"/);
+assert.doesNotMatch(read('src/services/ranks.js'),/entry.status = entry.rank \? "ranked"/);
+assert.match(read('src/renderer/app.js'),/Les rangs en erreur restent exclus des moyennes/);
 assert.match(read('src/services/role-report.js'),/duplicateIds/);
 assert.match(read('src/services/role-report.js'),/match.metadata.matchId!==id/);
 assert.match(read('src/services/stats-cache.js'),/ranked-role-v6/);

@@ -56,12 +56,12 @@ test("rate limits honor Riot Retry-After instead of a fixed cooldown", async () 
   assert.equal(result.cache[accountKey(p.accounts[0])].nextCheck, 18000);
   assert.equal(result.checked, 1);
 });
-test("a validated replacement key makes failed ranks immediately eligible again", () => {
+test("a validated replacement key makes failed ranks retryable, not verified", () => {
   const ranked = { rank: solo, status: "error", error: "expired", nextCheck: 999999 };
   const unknown = { status: "error", error: "expired", nextCheck: 999999 };
   const healthy = { rank: solo, status: "ranked", nextCheck: 999999 };
   const cache = resetErrors({ ranked, unknown, healthy });
-  assert.equal(cache.ranked.status, "ranked");
+  assert.equal(cache.ranked.status, "pending");
   assert.equal(cache.unknown.status, "pending");
   assert.equal(cache.ranked.nextCheck, 0);
   assert.equal(cache.unknown.nextCheck, 0);
