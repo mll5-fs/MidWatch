@@ -196,7 +196,8 @@ const DuelScouting=(()=>{
   return [0,1].map(index=>{
    const identities=rows.map(row=>({row,side:row.sides[index],source:entries.find(e=>e?.role===row.role)?.pair?.sides[index]}));
    const valid=identities.filter(x=>x.side.poolStatus==='loaded'&&x.side.identifiedGames>0&&x.source?.player?.id&&accountKey(x.source.account));
-   const duplicate=x=>valid.some(y=>y!==x&&(y.source.player.id===x.source.player.id||accountKey(y.source.account)===accountKey(x.source.account)));
+   // Identity conflicts belong to the selected lineup, even if one report is missing.
+   const duplicate=x=>identities.some(y=>y!==x&&y.source?.player?.id&&(y.source.player.id===x.source.player.id||accountKey(y.source.account)===accountKey(x.source.account)));
    const retained=valid.filter(x=>!duplicate(x)),champions=new Map();
    const teamIds=new Set(identities.map(x=>x.source?.teamId).filter(Boolean));
    if(teamIds.size!==1)return {covered:0,champions:[],excluded:teams.roles.slice()};
