@@ -51,6 +51,7 @@ test('actual progress panel distinguishes teams, statuses and escapes public ide
 test('actual rank refresh submits selected team and UWU GANG before offscreen and group players',async()=>{
  const app=fs.readFileSync('src/renderer/app.js','utf8'),a=team('a'),h=team('h','UWU GANG'),other=team('other'),players=[...other.players,...h.players,...a.players];let submitted;
  const c=vm.createContext({TeamScouting:T,S:{hasKey:true,ouatPlayers:players,lineups:{}},view:'TEAMS',selectedTeam:a.id,rankBusy:false,rankCooldownAt:0,rankFollowup:null,rankReloadPending:false,rankMeta:{},rankState:{},document:{querySelectorAll:()=>[]},window:{mw:{rankBatch:async ids=>{submitted=ids;return {updates:[],remaining:0};}}},allPlayers:()=>players,listForView:()=>other.players,render:()=>{},clearTimeout:()=>{},setTimeout:()=>{throw Error('No pending followup expected');}});
+ c.renderBackground=c.render;
  vm.runInContext(app.slice(app.indexOf('async function refreshRanks('),app.indexOf('async function refreshLive(')),c);await c.refreshRanks();assert.deepEqual([...submitted.slice(0,10)],[...a.players,...h.players].map(p=>p.id));assert.equal(c.rankBusy,false);
 });
 test('without explicit priorities rank refresh still favors oldest due checks',async()=>{

@@ -60,16 +60,19 @@ test('rank cooldown uses the absolute transport deadline rather than a stale bat
 test('LIVE propagates a shared cooldown to the renderer and makes no IPC call while paused',async()=>{
  const app=fs.readFileSync('src/renderer/app.js','utf8');let calls=0;const deadline=Date.now()+60000;
  const c=vm.createContext({S:{hasKey:true,ouatPlayers:[]},rankCooldownAt:0,LiveMonitor,view:'OUAT',listForView:()=>[],window:{mw:{liveBatch:async()=>{calls++;return {updates:[],retryAt:deadline,blockedStatus:429};}}},renderNav:()=>{},render:()=>{}});
+ c.renderBackground=c.render; // Isolated transport harness; reading-state tests cover the redraw helper.
  vm.runInContext(app.slice(app.indexOf('async function refreshLive('),app.indexOf('async function refresh(){')),c);await c.refreshLive();assert.equal(c.rankCooldownAt,deadline);await c.refreshLive();assert.equal(calls,1);
 });
 test('authentication errors from LIVE disable automatic collection without calling players offline',async()=>{
  const app=fs.readFileSync('src/renderer/app.js','utf8');let calls=0;
  const c=vm.createContext({S:{hasKey:true,ouatPlayers:[]},rankCooldownAt:0,LiveMonitor,view:'OUAT',listForView:()=>[],window:{mw:{liveBatch:async()=>{calls++;return {updates:[],blockedStatus:403};}}},renderNav:()=>{},render:()=>{}});
+ c.renderBackground=c.render;
  vm.runInContext(app.slice(app.indexOf('async function refreshLive('),app.indexOf('async function refresh(){')),c);await c.refreshLive();await c.refreshLive();assert.equal(c.S.hasKey,false);assert.equal(calls,1);
 });
 test('a rank batch already in flight cannot clear a later LIVE cooldown',async()=>{
  const app=fs.readFileSync('src/renderer/app.js','utf8');let resolve;const deadline=Date.now()+60000;
  const c=vm.createContext({S:{hasKey:true,ouatPlayers:[]},view:'OUAT',rankBusy:false,rankReloadPending:false,rankCooldownAt:0,rankFollowup:null,document:{querySelectorAll:()=>[]},listForView:()=>[],window:{mw:{rankBatch:()=>new Promise(r=>resolve=r)}},render:()=>{}});
+ c.renderBackground=c.render;
  vm.runInContext(app.slice(app.indexOf('async function refreshRanks('),app.indexOf('async function refreshLive(')),c);
  const pending=c.refreshRanks();c.rankCooldownAt=deadline;resolve({updates:[],remaining:0});await pending;assert.equal(c.rankCooldownAt,deadline);
 });

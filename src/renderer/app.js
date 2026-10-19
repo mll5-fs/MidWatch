@@ -464,6 +464,33 @@ function settings(){
   $("#pick").onclick=async()=>{try{S.leaguePath=await window.mw.pickLeague();$("#lolpath").textContent=S.leaguePath?"✓ "+S.leaguePath:"Installation non détectée"}catch(e){$("#lolpath").textContent=e.message}};
   $("#testLeague").onclick=async()=>{const box=$("#leagueTest");box.className="result";box.textContent="Connexion au client League…";try{const r=await window.mw.diagnoseLeague();S.leaguePath=r.root;$("#lolpath").textContent="✓ "+r.root;const source=r.auth==="process"?"processus Windows":r.auth==="lockfile"?"lockfile":"locale";box.className="result live";box.textContent=`✓ Client joignable · phase ${r.phase||"inconnue"} · authentification ${source}`;}catch(e){box.textContent=String(e.message||e).replace(/^Error invoking remote method [^:]+:\s*Error:\s*/,"")}};
 }
+// Data refresh redraws preserve reading state. Explicit navigation,
+// filters and new collections still render normally; no state survives this call.
+function renderBackground(){
+  if(view!=="TEAMS"){render();return}
+  const context=JSON.stringify([selectedTeam,teamDivision,teamGroup]),grid=$("#grid"),workspace=$(".workspace"),scroll=workspace?.scrollTop;
+  const details=()=>[...(grid?.querySelectorAll?.("details")||[])];
+  const keyed=()=>{
+    const occurrences=new Map();
+    return details().map(node=>{
+      const section=node.closest(".team-section-anchor")?.id||"",summary=node.querySelector("summary");
+      // Rank progress changes while read; other disclosures must have identical
+      // content (same sources/export), never transfer openness to a new report.
+      const content=section==="team-rank-progress"?summary?.textContent:node.innerHTML;
+      const base=JSON.stringify([section,content]),index=occurrences.get(base)||0;occurrences.set(base,index+1);
+      return {node,summary,key:JSON.stringify([base,index])};
+    });
+  };
+  const before=keyed(),opened=new Map(before.map(x=>[x.key,x.node.open]));
+  const focused=before.find(x=>x.summary===document.activeElement)?.key;
+  render();
+  if(view!=="TEAMS"||context!==JSON.stringify([selectedTeam,teamDivision,teamGroup]))return;
+  for(const x of keyed()){
+    if(opened.has(x.key))x.node.open=opened.get(x.key);
+    if(x.key===focused)x.summary?.focus({preventScroll:true});
+  }
+  if(workspace&&Number.isFinite(scroll))workspace.scrollTop=scroll;
+}
 async function refreshRanks(){
   if(!S.hasKey||rankBusy||Date.now()<rankCooldownAt)return;
   if(rankFollowup){clearTimeout(rankFollowup);rankFollowup=null}
@@ -478,12 +505,12 @@ async function refreshRanks(){
     rankCooldownAt=Math.max(rankCooldownAt,Number(r.retryAt)||0);
     if([401,403].includes(r.blockedStatus))S.hasKey=false;
     for(const u of r.updates||[]){if(!S.ouatPlayers.some(p=>p.id===u.id&&PlayerIdentity.matches(p,u)))continue;if(rankMeta[u.id]?.identity!==u.identity)delete rankState[u.id];if(u.rank!==undefined)rankState[u.id]=u.rank;rankMeta[u.id]={identity:u.identity,rankStatus:u.status,rankCheckedAt:u.checkedAt,rankError:u.error,...(u.rankAccount?{bestRankAccount:u.rankAccount}:{})}}
-    render();
+    renderBackground();
     if(S.hasKey&&!r.retryAt&&(r.deferred||r.remaining>0))rankFollowup=setTimeout(refreshRanks,r.deferred?2000:4000);
   }catch(_){}finally{rankBusy=false;if(rankReloadPending){rankReloadPending=false;refreshRanks()}}
 }
 async function refreshLive(){
-  if(!S.hasKey||Date.now()<rankCooldownAt){renderNav();render();return;}
+  if(!S.hasKey||Date.now()<rankCooldownAt){renderNav();renderBackground();return;}
   try{
     const scope=view==="TEAMS"?[]:listForView().slice(0,20);
     const ids=LiveMonitor.priority(scope,view==="TEAMS"?selectedTeam:"",view==="TEAMS"?TeamScouting.group(allPlayers()):[]);
@@ -491,7 +518,7 @@ async function refreshLive(){
     rankCooldownAt=Math.max(rankCooldownAt,Number(r.retryAt)||0);
     if([401,403].includes(r.blockedStatus))S.hasKey=false;
     for(const u of r.updates||[]){if(!S.ouatPlayers.some(p=>p.id===u.id&&PlayerIdentity.matches(p,u)))continue;if(Object.prototype.hasOwnProperty.call(u,"live")){liveState[u.id]=u.live;liveMeta[u.id]={identity:u.identity,liveAccount:u.liveAccount||null,liveCheckedAt:u.checkedAt,liveError:u.error||null}}}
-  }catch(_){}finally{renderNav();render();}
+  }catch(_){}finally{renderNav();renderBackground();}
 }
 async function refresh(){
   if(busy)return;busy=true;$("#refresh").innerHTML='<span class="spinner">↻</span>';
@@ -499,7 +526,7 @@ async function refresh(){
   try{
     const r=await window.mw.refreshOuat(S.ouat.url||"");S.ouatPlayers=r.players;S.ouat={...S.ouat,...r};notice(`${r.players.length} joueurs · ${r.teams||0} équipes · ${r.season}${r.warning?" · "+r.warning:""}`);
   }catch(e){notice(String(e.message||e))}
-  finally{busy=false;$("#refresh").textContent="↻";renderNav();render()}
+  finally{busy=false;$("#refresh").textContent="↻";renderNav();renderBackground()}
 }
 
 $("#overviewNav").onclick=()=>setView("OVERVIEW");
