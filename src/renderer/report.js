@@ -22,6 +22,11 @@ const ReportBuilder=(()=>{
     }else if(slot.declared.length)lines.push(`  Joueurs déclarés : ${slot.declared.map(p=>clean(p.name)).join(', ')}`);
    }
   }
+  const paired=T.rankComparison(team,home,now,lineups);
+  if(paired){
+   lines.push('','RANGS COMPARÉS · MÊMES RÔLES',`${paired.covered}/5 rôles communs exploitables${paired.complete?' · COMPLET':' · PARTIEL'} : ${paired.roles.join(', ')||'aucun'}`,`${clean(team.name)} : ${paired.means[0].label}`,`${clean(home.name)} : ${paired.means[1].label}`,'Deux moyennes sur les mêmes rôles uniquement ; un rôle indisponible d’un côté est retiré des deux. Compte présent dans les deux équipes exclu. Les moyennes individuelles et le tableau du groupe restent indépendants. Pas un pronostic.');
+   for(const row of paired.rows)lines.push(`  ${row.role} · ${row.included?'INCLUS':'EXCLU DES DEUX MOYENNES'} · `+row.sides.map((s,i)=>`${clean(i===0?team.name:home.name)} : ${clean(s.player?.name||'non sélectionné')} / ${T.rankReasons[s.status]||'indisponible'}${s.manual?' / composition locale non confirmée LEA':''}`).join(' ; '));
+  }
   lines.push('','Moyenne descriptive, pas le MMR réel : 100 points/division, 400/palier + LP ; Master/Grandmaster/Challenger = base Master + LP. Compte distinct et rang complet vérifié depuis moins de 15 min requis. Les rôles manquants, ambigus, partiels ou périmés sont exclus. Une moyenne partielle ne représente pas cinq joueurs.');
   const analyses=(Array.isArray(duels)?duels:[duel]).filter(a=>a?.pair&&T.roles.includes(a.pair.role)&&(!Array.isArray(duels)||(a.reports||[]).some(r=>r?.role===a.pair.role&&Number.isInteger(r.games)&&r.games>=0))),roles=new Set();
   for(const analysis of analyses){
