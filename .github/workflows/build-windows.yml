@@ -68,6 +68,6 @@ jobs:
           if ($exists) {
             Write-Host "Release $tag already exists. Preserving its installer; bump package.json to publish changes."
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Lecture continue dans Equipes OUAT : les details inchanges restent ouverts pendant les rafraichissements des rangs, du live et des effectifs. Le suivi des rangs reste ouvert pendant la progression ; focus du resume et position de lecture conserves. Rapports modifies non rouverts automatiquement ; navigation et filtres explicites inchanges. Aucun appel Riot supplementaire. Installateur Electron inspecte automatiquement ; aucun essai interactif Windows/LoL ni appel Riot authentifie. Source commit: ${{ github.sha }}."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Rangs SoloQ dates dans les effectifs, cartes, liste OUAT et fiche joueur. Badges perime, partiel et a reverifier coherents avec les moyennes. Rang dun compte retire masque et exclu des moyennes individuelle, de groupe, commune et des exports ; LP non numeriques exclus. Aucun appel Riot ajoute. Installateur Electron inspecte automatiquement ; aucun essai interactif Windows/LoL ni appel Riot authentifie. Source commit: ${{ github.sha }}."
             if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           }
