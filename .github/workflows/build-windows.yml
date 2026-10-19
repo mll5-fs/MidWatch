@@ -68,6 +68,6 @@ jobs:
           if ($exists) {
             Write-Host "Release $tag already exists. Preserving its installer; bump package.json to publish changes."
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Correctif du rapport detaille dans Equipes OUAT : le bouton Copier le rapport equipe regenere le texte au clic, au lieu de copier un ancien apercu. Rangs, compositions locales, effectif courant, filtres et expiration des rapports reevalues sans appel Riot. Apercu synchronise avec le texte copie ; equipe retiree bloquee et echec presse-papiers recuperable. Installateur Electron inspecte automatiquement ; aucun essai interactif Windows/LoL ni appel Riot authentifie. Source commit: ${{ github.sha }}."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Nouvelles matrices Champions observes sur plusieurs roles dans Equipes OUAT > Pools draft, pour adversaire et UWU GANG. Au moins deux roles de joueurs selectionnes et comptes distincts, effectifs mixtes ou comptes partages exclus. Frequences, joueurs, dates et limites par role ; meme filtre de patch que les pools et export detaille. Historiques SoloQ, pas des flex competitifs confirmes ou conseils de ban. Aucun appel Riot supplementaire. Installateur inspecte automatiquement ; aucun essai interactif Windows/LoL ni appel Riot authentifie. Source commit: ${{ github.sha }}."
             if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           }

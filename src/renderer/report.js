@@ -63,6 +63,12 @@ const ReportBuilder=(()=>{
   if(Array.isArray(duels)&&roles.size)lines.push('Rôles sans analyse mémorisée : '+(T.roles.filter(r=>!roles.has(r)).join(', ')||'aucun'));
   if(Array.isArray(duels)&&analyses.length){
    const entries=analyses.map(a=>({role:a.pair.role,pair:a.pair,saved:{restoredAfterError:!!a.restoredAfterError,sides:(a.reports||[]).map(report=>({report}))}}));
+   lines.push('','CHAMPIONS OBSERVÉS SUR PLUSIEURS RÔLES · '+(draftPatch==='ALL'?'tous les patchs retenus':'patch '+clean(draftPatch)),'Historiques SoloQ individuels de comptes distincts, pas des flex compétitifs confirmés ni une recommandation de ban. Périmètre des pools, indépendant des filtres du comparateur.');
+   D.multiRolePools(entries,draftPatch).forEach((side,i)=>{
+    lines.push(`${clean(i===0?team.name:home?.name||'UWU GANG')} : ${side.covered}/5 rôles avec pool exploitable · exclus : ${side.excluded.join(', ')||'aucun'}`);
+    if(!side.champions.length)lines.push('  Aucun champion observé sur au moins deux rôles, pas une absence de maîtrise.');
+    for(const c of side.champions){lines.push('  '+clean(c.name));for(const v of c.cells)lines.push(`    ${v.role} · ${clean(v.player.name)} : ${v.games}/${v.total} (${v.share}%) · collecte ${date(v.sampledAt)} · période ${date(v.window?.oldestAt)} → ${date(v.window?.newestAt)}${v.limited?' · moins de 3 parties':''}${v.partial?' · COLLECTE PARTIELLE':''}${v.window?.stale?' · DONNÉES ANCIENNES':''}${v.restoredAfterError?' · RESTAURÉ APRÈS ÉCHEC':''}`);}
+   });
    lines.push('','POOLS OBSERVÉS · PRÉPARATION DRAFT · '+(draftPatch==='ALL'?'tous les patchs retenus':'patch '+clean(draftPatch)),'Périmètre indépendant des filtres du comparateur détaillé. Fréquence = parties champion / parties retenues au rôle et au patch. Pas le répertoire complet, pas une recommandation de ban.');
    for(const row of D.draftPools(entries,draftPatch))row.sides.forEach((side,i)=>{
     lines.push(`${row.role} · ${clean(i===0?team.name:home?.name||'UWU GANG')} · ${clean(side.player?.name||'joueur non sélectionné')}`);

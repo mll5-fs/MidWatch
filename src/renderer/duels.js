@@ -190,6 +190,23 @@ const DuelScouting=(()=>{
    return {...side,poolStatus:'loaded',report:scoped,identifiedGames,champions:champions.sort((a,b)=>b.games-a.games||a.name.localeCompare(b.name))};
   })}));
  }
+ // Cross-role observations from selected players, not confirmed competitive flex picks.
+ function multiRolePools(entries=[],patch='ALL'){
+  const rows=draftPools(entries,patch);
+  return [0,1].map(index=>{
+   const identities=rows.map(row=>({row,side:row.sides[index],source:entries.find(e=>e?.role===row.role)?.pair?.sides[index]}));
+   const valid=identities.filter(x=>x.side.poolStatus==='loaded'&&x.side.identifiedGames>0&&x.source?.player?.id&&accountKey(x.source.account));
+   const duplicate=x=>valid.some(y=>y!==x&&(y.source.player.id===x.source.player.id||accountKey(y.source.account)===accountKey(x.source.account)));
+   const retained=valid.filter(x=>!duplicate(x)),champions=new Map();
+   const teamIds=new Set(identities.map(x=>x.source?.teamId).filter(Boolean));
+   if(teamIds.size!==1)return {covered:0,champions:[],excluded:teams.roles.slice()};
+   for(const {row,side}of retained)for(const c of side.champions){
+    const key=c.name.toLowerCase();if(!champions.has(key))champions.set(key,{name:c.name,cells:[]});
+    champions.get(key).cells.push({role:row.role,player:side.player,games:c.games,total:side.report.games,share:c.share,sampledAt:side.report.sampledAt,window:side.report.window,partial:!!side.report.coverage?.partial,restoredAfterError:row.restoredAfterError,limited:c.limited});
+   }
+   return {covered:retained.length,excluded:teams.roles.filter(r=>!retained.some(x=>x.row.role===r)),champions:[...champions.values()].filter(c=>c.cells.length>=2).sort((a,b)=>b.cells.length-a.cells.length||a.name.localeCompare(b.name))};
+  });
+ }
  function normalizeFilters(reports=[],filters={}){
   const patch=filters.patch!=='ALL'&&commonPatches(reports).includes(filters.patch)?filters.patch:'ALL',mode=filters.mode==='SIDES'?'SIDES':'COMMON';
   const champion=commonChampions(reports,patch).includes(filters.champion)?filters.champion:'ALL';
@@ -211,6 +228,6 @@ const DuelScouting=(()=>{
   function forget(keys){for(const key of keys)memory.delete(key);}
   return {read,remember,forget};
  }
- return {pair,create,createBatch,compare,overview,commonPatches,commonChampions,championChoices,scopeReport,draftPatches,draftPools,poolEvidence,normalizeFilters,createFilterMemory};
+ return {pair,create,createBatch,compare,overview,commonPatches,commonChampions,championChoices,scopeReport,draftPatches,draftPools,multiRolePools,poolEvidence,normalizeFilters,createFilterMemory};
 })();
 if(typeof module!=='undefined')module.exports=DuelScouting;
