@@ -3,7 +3,7 @@ const ReportBuilder=(()=>{
  const T=typeof module!=='undefined'?require('./teams'):TeamScouting,D=typeof module!=='undefined'?require('./duels'):DuelScouting;
  const clean=v=>String(v??'').replace(/[\u0000-\u001f\u007f]/g,' ').trim();
  const date=v=>Number.isFinite(v)&&v>0&&Number.isFinite(new Date(v).getTime())?new Date(v).toISOString():'date indisponible';
- const reasons={covered:'couvert',missing:'joueur absent',ambiguous:'plusieurs joueurs, aucun choix local',selection_missing:'choix local absent de l’effectif',account_missing:'compte non relié',duplicate:'compte partagé entre rôles',error:'erreur Riot',partial:'rang partiel',rank_missing:'rang absent ou non classé',stale:'rang périmé ou date invalide'};
+ const reasons={...T.rankReasons,covered:'couvert'};
  const key=a=>`${a?.platform||'EUW1'}|${a?.gameName||''}#${a?.tagLine||''}`.toLowerCase();
  const integrity=c=>[['duplicateIds','identifiant(s) répété(s) ignoré(s)'],['invalidIds','entrée(s) d’historique invalide(s) ignorée(s)'],['identityErrors','réponse(s) avec identité incohérente exclue(s)']].filter(([k])=>Number.isInteger(c?.[k])&&c[k]>0).map(([k,label])=>c[k]+' '+label).join(' · ');
  function account(p){return p.accounts?.find(a=>key(a)===key(p.bestRankAccount))||p.accounts?.[0];}
@@ -17,8 +17,8 @@ const ReportBuilder=(()=>{
    for(const slot of s.slots){
     const p=slot.players.length===1?slot.players[0]:null;
     lines.push(`${slot.role} : ${p?clean(p.name):'non sélectionné'} · ${slot.manual?'composition locale non confirmée par LEA':'effectif déclaré, titularisation non confirmée'} · ${reasons[slot.status]||'indisponible'}`);
-    if(p){const a=account(p),r=p.bestRank;lines.push(`  Riot ID : ${a?.gameName&&a?.tagLine?`${clean(a.gameName)}#${clean(a.tagLine)} (${clean(a.platform||'EUW1')})`:'non relié'}`);
-     lines.push(`  ${slot.status==='covered'?'Rang':'Dernier rang connu, exclu de la moyenne'} : ${T.points(r)!==null?`${clean(r.tier)} ${clean(r.rank||'')} · ${r.leaguePoints??r.lp} LP`:'indisponible'} · vérifié ${date(p.rankCheckedAt)}`);
+    if(p){const a=account(p),r=slot.status==='account_changed'?null:p.bestRank;lines.push(`  Riot ID : ${a?.gameName&&a?.tagLine?`${clean(a.gameName)}#${clean(a.tagLine)} (${clean(a.platform||'EUW1')})`:'non relié'}`);
+     lines.push(`  ${slot.status==='covered'?'Rang':'Dernier rang connu, exclu de la moyenne'} : ${T.points(r)!==null?`${clean(r.tier)} ${clean(r.rank||'')} · ${r.leaguePoints??r.lp} LP`:'indisponible'} · vérifié ${date(T.rankObservation(p,now).checkedAt)}`);
     }else if(slot.declared.length)lines.push(`  Joueurs déclarés : ${slot.declared.map(p=>clean(p.name)).join(', ')}`);
    }
   }
@@ -91,8 +91,8 @@ const ReportBuilder=(()=>{
    for(const slot of s.slots){
     const p=slot.players.length===1?slot.players[0]:null;
     lines.push(`${slot.role} : ${p?clean(p.name):'non sélectionné'} · ${slot.manual?'composition locale non confirmée par LEA':'effectif déclaré, titularisation non confirmée'} · ${reasons[slot.status]||'indisponible'}`);
-    if(p){const a=account(p),r=p.bestRank;lines.push(`  Riot ID : ${a?.gameName&&a?.tagLine?`${clean(a.gameName)}#${clean(a.tagLine)} (${clean(a.platform||'EUW1')})`:'non relié'}`);
-     lines.push(`  ${slot.status==='covered'?'Rang':'Dernier rang connu, exclu de la moyenne'} : ${T.points(r)!==null?`${clean(r.tier)} ${clean(r.rank||'')} · ${r.leaguePoints??r.lp} LP`:'indisponible'} · vérifié ${date(p.rankCheckedAt)}`);
+    if(p){const a=account(p),r=slot.status==='account_changed'?null:p.bestRank;lines.push(`  Riot ID : ${a?.gameName&&a?.tagLine?`${clean(a.gameName)}#${clean(a.tagLine)} (${clean(a.platform||'EUW1')})`:'non relié'}`);
+     lines.push(`  ${slot.status==='covered'?'Rang':'Dernier rang connu, exclu de la moyenne'} : ${T.points(r)!==null?`${clean(r.tier)} ${clean(r.rank||'')} · ${r.leaguePoints??r.lp} LP`:'indisponible'} · vérifié ${date(T.rankObservation(p,now).checkedAt)}`);
     }else if(slot.declared.length)lines.push(`  Joueurs déclarés : ${slot.declared.map(p=>clean(p.name)).join(', ')}`);
    }
   }

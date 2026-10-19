@@ -8,11 +8,11 @@ const app = fs.readFileSync(path.join(__dirname, "../src/renderer/app.js"), "utf
 
 test("rank labels distinguish pending, missing credentials, error and confirmed unranked", () => {
   const source = app.slice(app.indexOf("function rankPlaceholder("), app.indexOf("function tracked("));
-  const context = vm.createContext({ S: { hasKey: true }, scoutingAccount: p => p.accounts?.[0] });
+  const context = vm.createContext({ TeamScouting:require('../src/renderer/teams'), S: { hasKey: true }, scoutingAccount: p => p.accounts?.[0] });
   vm.runInContext(source, context);
   const linked = { accounts: [{ gameName: "Test", tagLine: "EUW" }] };
   assert.equal(context.rankPlaceholder(linked), "RANG À CHARGER");
-  assert.equal(context.rankPlaceholder({ ...linked, rankStatus: "unranked" }), "NON CLASSÉ SOLOQ");
+  assert.equal(context.rankPlaceholder({ ...linked, rankStatus: "unranked",rankCheckedAt:Date.now() }), "NON CLASSÉ SOLOQ");
   assert.equal(context.rankPlaceholder({ ...linked, rankStatus: "error" }), "RANG INDISPONIBLE");
   context.S.hasKey = false;
   assert.equal(context.rankPlaceholder(linked), "CLÉ RIOT REQUISE");
@@ -21,18 +21,18 @@ test("rank labels distinguish pending, missing credentials, error and confirmed 
 
 test("marks a known rank as partial while another linked account remains unresolved", () => {
   const source = app.slice(app.indexOf("function rankClass("), app.indexOf("function rankScore("));
-  const context = vm.createContext({});
+  const context = vm.createContext({TeamScouting:require('../src/renderer/teams')});
   vm.runInContext(source, context);
-  const player = { bestRank: { tier: "DIAMOND", rank: "II", leaguePoints: 50 }, rankStatus: "partial" };
+  const player = { accounts:[{gameName:'Test',tagLine:'EUW'}],bestRank: { tier: "DIAMOND", rank: "II", leaguePoints: 50 }, rankStatus: "partial" };
   assert.equal(context.playerRankLabel(player), "DIAMOND II · 50 LP · PARTIEL");
   assert.match(app, /rank=playerRankLabel\(p\)/);
 });
 
 test("keeps a cached rank visible but marks it for verification after a refresh error", () => {
   const source = app.slice(app.indexOf("function rankClass("), app.indexOf("function rankScore("));
-  const context = vm.createContext({});
+  const context = vm.createContext({TeamScouting:require('../src/renderer/teams')});
   vm.runInContext(source, context);
-  const player = { bestRank: { tier: "MASTER", rank: "I", leaguePoints: 120 }, rankStatus: "error" };
+  const player = { accounts:[{gameName:'Test',tagLine:'EUW'}],bestRank: { tier: "MASTER", rank: "I", leaguePoints: 120 }, rankStatus: "error" };
   assert.equal(context.playerRankLabel(player), "MASTER · 120 LP · À REVÉRIFIER");
   assert.equal(context.playerRankLabel({ ...player, bestRank: {} }), "");
 });

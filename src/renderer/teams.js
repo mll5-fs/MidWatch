@@ -2,7 +2,7 @@
 const TeamScouting = (()=>{
  const roles=["TOP","JUNGLE","MID","ADC","SUPPORT"],tiers=["IRON","BRONZE","SILVER","GOLD","PLATINUM","EMERALD","DIAMOND"];
  function points(rank){
-  if(!rank)return null;const lp=Number(rank.leaguePoints??rank.lp);
+  if(!rank)return null;const lp=rank.leaguePoints??rank.lp;
   if(!Number.isFinite(lp)||lp<0)return null;
   const tier=String(rank.tier||"").toUpperCase(),index=tiers.indexOf(tier);
   if(index>=0){const division={IV:0,III:1,II:2,I:3}[rank.rank];return division===undefined||lp>100?null:index*400+division*100+lp;}
@@ -15,6 +15,15 @@ const TeamScouting = (()=>{
   return `${tiers[tier]} ${["IV","III","II","I"][division]} · ${value%100} LP`;
  }
  function lineup(choices,teamId){return Object.hasOwn(choices||{},String(teamId))?choices[String(teamId)]:{};}
+ const rankAccountKey=a=>a?.gameName&&a?.tagLine?`${a.platform||'EUW1'}|${a.gameName.trim()}#${a.tagLine.trim()}`.toLowerCase():'';
+ function rankObservation(player={},now=Date.now()){
+  const accounts=(player.accounts||[]).filter(a=>rankAccountKey(a)),preferred=player.bestRankAccount;
+  const account=preferred?accounts.find(a=>rankAccountKey(a)===rankAccountKey(preferred)):accounts[0];
+  const at=player.rankCheckedAt,validDate=Number.isFinite(at)&&at>0&&at<=now;
+  const fresh=validDate&&now-at<15*60*1000;
+  const status=!accounts.length?'account_missing':!account?'account_changed':player.rankStatus==='error'?'error':player.rankStatus==='partial'?'partial':player.rankStatus==='ranked'&&points(player.bestRank)===null?'invalid':['ranked','unranked'].includes(player.rankStatus)?fresh?player.rankStatus:'stale':'pending';
+  return {status,account:account||null,checkedAt:account&&validDate?at:null};
+ }
  function updateLineup(choices,players,teamId,role,playerId){
   const team=group(players).find(t=>t.id===String(teamId));
   if(!team||!roles.includes(role)||typeof playerId!=="string"||playerId&&!team.players.some(p=>p.role===role&&p.id===playerId))throw new Error("Choix de composition invalide pour cet effectif LEA.");
@@ -24,14 +33,13 @@ const TeamScouting = (()=>{
  }
  function summarize(players,now=Date.now(),selection={}){
   const slots=roles.map(role=>{const declared=players.filter(p=>p.role===role),chosen=Object.hasOwn(selection,role)?selection[role]:null;return {role,declared,manual:chosen!==null,players:chosen!==null?declared.filter(p=>p.id===chosen):declared};});
-  const accountKey=p=>{const a=p.bestRankAccount||p.accounts?.[0];return a?.gameName&&a?.tagLine?`${a.platform||"EUW1"}|${a.gameName.trim()}#${a.tagLine.trim()}`.toLowerCase():"";};
+  const accountKey=p=>rankAccountKey(rankObservation(p,now).account);
   const keys=slots.filter(s=>s.players.length===1).map(s=>accountKey(s.players[0])).filter(Boolean);
   let excluded=0;
   const values=slots.flatMap(slot=>{
    if(slot.players.length!==1){slot.status=slot.manual?"selection_missing":slot.players.length?"ambiguous":"missing";excluded++;return [];}
-   const p=slot.players[0],value=points(p.bestRank),key=accountKey(p);
-   const fresh=Number.isFinite(p.rankCheckedAt)&&p.rankCheckedAt<=now&&now-p.rankCheckedAt<15*60*1000;
-   slot.status=!key?"account_missing":keys.filter(k=>k===key).length>1?"duplicate":p.rankStatus==="error"?"error":p.rankStatus==="partial"?"partial":value===null||p.rankStatus!=="ranked"?"rank_missing":!fresh?"stale":"covered";
+   const p=slot.players[0],value=points(p.bestRank),key=accountKey(p),observation=rankObservation(p,now);
+   slot.status=observation.status==='account_changed'?'account_changed':!key?'account_missing':keys.filter(k=>k===key).length>1?'duplicate':({ranked:'covered',error:'error',partial:'partial',stale:'stale'}[observation.status]||'rank_missing');
    if(slot.status!=="covered"){excluded++;return [];}
    return [value];
   });
@@ -72,15 +80,13 @@ const TeamScouting = (()=>{
   return [...new Set([...ids(selected),...ids(home),...onScreen,...groupIds,...fallback])].filter(id=>known.has(id)).slice(0,100);
  }
  function rankProgress(players,now=Date.now()){
-  const labels={ranked:'classé vérifié',unranked:'non classé vérifié',pending:'à charger',error:'erreur Riot',partial:'résultat partiel',stale:'vérification périmée',account_missing:'compte absent',invalid:'rang incohérent'};
+  const labels={ranked:'classé vérifié',unranked:'non classé vérifié',pending:'à charger',error:'erreur Riot',partial:'résultat partiel',stale:'vérification périmée',account_missing:'compte absent',account_changed:'compte du rang absent de l’effectif actuel',invalid:'rang incohérent'};
   const rows=players.map(player=>{
-   const linked=(player.accounts||[]).some(a=>a?.gameName&&a?.tagLine),at=player.rankCheckedAt;
-   const fresh=Number.isFinite(at)&&at>0&&at<=now&&now-at<15*60*1000;
-   const status=!linked?'account_missing':player.rankStatus==='error'?'error':player.rankStatus==='partial'?'partial':player.rankStatus==='ranked'&&points(player.bestRank)===null?'invalid':['ranked','unranked'].includes(player.rankStatus)?fresh?player.rankStatus:'stale':'pending';
-   return {player,status,label:labels[status],checkedAt:Number.isFinite(at)&&at>0&&at<=now?at:null};
+   const observation=rankObservation(player,now);
+   return {player,...observation,label:labels[observation.status]};
   });
   return {rows,total:rows.length,counts:Object.fromEntries(Object.keys(labels).map(key=>[key,rows.filter(r=>r.status===key).length])),labels};
  }
- return {roles,points,label,summarize,group,groupBoard,lineup,updateLineup,rankPriority,rankProgress,rankComparison,rankReasons};
+ return {roles,points,label,summarize,group,groupBoard,lineup,updateLineup,rankPriority,rankProgress,rankObservation,rankComparison,rankReasons};
 })();
 if(typeof module!=="undefined")module.exports=TeamScouting;

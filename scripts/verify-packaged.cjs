@@ -1,6 +1,11 @@
 const fs=require('node:fs'),assert=require('node:assert/strict'),asar=require('@electron/asar');
 const archive=process.argv[2]||'dist/win-unpacked/resources/app.asar';
 const read=p=>asar.extractFile(archive,require('node:path').normalize(p)).toString('utf8');
+assert.match(read('src/renderer/teams.js'),/function rankObservation/);
+assert.match(read('src/renderer/app.js'),/COMPTE MODIFIÉ · RANG À RECHARGER/);
+assert.match(read('src/renderer/app.js'),/PÉRIMÉ/);
+assert.match(read('src/renderer/app.js'),/rankDateHtml\(p\)/);
+assert.match(read('src/renderer/style.css'),/\.rank-checked\{/);
 assert.match(read('src/renderer/app.js'),/function renderBackground\(\)/);
 assert.match(read('src/renderer/app.js'),/x.node.open=opened.get\(x.key\)/);
 assert.match(read('src/renderer/app.js'),/preventScroll:true/);

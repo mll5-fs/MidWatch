@@ -1,3 +1,4 @@
+.rank-checked{display:block;font-size:11px;line-height:1.5;color:var(--muted);white-space:normal}
 .team-workspace-nav{grid-column:1/-1}
 .team-workspace-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .team-workspace-links a{display:inline-flex;align-items:center;min-height:40px;padding:9px 13px;border:1px solid #34445c;border-radius:10px;background:#152235;color:#e7edf7;text-decoration:none;font-size:12px;line-height:1.4}

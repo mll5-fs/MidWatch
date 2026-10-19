@@ -4,7 +4,7 @@ const app=fs.readFileSync('src/renderer/app.js','utf8'),esc=v=>String(v??'').rep
 const players=(id,name=id)=>T.roles.map(role=>({id:id+role,teamId:id,team:name,division:'Division 11',group:'Div 11D',name:id+' '+role,role,accounts:[{gameName:id+role,tagLine:'EUW'}]}));
 function ui(ps=[...players('home','UWU GANG'),...players('op','Opponent')]){
  const nodes={},buttons=new Map(),$=id=>{if(['#copyGroupRanks','#groupRanksPreview'].includes(id)&&!nodes['#grid']?.innerHTML.includes('id="'+id.slice(1)+'"'))return null;return nodes[id]??={value:'',innerHTML:'',textContent:'',hidden:false};};let calls=0,opened;
- const c=vm.createContext({$,S:{ouat:{},lineups:{},hasKey:true,version:'5.23.0'},allPlayers:()=>ps,TeamScouting:T,DuelScouting:D,ReportBuilder:R,LiveMonitor:L,esc,queryMatch:()=>false,playerRankLabel:()=>'',rankPlaceholder:()=> 'À charger',scoutingAccount:p=>p.accounts[0],document:{querySelectorAll:selector=>{
+ const c=vm.createContext({$,S:{ouat:{},lineups:{},hasKey:true,version:'5.23.0'},allPlayers:()=>ps,TeamScouting:T,DuelScouting:D,ReportBuilder:R,LiveMonitor:L,esc,queryMatch:()=>false,playerRankLabel:()=>'',rankDateHtml:()=>'',rankPlaceholder:()=> 'À charger',scoutingAccount:p=>p.accounts[0],document:{querySelectorAll:selector=>{
   if(selector!=='[data-team-player]')return [];
   return [...(nodes['#grid']?.innerHTML||'').matchAll(/data-team-player="([^"]+)"/g)].map(m=>{const b={dataset:{teamPlayer:m[1]}};buttons.set(m[1],b);return b;});
  }},render:()=>c.renderTeamSection(),refreshRanks:()=>{},openPlayer:id=>opened=id,window:{mw:{roleStats:()=>{calls++;throw Error('Unexpected Riot request');}}}});
