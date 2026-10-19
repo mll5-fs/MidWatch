@@ -38,6 +38,24 @@ const TeamScouting = (()=>{
   const score=values.length?values.reduce((a,b)=>a+b,0)/values.length:null;
   return {slots,covered:values.length,excluded,score,label:label(score),complete:values.length===5};
  }
+ const rankReasons={covered:'rang exploitable',missing:'joueur absent',ambiguous:'plusieurs joueurs, aucun choix local',selection_missing:'choix local absent de l’effectif',account_missing:'compte non relié',duplicate:'compte partagé entre rôles',error:'erreur Riot',partial:'rang partiel',rank_missing:'rang absent ou non classé',stale:'rang périmé ou date invalide',account_changed:'compte du rang absent de l’effectif actuel',shared:'compte présent dans les deux équipes'};
+ function rankComparison(team,home,now=Date.now(),choices={}){
+  if(!team||!home||team.id===home.id)return null;
+  const key=a=>a?.gameName&&a?.tagLine?`${a.platform||'EUW1'}|${a.gameName.trim()}#${a.tagLine.trim()}`.toLowerCase():'';
+  const summaries=[team,home].map(t=>summarize(t.players,now,lineup(choices,t.id)));
+  const sides=summaries.map(s=>s.slots.map(slot=>{
+   const p=slot.players.length===1?slot.players[0]:null,preferred=p?.bestRankAccount||p?.accounts?.[0];
+   const account=p?.accounts?.find(a=>key(a)&&key(a)===key(preferred))||null;
+   return {player:p,account,manual:slot.manual,status:slot.status==='covered'&&!account?'account_changed':slot.status,checkedAt:p?.rankCheckedAt,score:slot.status==='covered'&&account?points(p.bestRank):null};
+  }));
+  const keys=sides.map(ss=>new Set(ss.map(s=>key(s.account)).filter(Boolean)));
+  const rows=roles.map((role,i)=>{
+   const pair=sides.map((ss,j)=>{const s=ss[i];return {...s,status:s.status==='covered'&&keys[1-j].has(key(s.account))?'shared':s.status};});
+   return {role,sides:pair,included:pair.every(s=>s.status==='covered')};
+  });
+  const common=rows.filter(r=>r.included),means=[0,1].map(i=>{const score=common.length?common.reduce((n,r)=>n+r.sides[i].score,0)/common.length:null;return {score,label:label(score)};});
+  return {rows,roles:common.map(r=>r.role),covered:common.length,complete:common.length===5,means};
+ }
  function group(players){const map=new Map();for(const p of players){const key=String(p.teamId||p.team);if(!map.has(key))map.set(key,{id:key,name:p.team||"Équipe inconnue",division:p.division||"Sans division",group:p.group||"Groupe non publié",players:[]});map.get(key).players.push(p);}return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name));}
  function groupBoard(teams,selectedId,now=Date.now(),choices={}){
   const selected=teams.find(t=>t.id===selectedId);
@@ -63,6 +81,6 @@ const TeamScouting = (()=>{
   });
   return {rows,total:rows.length,counts:Object.fromEntries(Object.keys(labels).map(key=>[key,rows.filter(r=>r.status===key).length])),labels};
  }
- return {roles,points,label,summarize,group,groupBoard,lineup,updateLineup,rankPriority,rankProgress};
+ return {roles,points,label,summarize,group,groupBoard,lineup,updateLineup,rankPriority,rankProgress,rankComparison,rankReasons};
 })();
 if(typeof module!=="undefined")module.exports=TeamScouting;
