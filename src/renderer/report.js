@@ -112,6 +112,44 @@ const ReportBuilder=(()=>{
   lines.push('','Conversion descriptive : 100 points/division, 400/palier + LP ; Master/Grandmaster/Challenger = base Master + LP. Ce n’est pas le MMR réel. Un compte distinct par rôle et un rang complet vérifié depuis moins de 15 min sont requis. Rôles absents, ambigus, comptes partagés, rangs partiels ou périmés exclus ; une moyenne partielle ne représente pas cinq joueurs.', 'Périmètre : toutes les équipes du groupe LEA sélectionné, indépendamment de la recherche et des filtres de parties. UWU GANG n’est inclus que si présent dans ce groupe. Pas de nouvelle collecte Riot ; les rangs absents ne sont pas inventés. Instantané à revérifier avant le match. Contient noms, Riot IDs publics et choix locaux ; aucune clé ni configuration privée.');
   return lines.join('\n');
  }
+ function buildChampion({team,home,lineups={},version='',ouat={},entries=[],patch='ALL',champion='',now=Date.now()}){
+  if(!team||!home||team.id===home.id)throw new Error('Comparaison d’équipes indisponible.');
+  const current=T.roles.map(role=>{
+   const pair=D.pair(team,home,role,lineups,true),hits=entries.filter(e=>e?.role===role&&e.pair?.key===pair.key);
+   const saved=hits.length===1?hits[0].saved:null,age=saved?now-saved.loadedAt:Infinity;
+   return {role,pair,saved:Number.isFinite(saved?.loadedAt)&&Number.isFinite(age)&&age>=0&&age<15*60*1000?saved:null,loading:hits.length===1&&!!hits[0].loading};
+  });
+  if(patch!=='ALL'&&!D.draftPatches(current).includes(patch))throw new Error('Patch absent des rapports actuels.');
+  const lookup=D.championLookup(current,patch,champion);
+  if(!lookup.selected)throw new Error('Champion absent des pools actuels.');
+  const lines=['MIDPULSE '+clean(version)+' — FICHE DU CHAMPION',clean(lookup.selected)+' · '+(patch==='ALL'?'tous les patchs retenus':'patch '+clean(patch)),clean(team.name)+' / '+clean(home.name),'Généré : '+date(now),'Effectif LEA : '+clean(ouat.season||'saison inconnue')+' · actualisé '+date(ouat.updatedAt)];
+  if(ouat.warning)lines.push('AVERTISSEMENT DE COLLECTE DE L’EFFECTIF.');
+  lines.push('Couverture : '+lookup.rows.flatMap(r=>r.sides).filter(s=>s.poolStatus==='loaded').length+'/10 pools non vides au rôle/patch · '+lookup.rows.flatMap(r=>r.sides).filter(s=>s.champion).length+'/10 cases avec champion observé.');
+  lines.push('Deux historiques SoloQ indépendants, pas des duels directs ni des flex compétitifs confirmés. Aucun total d’équipe.','Périmètre propre à cette fiche : champion et patch des pools ; filtres du comparateur détaillé indépendants.');
+  for(const row of lookup.rows){
+   lines.push('',row.role);
+   if(row.loading)lines.push('COLLECTE EN COURS : instantané partiel.');
+   if(row.restoredAfterError)lines.push('RESTAURÉ APRÈS ÉCHEC : dates d’origine, pas une actualisation réussie.');
+   for(const [i,side]of row.sides.entries()){
+    const a=side.account,r=side.report,c=side.champion,p=side.performance;
+    lines.push(clean(i===0?team.name:home.name)+' · '+clean(side.player?.name||'joueur non sélectionné')+' · '+(side.manual?'composition locale non confirmée LEA':'déclaration LEA, titularisation non confirmée'));
+    if(a?.gameName&&a?.tagLine)lines.push('  Riot ID : '+clean(a.gameName)+'#'+clean(a.tagLine)+' ('+clean(a.platform||'EUW1')+')');
+    if(side.poolStatus!=='loaded'){const entry=current.find(e=>e.role===row.role),missing=entry.pair.sides[i].reason||(entry.saved?.sides[i]?.error?'Rapport indisponible après erreur de collecte':'Rapport non chargé');lines.push('  '+clean(({missing,unobserved:'Patch non observé dans le rapport',empty:'Aucune partie au rôle',invalid:'Pool incohérent'})[side.poolStatus]||'Indisponible'));continue;}
+    lines.push('  '+(c?c.games+'/'+r.games+' parties au rôle ('+c.share+'%)'+(c.limited?' · moins de 3 parties':''):'Non observé parmi '+r.games+' parties au rôle · '+side.identifiedGames+' avec champion identifié'));
+    lines.push('  Collecte : '+date(r.sampledAt)+' · période du rôle '+date(r.window?.oldestAt)+' → '+date(r.window?.newestAt));
+    if(r.coverage?.partial)lines.push('  COLLECTE PARTIELLE');if(r.window?.stale)lines.push('  DONNÉES ANCIENNES');if(r.window?.partial)lines.push('  DATES PARTIELLES');if(integrity(r.coverage))lines.push('  INTÉGRITÉ DES PARTIES : '+integrity(r.coverage));
+    if(!c)continue;
+    if(p){lines.push('  CHAMPION : '+p.wins+'/'+p.games+' victoires ('+p.winrate+'%) · KDA '+p.kda+' · CS/min '+p.cspm+' · dégâts/min '+p.dpm+' · vision/partie '+p.vision,'  Période du champion : '+date(p.window.oldestAt)+' → '+date(p.window.newestAt)+(p.window.partial?' · DATES PARTIELLES':'')+(p.window.stale?' · DONNÉES ANCIENNES':''));
+     if(p.omittedGames)lines.push('  '+p.omittedGames+' partie(s) avec champs numériques omis par Riot, traités comme zéro.');
+    }else lines.push('  Statistiques du champion indisponibles ou incohérentes ; aucune métrique globale substituée.');
+    const trace=c.trace||{status:'unavailable',rows:[]};
+    lines.push('  PARTIES SOURCES : '+trace.rows.length+'/'+c.games+' · '+({complete:'COMPLÈTES',partial:'PARTIELLES',inconsistent:'INCOHÉRENTES, masquées',unavailable:'INDISPONIBLES'}[trace.status]||'INDISPONIBLES'));
+    for(const m of trace.rows)lines.push('    '+clean(m.matchId||'Identifiant indisponible')+' · '+date(m.startedAt)+' · patch '+clean(m.patch||'indisponible')+' · '+(m.win?'Victoire':'Défaite')+' · '+(m.seconds===null?'durée indisponible':m.seconds+' s')+' · K/D/A '+[m.kills,m.deaths,m.assists].map(v=>Number.isFinite(v)?v:'—').join('/'));
+   }
+  }
+  lines.push('','Limites : fréquence = parties champion / parties retenues au rôle et patch, pas le répertoire complet. Non observé ne signifie pas non maîtrisé. Une liste source partielle ne recalcule pas les fréquences.','KDA cumulé ; CS/min et dégâts/min pondérés par durée ; vision moyenne par partie. Pas du micro-gameplay, du MMR ou une preuve d’effet du patch.','Sources : https://api.leamateur.pro · API Riot Match-v5. Instantané sans nouvel appel Riot ; noms/Riot IDs publics et choix locaux, aucune clé ou configuration privée.');
+  return lines.join('\n');
+ }
  function buildBrief({team,home,lineups={},version='',ouat={},duels=[],now=Date.now()}){
   if(!team)throw new Error('Aucune équipe sélectionnée.');
   const sides=[team,...(home&&home.id!==team.id?[home]:[])],summaries=sides.map(t=>T.summarize(t.players,now,T.lineup(lineups,t.id)));
@@ -151,6 +189,6 @@ const ReportBuilder=(()=>{
    'Sources : https://api.leamateur.pro (déclarations) · API Riot Match-v5/rangs SoloQ. Rapport détaillé pour toutes les parties et limites. Instantané sans nouvel appel Riot ; noms/Riot IDs publics et choix locaux, aucune clé ou configuration privée.');
   return lines.join('\n');
  }
- return {build,buildGroup,buildBrief};
+ return {build,buildGroup,buildBrief,buildChampion};
 })();
 if(typeof module!=='undefined')module.exports=ReportBuilder;
