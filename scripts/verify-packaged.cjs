@@ -1,13 +1,16 @@
 const fs=require('node:fs'),assert=require('node:assert/strict'),asar=require('@electron/asar');
 const archive=process.argv[2]||'dist/win-unpacked/resources/app.asar';
 const read=p=>asar.extractFile(archive,require('node:path').normalize(p)).toString('utf8');
+assert.match(read('src/renderer/duels.js'),/function championPerformance/);
+assert.match(read('src/renderer/app.js'),/STATISTIQUES DU CHAMPION/);
+assert.match(read('src/renderer/app.js'),/performanceHtml\(side.performance\)/);
 assert.match(read('src/services/spectate-flow.js'),/const occupiedPhases = new Set/);
 assert.match(read('src/services/spectate-flow.js'),/occupiedPhases.has\(phase\)/);
 assert.match(read('src/services/spectate-flow.js'),/Spectate non envoyé/);
 assert.match(read('src/renderer/duels.js'),/function championLookup/);
 assert.match(read('src/renderer/app.js'),/function draftChampionPanel/);
 assert.match(read('src/renderer/app.js'),/function draftPoolEvidence\(c,date\)/);
-assert.match(read('src/renderer/app.js'),/c\?draftPoolEvidence\(c,date\):''/);
+assert.match(read('src/renderer/app.js'),/c\?performanceHtml\(side.performance\)\+draftPoolEvidence\(c,date\):''/);
 assert.match(read('src/renderer/app.js'),/innerHTML\+=draftChampionPanel\(team,home\)/);
 assert.match(read('src/renderer/app.js'),/id="draftChampion"/);
 assert.match(read('src/services/app-instance.js'),/app.requestSingleInstanceLock\(\)/);
