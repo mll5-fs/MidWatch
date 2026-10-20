@@ -1,6 +1,9 @@
 const fs=require('node:fs'),assert=require('node:assert/strict'),asar=require('@electron/asar');
 const archive=process.argv[2]||'dist/win-unpacked/resources/app.asar';
 const read=p=>asar.extractFile(archive,require('node:path').normalize(p)).toString('utf8');
+assert.match(read('src/services/spectate-flow.js'),/const occupiedPhases = new Set/);
+assert.match(read('src/services/spectate-flow.js'),/occupiedPhases.has\(phase\)/);
+assert.match(read('src/services/spectate-flow.js'),/Spectate non envoyé/);
 assert.match(read('src/renderer/duels.js'),/function championLookup/);
 assert.match(read('src/renderer/app.js'),/function draftChampionPanel/);
 assert.match(read('src/renderer/app.js'),/function draftPoolEvidence\(c,date\)/);
