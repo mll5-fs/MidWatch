@@ -68,6 +68,6 @@ jobs:
           if ($exists) {
             Write-Host "Release $tag already exists. Preserving its installer; bump package.json to publish changes."
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Fiabilite Spectate : detection du client via PowerShell bornee a 5 secondes par sonde et 1 Mio de sortie. Repli lockfile conserve, erreur de delai nettoyee si aucune session valide, aucun lancement envoye apres echec de detection. Diagnostic League egalement couvert. Ce correctif ne confirme pas le fonctionnement sur un client LoL reel. Tests Windows et inspection automatique de installateur ; aucun essai interactif Windows/LoL ni appel Riot authentifie. Source commit: ${{ github.sha }}."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Une seule instance MidPulse : relancer le raccourci ramene la fenetre existante au premier plan et restaure une fenetre minimisee. La seconde instance quitte sans creer sa fenetre ni demarrer son rendu ou ses collectes. Cycle Windows/macOS conserve, aucune commande ou cle transmise entre instances. Ne ferme pas retroactivement les anciennes versions sans verrou : fermer MidPulse avant installation. Installateur inspecte automatiquement ; aucun essai interactif Windows/LoL ni appel Riot authentifie. Source commit: ${{ github.sha }}."
             if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           }
