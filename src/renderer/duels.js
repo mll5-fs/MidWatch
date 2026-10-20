@@ -190,6 +190,13 @@ const DuelScouting=(()=>{
    return {...side,poolStatus:'loaded',report:scoped,identifiedGames,champions:champions.sort((a,b)=>b.games-a.games||a.name.localeCompare(b.name))};
   })}));
  }
+ // A lookup keeps every role and unavailable side visible; never aggregate accounts or roles.
+ function championLookup(entries=[],patch='ALL',name=''){
+  const rows=draftPools(entries,patch),names=new Map();
+  for(const row of rows)for(const side of row.sides)for(const c of side.champions)names.set(c.name.toLowerCase(),c.name);
+  const choices=[...names.values()].sort((a,b)=>a.localeCompare(b)),selected=names.get(String(name).trim().toLowerCase())||'';
+  return {choices,selected,rows:rows.map(row=>({...row,sides:row.sides.map(side=>({...side,champion:selected?side.champions.find(c=>c.name.toLowerCase()===selected.toLowerCase())||null:null}))}))};
+ }
  // Cross-role observations from selected players, not confirmed competitive flex picks.
  function multiRolePools(entries=[],patch='ALL'){
   const rows=draftPools(entries,patch);
@@ -229,6 +236,6 @@ const DuelScouting=(()=>{
   function forget(keys){for(const key of keys)memory.delete(key);}
   return {read,remember,forget};
  }
- return {pair,create,createBatch,compare,overview,commonPatches,commonChampions,championChoices,scopeReport,draftPatches,draftPools,multiRolePools,poolEvidence,normalizeFilters,createFilterMemory};
+ return {pair,create,createBatch,compare,overview,commonPatches,commonChampions,championChoices,scopeReport,draftPatches,draftPools,championLookup,multiRolePools,poolEvidence,normalizeFilters,createFilterMemory};
 })();
 if(typeof module!=='undefined')module.exports=DuelScouting;

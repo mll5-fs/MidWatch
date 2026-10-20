@@ -1,6 +1,10 @@
 const fs=require('node:fs'),assert=require('node:assert/strict'),asar=require('@electron/asar');
 const archive=process.argv[2]||'dist/win-unpacked/resources/app.asar';
 const read=p=>asar.extractFile(archive,require('node:path').normalize(p)).toString('utf8');
+assert.match(read('src/renderer/duels.js'),/function championLookup/);
+assert.match(read('src/renderer/app.js'),/function draftChampionPanel/);
+assert.match(read('src/renderer/app.js'),/innerHTML\+=draftChampionPanel\(team,home\)/);
+assert.match(read('src/renderer/app.js'),/id="draftChampion"/);
 assert.match(read('src/services/app-instance.js'),/app.requestSingleInstanceLock\(\)/);
 assert.match(read('src/services/app-instance.js'),/app.on\('second-instance'/);
 assert.match(read('src/main.js'),/startSingleInstance\(app,\{create,getWindow:\(\)=>mainWindow/);

@@ -122,7 +122,7 @@ function renderPatchSection(){
 let teamDivision="ALL",teamGroup="ALL",selectedTeam="";
 let duelRole="MID",duelPatch="ALL",duelChampion="ALL",duelChampionMode="COMMON",duelSideChampions=["ALL","ALL"];
 function duelChampionFor(i){return duelChampionMode==="SIDES"?duelSideChampions[i]:duelChampion;}
-let draftPatch="ALL",draftContext="";
+let draftPatch="ALL",draftContext="",draftChampion="",championContext="";
 const teamDuel=DuelScouting.create();
 const teamBatch=DuelScouting.createBatch();
 const roleFilters=DuelScouting.createFilterMemory();
@@ -173,6 +173,20 @@ function draftPoolPanel(team,home){
  };
  return '<section id="team-draft-pools" class="panel draft-pools team-section-anchor" tabindex="-1" aria-label="Pools de draft observés"><div class="panel-title">POOLS OBSERVÉS · PRÉPARATION DRAFT · 5 RÔLES</div><label>Patch des pools<select id="draftPatch" class="fullinput"><option value="ALL">Toutes les parties retenues</option>'+patches.map(p=>'<option value="'+esc(p)+'" '+(p===draftPatch?'selected':'')+'>'+esc(p)+'</option>').join("")+'</select></label><p class="sample-note">Lance Charger les 5 rôles pour alimenter ce tableau. Fréquence = parties sur le champion / parties retenues au rôle et au patch choisi, pas tous les matchs du compte ni le répertoire complet. Tri par fréquence observée, pas par menace ou recommandation de ban. Les résultats SoloQ ne prédisent pas une draft compétitive ; une absence n’est pas une absence de maîtrise.</p><p class="sample-note">Périmètre des pools et de leur export : '+esc(draftPatch==="ALL"?"tous les patchs retenus":"patch "+draftPatch)+'. Indépendant des filtres du comparateur détaillé. Chaque côté est filtré séparément : aucun échantillon ajouté si le patch manque. Mémoire de session existante, aucun appel Riot supplémentaire.</p><div class="group-table-scroll"><table class="group-table"><caption>Pools individuels observés · '+esc(team.name)+' / UWU GANG</caption><thead><tr><th>Rôle</th><th>'+esc(team.name)+'</th><th>UWU GANG</th></tr></thead><tbody>'+rows.map(row=>'<tr><th>'+esc(row.role)+(row.restoredAfterError?'<small>RAPPORT RESTAURÉ APRÈS ÉCHEC</small>':'')+'</th>'+row.sides.map(side=>'<td>'+cell(side)+'</td>').join("")+'</tr>').join("")+'</tbody></table></div>'+multiRolePoolPanel(entries,team,home,draftPatch)+'</section>';
 }
+function draftChampionPanel(team,home){
+ if(!team||!home||team.id===home.id)return '';
+ const entries=roleMemories(team,home),context=JSON.stringify([draftPatch,entries.map(e=>e.pair?.key||'')]);
+ if(championContext!==context){championContext=context;draftChampion='';}
+ const lookup=DuelScouting.championLookup(entries,draftPatch,draftChampion);draftChampion=lookup.selected;
+ const date=v=>Number.isFinite(v)&&v>0&&Number.isFinite(new Date(v).getTime())?new Date(v).toLocaleString('fr-FR'):'date indisponible';
+ const cell=side=>{
+  const identity='<b>'+esc(side.player?.name||'Joueur non sélectionné')+'</b>';
+  if(side.poolStatus!=='loaded')return identity+'<p>'+esc(({missing:side.reason||'Rapport non chargé',unobserved:'Patch non observé dans le rapport chargé',empty:'Aucune partie au rôle',invalid:'Pool incohérent'})[side.poolStatus]||'Indisponible')+'</p>';
+  const r=side.report,c=side.champion;
+  return identity+'<p>'+(c?esc(c.games)+'/'+esc(r.games)+' parties ('+esc(c.share)+'%)'+(c.limited?' · moins de 3 parties':''):'Non observé parmi '+esc(r.games)+' parties au rôle · '+esc(side.identifiedGames)+' avec champion identifié')+'</p><small>Collecte : '+esc(date(r.sampledAt))+'<br>Période : '+esc(date(r.window?.oldestAt))+' → '+esc(date(r.window?.newestAt))+(r.coverage?.partial?' · COLLECTE PARTIELLE':'')+(r.window?.stale?' · DONNÉES ANCIENNES':'')+'</small>';
+ };
+ return '<section id="team-champion-lookup" class="panel team-section-anchor" tabindex="-1" aria-label="Recherche de champion sur cinq rôles"><div class="panel-title">RETROUVER UN CHAMPION · 5 RÔLES</div><label>Champion observé<select id="draftChampion" class="fullinput"><option value="">Choisir un champion</option>'+lookup.choices.map(name=>'<option value="'+esc(name)+'" '+(name===lookup.selected?'selected':'')+'>'+esc(name)+'</option>').join('')+'</select></label><p class="sample-note">Patch : '+esc(draftPatch==='ALL'?'tous les patchs retenus':draftPatch)+'. Recherche dans les pools chargés, sans appel Riot. Les dix cases restent séparées : aucun total d’équipe, pas des flex compétitifs confirmés. Non observé ne signifie pas non maîtrisé ; un champion non identifié limite la lecture. Les rapports et exports conservent leur périmètre complet : ce sélecteur ne les filtre pas.</p>'+(lookup.selected?'<div class="group-table-scroll"><table class="group-table"><caption>'+esc(lookup.selected)+' · '+esc(team.name)+' / '+esc(home.name)+'</caption><thead><tr><th>Rôle</th><th>'+esc(team.name)+'</th><th>'+esc(home.name)+'</th></tr></thead><tbody>'+lookup.rows.map(row=>'<tr><th scope="row">'+row.role+(row.restoredAfterError?'<small>RESTAURÉ APRÈS ÉCHEC</small>':'')+'</th>'+row.sides.map(side=>'<td>'+cell(side)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>':'<p>'+(!lookup.choices.length?'Aucun champion identifiable dans les pools disponibles. Lance Charger les 5 rôles et vérifie le patch.':'Choisis un champion pour voir ses observations sur les cinq rôles des deux équipes.')+'</p>')+'</section>';
+}
 function multiRolePoolPanel(entries,team,home,patch){
  const date=v=>Number.isFinite(v)&&v>0&&Number.isFinite(new Date(v).getTime())?new Date(v).toLocaleString('fr-FR'):'date indisponible';
  const sides=DuelScouting.multiRolePools(entries,patch);
@@ -199,6 +213,7 @@ function bindDuel(team,home){
  if($("#resetTeamFilters"))$("#resetTeamFilters").onclick=()=>{roleFilters.forget(roleMemories(team,home).map(e=>e.pair?.key));duelPatch="ALL";duelChampion="ALL";duelChampionMode="COMMON";duelSideChampions=["ALL","ALL"];render()};
  if($("#restoreDuel")){$("#restoreDuel").disabled=teamBatch.state.running;$("#restoreDuel").onclick=()=>{if(teamBatch.state.running)return;if(teamDuel.restorePrevious())render()};}
  if($("#draftPatch"))$("#draftPatch").onchange=e=>{draftPatch=e.target.value;render()};
+ if($("#draftChampion"))$("#draftChampion").onchange=e=>{draftChampion=e.target.value;render();$("#draftChampion")?.focus({preventScroll:true})};
  if($("#loadTeamDuels"))$("#loadTeamDuels").onclick=()=>teamBatch.load(roleMemories(team,home).map(r=>r.pair),teamDuel,(account,role)=>window.mw.roleStats(account,role,false,true),()=>{if(view==="TEAMS")render()});
  if($("#refreshTeamDuels"))$("#refreshTeamDuels").onclick=()=>teamBatch.load(roleMemories(team,home).map(r=>r.pair),teamDuel,(account,role)=>window.mw.roleStats(account,role,false,true),()=>{if(view==="TEAMS")render()},{force:true});
  if($("#stopTeamDuels"))$("#stopTeamDuels").onclick=()=>{teamBatch.cancel();render()};
@@ -262,6 +277,7 @@ function teamWorkspaceNav(team,home){
  if(!team)return '';
  const sections=[['team-roster','Effectifs et rangs'],['team-rank-progress','Suivi Riot'],['team-group-ranks','Rangs du groupe']];
  if(home&&home.id!==team.id)sections.push(['team-paired-ranks','Rangs comparés'],['team-draft-pools','Pools draft'],['team-overview','Vue des 5 rôles'],['team-comparator','Comparateur détaillé']);
+ if(home&&home.id!==team.id)sections.push(['team-champion-lookup','Retrouver un champion']);
  sections.push(['team-preparation-report','Rapport à copier']);
  return '<nav id="team-preparation-nav" class="panel team-workspace-nav team-section-anchor" aria-label="Sommaire de préparation d’équipe" tabindex="-1"><div class="panel-title">PRÉPARATION · '+esc(team.name)+'</div><p class="sample-note">Commence par les effectifs et les choix de composition, puis accède directement au groupe, aux analyses chargées ou au rapport. Ces liens ne lancent aucune collecte Riot.</p><div class="team-workspace-links">'+sections.map(([id,label])=>'<a href="#'+id+'">'+label+'</a>').join('')+'</div></nav>';
 }
@@ -296,6 +312,7 @@ function renderTeamSection(){
  $("#grid").innerHTML=`<div id="team-roster" class="team-scouting team-section-anchor" tabindex="-1" aria-label="Effectifs et rangs des cinq rôles"><div class="panel"><div class="panel-title">RANG SOLOQ MOYEN OBSERVÉ</div><h2>${average(summary)}</h2><p class="sample-note">Résumé descriptif des rangs officiels : 100 points par division, 400 par palier, plus les LP ; Master/Grandmaster/Challenger partagent la base Master + LP. Ce n’est pas le MMR. Un seul joueur déclaré ou choisi localement par rôle, compte distinct, rang complet vérifié depuis moins de 15 min. Rangs manquants, partiels ou périmés exclus. ${summary.excluded} rôle(s) exclu(s). Une moyenne partielle ne représente pas les cinq joueurs.</p></div><div class="team-columns"><div class="panel"><div class="panel-title">${esc(team.name)}</div>${rosterRows(team)}</div><div class="panel"><div class="panel-title">COMPARAISON · UWU GANG</div>${home?`<p>${average(homeSummary)}</p>${home.id===team.id?"<p>Sélectionne une autre équipe pour comparer les effectifs.</p>":rosterRows(home)}`:"<p>UWU GANG introuvable dans l’effectif LEA chargé. Aucune composition inventée.</p>"}</div></div></div>`;
  const duelHtml=duelPanel(team,home);
  $("#grid").innerHTML=teamWorkspaceNav(team,home)+$("#grid").innerHTML+rankComparisonPanel(team,home)+rankProgressPanel(team,home)+groupBoardHtml(TeamScouting.groupBoard(teams,team.id,Date.now(),S.lineups))+draftPoolPanel(team,home)+preparationPanel(team,home)+roleMemoryPanel(team,home)+teamOverviewPanel(team,home)+duelHtml;
+ $("#grid").innerHTML+=draftChampionPanel(team,home);
  bindDuel(team,home);bindPreparation(team,home);bindGroupRanks(team);
  document.querySelectorAll("[data-lineup-team]").forEach(select=>select.onchange=async()=>{select.disabled=true;try{S.lineups=await window.mw.setLineup(select.dataset.lineupTeam,select.dataset.lineupRole,select.value);render();refreshRanks()}catch(e){notice("Composition non enregistrée : "+String(e.message||e));render()}});
  document.querySelectorAll("[data-team-player]").forEach(b=>b.onclick=()=>openPlayer(b.dataset.teamPlayer));
