@@ -1,6 +1,10 @@
 const fs=require('node:fs'),assert=require('node:assert/strict'),asar=require('@electron/asar');
 const archive=process.argv[2]||'dist/win-unpacked/resources/app.asar';
 const read=p=>asar.extractFile(archive,require('node:path').normalize(p)).toString('utf8');
+assert.match(read('src/renderer/report.js'),/function buildChampion/);
+assert.match(read('src/renderer/app.js'),/id="copyChampionReport"/);
+assert.match(read('src/renderer/app.js'),/bindChampionCopy\(team,home\)/);
+assert.match(read('src/renderer/app.js'),/ReportBuilder.buildChampion/);
 assert.match(read('src/renderer/duels.js'),/function championPerformance/);
 assert.match(read('src/renderer/app.js'),/STATISTIQUES DU CHAMPION/);
 assert.match(read('src/renderer/app.js'),/performanceHtml\(side.performance\)/);
