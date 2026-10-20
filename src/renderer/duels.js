@@ -190,12 +190,28 @@ const DuelScouting=(()=>{
    return {...side,poolStatus:'loaded',report:scoped,identifiedGames,champions:champions.sort((a,b)=>b.games-a.games||a.name.localeCompare(b.name))};
   })}));
  }
+ // Never substitute all-role metrics for a missing or incoherent champion bucket.
+ function championPerformance(side,champion){
+  if(side.poolStatus!=='loaded'||!champion)return null;
+  const r=side.report,buckets=(Array.isArray(r.byChampion)?r.byChampion:[]).filter(b=>typeof b?.champion==='string'&&b.champion.trim().toLowerCase()===champion.name.toLowerCase());
+  if(buckets.length!==1)return null;
+  const p=buckets[0].report,cs=p?.champions;
+  if(p?.role!==r.role||p.games!==champion.games||champion.wins===null||p.wins!==champion.wins||p.winrate!==Math.round(100*p.wins/p.games)||!Array.isArray(cs)||cs.length!==1||typeof cs[0]?.name!=='string'||cs[0].name.trim().toLowerCase()!==champion.name.toLowerCase()||cs[0].games!==p.games||cs[0].wins!==p.wins)return null;
+  if(!['kda','cspm','dpm','vision'].every(k=>Number.isFinite(p[k])&&p[k]>=0))return null;
+  if(r.selectedPatch&&(!Array.isArray(p.patches)||p.patches.length!==1||p.patches[0].patch!==r.selectedPatch||p.patches[0].games!==p.games||p.patches[0].winrate!==p.winrate))return null;
+  const w=p.window,parent=r.window,date=v=>Number.isFinite(v)&&v>0&&Number.isFinite(new Date(v).getTime());
+  if(!date(p.sampledAt)||p.sampledAt!==r.sampledAt||!date(w?.oldestAt)||!date(w?.newestAt)||w.oldestAt>w.newestAt||w.newestAt>p.sampledAt||!date(parent?.oldestAt)||!date(parent?.newestAt)||w.oldestAt<parent.oldestAt||w.newestAt>parent.newestAt)return null;
+  return {games:p.games,wins:p.wins,winrate:p.winrate,kda:p.kda,cspm:p.cspm,dpm:p.dpm,vision:p.vision,window:{oldestAt:w.oldestAt,newestAt:w.newestAt,partial:!!w.partial,stale:!!w.stale},sampledAt:p.sampledAt,omittedGames:Number.isInteger(p.normalization?.games)&&p.normalization.games>0&&p.normalization.games<=p.games?p.normalization.games:0};
+ }
  // A lookup keeps every role and unavailable side visible; never aggregate accounts or roles.
  function championLookup(entries=[],patch='ALL',name=''){
   const rows=draftPools(entries,patch),names=new Map();
   for(const row of rows)for(const side of row.sides)for(const c of side.champions)names.set(c.name.toLowerCase(),c.name);
   const choices=[...names.values()].sort((a,b)=>a.localeCompare(b)),selected=names.get(String(name).trim().toLowerCase())||'';
-  return {choices,selected,rows:rows.map(row=>({...row,sides:row.sides.map(side=>({...side,champion:selected?side.champions.find(c=>c.name.toLowerCase()===selected.toLowerCase())||null:null}))}))};
+  return {choices,selected,rows:rows.map(row=>({...row,sides:row.sides.map(side=>{
+   const champion=selected?side.champions.find(c=>c.name.toLowerCase()===selected.toLowerCase())||null:null;
+   return {...side,champion,performance:championPerformance(side,champion)};
+  })}))};
  }
  // Cross-role observations from selected players, not confirmed competitive flex picks.
  function multiRolePools(entries=[],patch='ALL'){
