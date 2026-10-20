@@ -68,6 +68,6 @@ jobs:
           if ($exists) {
             Write-Host "Release $tag already exists. Preserving its installer; bump package.json to publish changes."
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Recherche de champion dans les pools OUAT/UWU sur cinq roles : dix cases distinctes, frequences et dates, patch des pools conserve, rapports indisponibles distingues des absences observees. Sans nouvelle requete Riot, sans total ni prediction de flex competitif. Exports complets inchanges. Installateur inspecte automatiquement ; aucun essai interactif Windows/LoL ni appel Riot authentifie. Source commit: ${{ github.sha }}."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Sources des parties accessibles directement dans Retrouver un champion, cinq roles adversaire/UWU : dates, patchs, resultats, duree et KDA. Listes partielles ou indisponibles explicites ; sources incoherentes masquees. Frequences conservees, sans nouvel appel Riot. Installateur inspecte automatiquement ; aucun essai interactif Windows/LoL ni appel Riot authentifie. Source commit: ${{ github.sha }}."
             if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           }
