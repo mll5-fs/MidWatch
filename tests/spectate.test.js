@@ -55,15 +55,15 @@ test("spectate stops on authentication or server refusal without duplicate POST"
 
 test("spectate classifies stale, busy and server failures with the observed client phase", async () => {
   const cases = [
-    [409, /Données Spectate refusées/, /phase client observée : ChampSelect/i],
-    [422, /expirées ou incompatibles/, /phase client observée : ChampSelect/i],
+    [409, /Données Spectate refusées/, /phase client observée : Lobby/i],
+    [422, /expirées ou incompatibles/, /phase client observée : Lobby/i],
     [429, /momentanément occupé/, /aucune seconde demande n’a été envoyée/],
     [503, /Service Spectate du client League indisponible/, /lancement n’est pas confirmé/]
   ];
   for (const [status, message, detail] of cases) {
     let posts = 0;
     await assert.rejects(launchThroughClient(async (_root, method) => {
-      if (method === "GET") return { data: "ChampSelect" };
+      if (method === "GET") return { data: "Lobby" };
       posts++; throw httpError(status);
     }, "root", {}), error => message.test(error.message) && detail.test(error.message));
     assert.equal(posts, 1);

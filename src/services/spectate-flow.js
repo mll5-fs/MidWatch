@@ -1,4 +1,5 @@
 const endpoints = ["/lol-gameflow/v1/spectate/launch", "/lol-spectator/v1/spectate/launch"];
+const occupiedPhases = new Set(["Matchmaking", "ReadyCheck", "ChampSelect", "GameStart", "InProgress", "Reconnect", "WaitingForStats", "PreEndOfGame", "EndOfGame"]);
 
 function phaseLabel(phase) {
   return phase && phase !== "inconnue" ? ` Phase client observée : ${phase}.` : "";
@@ -20,6 +21,9 @@ async function launchThroughClient(raw, root, body) {
   catch (error) {
     // An unavailable optional phase endpoint does not prove that launch is unavailable.
     if (![404, 405].includes(error.status)) throw failure(error);
+  }
+  if (occupiedPhases.has(phase)) {
+    throw new Error("Spectate non envoyé : le client League est occupé (" + phase + "). Attends le retour au salon avant de réessayer. Aucune recherche annulée, aucune demande de lancement envoyée.");
   }
   for (const endpoint of endpoints) {
     try {
