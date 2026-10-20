@@ -188,6 +188,10 @@ assert.match(read('src/renderer/app.js'),/draftPoolPanel\(team,home\)\+preparati
 assert.match(read('src/renderer/app.js'),/duels,draftPatch\}\)/);
 assert.match(read('src/renderer/report.js'),/D.draftPools\(entries,draftPatch\)/);
 assert.match(read('src/renderer/style.css'),/\.draft-pool-list/);
+assert.match(read('src/renderer/app.js'),/function poolChampionButton/);
+assert.match(read('src/renderer/app.js'),/data-pool-champion/);
+assert.match(read('src/renderer/app.js'),/bindPoolChampionLinks\(team,home\)/);
+assert.match(read('src/renderer/style.css'),/\.pool-champion:focus-visible/);
 assert.match(read('src/renderer/duels.js'),/function restorePrevious/);
 assert.match(read('src/renderer/duels.js'),/age>=0&&age<maxAge/);
 assert.match(read('src/renderer/duels.js'),/!saved.restoredAfterError/);

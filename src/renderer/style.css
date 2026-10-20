@@ -1,5 +1,8 @@
 .rank-checked{display:block;font-size:11px;line-height:1.5;color:var(--muted);white-space:normal}
 .team-workspace-nav{grid-column:1/-1}
+.pool-champion{display:inline-block;max-width:100%;padding:4px 6px;border:1px solid #425573;border-radius:6px;background:#18263a;color:#d9e7ff;font:inherit;font-weight:700;text-align:left;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere;cursor:pointer}
+.pool-champion:hover{background:#20334d;border-color:#799eff}
+.pool-champion:focus-visible{outline:2px solid #86b7ff;outline-offset:3px}
 .team-workspace-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .team-workspace-links a{display:inline-flex;align-items:center;min-height:40px;padding:9px 13px;border:1px solid #34445c;border-radius:10px;background:#152235;color:#e7edf7;text-decoration:none;font-size:12px;line-height:1.4}
 .team-workspace-links a:hover{background:#20334d;border-color:#799eff}
