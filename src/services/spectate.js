@@ -4,16 +4,18 @@ const {createLocalRequester}=require("./lcu-http");
 const {launchThroughClient,diagnoseClient}=require("./spectate-flow");
 const valid=r=>r&&fs.existsSync(path.join(r,"Game","League of Legends.exe"));
 function detect(saved=""){const drives=["C","D","E","F","G"],c=[saved,...drives.flatMap(d=>[`${d}:\\Riot Games\\League of Legends`,`${d}:\\Games\\Riot Games\\League of Legends`]),"C:\\Program Files\\Riot Games\\League of Legends"];return c.find(valid)||""}
-function ps(script){return new Promise((resolve,reject)=>execFile("powershell.exe",["-NoProfile","-NonInteractive","-Command",script],{windowsHide:true},(e,out)=>e?reject(e):resolve(String(out||"").trim())))}
+function ps(script){return new Promise((resolve,reject)=>execFile("powershell.exe",["-NoProfile","-NonInteractive","-Command",script],{windowsHide:true,timeout:5000,maxBuffer:1024*1024},(e,out)=>e?reject(e):resolve(String(out||"").trim())))}
 async function lcu(root){
+ let timedOut=false;
  const found=[],seen=new Set(),add=auth=>{const key=auth&&`${auth.port}:${auth.password}`;if(auth&&!seen.has(key)){seen.add(key);found.push(auth)}};
  for(const name of ["LeagueClientUx.exe","LeagueClient.exe"])try{
    const commands=await ps(`Get-CimInstance Win32_Process -Filter "Name='${name}'" | Select-Object -ExpandProperty CommandLine`);
    for(const auth of fromProcessListAll(commands))add(auth);
- }catch(_){}
+ }catch(e){if(e?.killed&&e.code!=="ERR_CHILD_PROCESS_STDIO_MAXBUFFER")timedOut=true;}
  const candidates=[path.join(root,"lockfile"),path.join(path.dirname(root),"League of Legends","lockfile")];
  for(const file of candidates){try{add(fromLockfile(fs.readFileSync(file,"utf8")))}catch(_){}}
  if(found.length)return found;
+ if(timedOut)throw new Error("La détection locale du client League a dépassé son délai (5 s par sonde). Vérifie que le client est ouvert et connecté, puis réessaie. Aucun lancement n’est confirmé.");
  throw new Error("MidPulse ne trouve pas les identifiants locaux du client League. Laisse le client ouvert et connecté puis réessaie.");
 }
 async function launch(root,game,puuid){
