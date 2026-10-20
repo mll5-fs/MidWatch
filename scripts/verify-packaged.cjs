@@ -1,6 +1,8 @@
 const fs=require('node:fs'),assert=require('node:assert/strict'),asar=require('@electron/asar');
 const archive=process.argv[2]||'dist/win-unpacked/resources/app.asar';
 const read=p=>asar.extractFile(archive,require('node:path').normalize(p)).toString('utf8');
+assert.match(read('src/services/spectate.js'),/windowsHide:true,timeout:5000,maxBuffer:1024\*1024/);
+assert.match(read('src/services/spectate.js'),/détection locale du client League a dépassé son délai/);
 assert.match(read('src/renderer/report.js'),/function buildBrief/);
 assert.match(read('src/renderer/app.js'),/Copier la fiche express/);
 assert.match(read('src/renderer/app.js'),/id="teamBriefPreview"/);

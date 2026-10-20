@@ -68,6 +68,6 @@ jobs:
           if ($exists) {
             Write-Host "Release $tag already exists. Preserving its installer; bump package.json to publish changes."
           } else {
-            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Correctif des matrices de champions multiroles : comptes et joueurs partages entre roles exclus meme si leur autre rapport est absent, vide, incoherent ou sans partie sur le patch choisi. Controle fonde sur toutes les identites selectionnees, pas seulement les pools charges. Meme regle dans le rapport detaille, explication visible, aucun appel Riot supplementaire. Neuf regressions reproduites avant correction. Installateur inspecte automatiquement ; aucun essai interactif Windows/LoL ni appel Riot authentifie. Source commit: ${{ github.sha }}."
+            gh release create $tag $exe --target "${{ github.sha }}" --title "MidPulse $version" --notes "Fiabilite Spectate : detection du client via PowerShell bornee a 5 secondes par sonde et 1 Mio de sortie. Repli lockfile conserve, erreur de delai nettoyee si aucune session valide, aucun lancement envoye apres echec de detection. Diagnostic League egalement couvert. Ce correctif ne confirme pas le fonctionnement sur un client LoL reel. Tests Windows et inspection automatique de installateur ; aucun essai interactif Windows/LoL ni appel Riot authentifie. Source commit: ${{ github.sha }}."
             if ($LASTEXITCODE -ne 0) { throw "Release publication failed" }
           }
